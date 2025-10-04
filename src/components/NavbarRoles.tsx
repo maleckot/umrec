@@ -164,7 +164,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
     <nav className={`${getBackgroundClass()} p-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
       {/* 1. Logo/Title (Constant) */}
       <div className="text-white text-xl font-extrabold">
-        <a href="" target="_blank" rel="noopener noreferrer">
+        <a href="">
           <Image 
             src="/img/logonavbar.png" 
             alt="Logo" 

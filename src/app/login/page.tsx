@@ -3,14 +3,33 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const supabase = createClient();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Login submitted', { username, password });
+    setError('');
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      router.push('/test-connection');
+    }
   };
 
   return (
@@ -26,14 +45,15 @@ export default function LoginPage() {
         />
       </div>
 
-{/* Login Container */}
-<div className="relative z-10 w-full max-w-2xl mx-4">
-  <div className="relative rounded-3xl p-1.5 overflow-hidden">
-    {/* Larger animated light beam - now 120 degrees */}
-    <div className="absolute inset-0 rounded-5xl animate-spin-slow" style={{
-      background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
-      filter: 'blur(20px)'
-    }}></div>
+      {/* Login Container */}
+      <div className="relative z-10 w-full max-w-2xl mx-4">
+        <div className="relative rounded-3xl p-1.5 overflow-hidden">
+          {/* Larger animated light beam - now 120 degrees */}
+          <div className="absolute inset-0 rounded-5xl animate-spin-slow" style={{
+            background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
+            filter: 'blur(20px)'
+          }}></div>
+          
           {/* Enhanced glow effect */}
           <div className="absolute inset-0 rounded-3xl" style={{
             boxShadow: '0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3)'
@@ -59,15 +79,16 @@ export default function LoginPage() {
 
             {/* Login Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Username Input */}
+              {/* Email Input */}
               <div>
                 <input
-                  type="text"
-                  placeholder="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-6 py-4 rounded-full text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, backgroundColor: '#C8D3E0' }}
+                  required
                 />
               </div>
 
@@ -80,8 +101,16 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-6 py-4 rounded-full text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, backgroundColor: '#C8D3E0' }}
+                  required
                 />
               </div>
+
+              {/* Error Message */}
+              {error && (
+                <div className="text-red-400 text-sm text-center bg-red-900/20 rounded-full px-4 py-2">
+                  {error}
+                </div>
+              )}
 
               {/* Forgot Password Link */}
               <div className="flex justify-end">
@@ -97,7 +126,8 @@ export default function LoginPage() {
               {/* Login Button */}
               <button
                 type="submit"
-                className="w-full py-4 rounded-full transition duration-200 hover:opacity-90"
+                disabled={loading}
+                className="w-full py-4 rounded-full transition duration-200 hover:opacity-90 disabled:opacity-50"
                 style={{ 
                   fontFamily: 'Metropolis, sans-serif', 
                   fontWeight: 700,
@@ -105,7 +135,7 @@ export default function LoginPage() {
                   color: '#000000'
                 }}
               >
-                Login
+                {loading ? 'Logging in...' : 'Login'}
               </button>
             </form>
 
