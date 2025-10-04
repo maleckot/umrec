@@ -180,7 +180,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Submission Information Section with Background Color Only */}
+           {/* Submission Information Section with Background Color Only */}
       <div className="py-16 px-20 md:px-32 lg:px-30" style={{ backgroundColor: '#050B24' }}>
         <div className="max-w-10xl mx-auto px-8">
           <div className="text-left text-white space-y-6">
@@ -206,6 +206,9 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Yellow separator line after Submission Information */}
+      <div className="w-full h-1 bg-[#D3CC50]"></div>
       
       <Footer />
 

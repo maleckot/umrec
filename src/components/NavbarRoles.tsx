@@ -1,30 +1,20 @@
 // components/NavbarRoles.tsx
 'use client';
 
-
 import Link from 'next/link';
-import { Bell, User } from 'lucide-react';
+import { Bell, User, Menu, X, LogOut, UserCircle } from 'lucide-react';
 import Image from 'next/image';
 import { marcellus, metropolis } from '@/app/fonts';
 import { useEffect, useState } from 'react';
-
-
-
-
-// 1. Define the Data for Each Navbar Variation (Interfaces and Data)
-
-
-
+import { usePathname } from 'next/navigation';
 
 // Interface for a single text link object
 interface NavLinkProps {
   href: string;
   text: string;
   icon?: 'user' | 'bell';
+  showLine?: boolean;
 }
-
-
-
 
 // Interface for icon-based links
 interface IconLinkProps {
@@ -33,42 +23,30 @@ interface IconLinkProps {
   ariaLabel: string;
 }
 
-
-
-
 // Data structures for different user roles
 const NAV_LINKS = {
-// Main/Guest User
-    main: {
+  main: {
     mainLinks: [
-        { href: '/login', text: 'Login', icon: 'user' },
+      { href: '/login', text: 'Login', icon: 'user' },
     ] as NavLinkProps[],
     iconLinks: [] as IconLinkProps[],
-    },
+  },
 
-
-
-
-  // Researcher Role
   researcher: {
     mainLinks: [
-      { href: '/researcher/dashboard', text: 'Dashboard' },
-      { href: '/researcher/submission', text: 'Submission' },
-      { href: '/researcher/help', text: 'Help Center' },
+      { href: '/researchermodule', text: 'Dashboard' },
+      { href: '/researchermodule/submission', text: 'Submission' },
+      { href: '/researchermodule/help center', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
-      { href: '/researcher/notifications', icon: 'bell', ariaLabel: 'Notifications' },
-      { href: '/researcher/account', icon: 'user', ariaLabel: 'Account' },
+      { href: '/researchermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },
+      { href: '/researchermodule/acccount', icon: 'user', ariaLabel: 'Account' },
     ] as IconLinkProps[],
   },
 
-
-
-
-  // Reviewer Role
   reviewer: {
     mainLinks: [
-      { href: '/reviewer/dashboard', text: 'Dashboard' },
+      { href: '/reviewermodule', text: 'Dashboard' },
       { href: '/reviewer/reviews', text: 'Reviews' },
       { href: '/reviewer/help', text: 'Help Center' },
     ] as NavLinkProps[],
@@ -79,70 +57,119 @@ const NAV_LINKS = {
   },
 };
 
-
-
-
 // Helper component for rendering individual text links
-const NavButton: React.FC<NavLinkProps> = ({ href, text, icon }) => {
+const NavButton: React.FC<NavLinkProps & { isActive: boolean; onClick?: () => void; showLine?: boolean }> = ({ href, text, icon, isActive, onClick, showLine = true }) => {
   const IconComponent = icon === 'bell' ? Bell : icon === 'user' ? User : null;
   
   return (
-    <Link href={href} className="text-white hover:text-gray-300 px-3 py-2 transition duration-150 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}>
-      {IconComponent && <IconComponent size={20} />}
-      {text}
+    <Link 
+      href={href}
+      onClick={onClick}
+      className="inline-block relative"
+    >
+      <div className={`px-3 py-2 transition duration-150 flex items-center gap-2 whitespace-nowrap ${
+        isActive ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
+      }`}
+      style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}>
+        {IconComponent && <IconComponent size={20} />}
+        {text}
+      </div>
+      {/* Yellow line at the bottom - only show on desktop */}
+      {isActive && showLine && (
+        <div className="absolute bottom-[-21px] left-0 right-0 h-[4px] bg-[#F0E847]"></div>
+      )}
     </Link>
   );
 };
 
-
-
-
-
-// Helper component for rendering icon links
-const IconNavButton: React.FC<IconLinkProps> = ({ href, icon, ariaLabel }) => {
-  const IconComponent = icon === 'bell' ? Bell : User;
+// Notification dropdown component
+const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
+  if (!isOpen) return null;
+  
+  const notifications = [
+    { id: 1, message: 'Your consent form requires revision.', time: '2 hours ago', type: 'revision' },
+    { id: 2, message: 'Your research protocol has been approved.', time: '5 hours ago', type: 'approved' },
+    { id: 3, message: 'Your submission is currently under review.', time: '1 day ago', type: 'review' },
+  ];
   
   return (
-    <Link 
-      href={href} 
-      className="text-white hover:text-gray-300 p-2 transition duration-150"
-      aria-label={ariaLabel}
-    >
-      <IconComponent size={20} />
-    </Link>
+    <div className="absolute right-0 top-full mt-2 w-80 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
+      <div className="p-4 border-b border-gray-700">
+        <h3 className="text-white font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>Notifications</h3>
+      </div>
+      <div className="max-h-96 overflow-y-auto">
+        {notifications.map((notif) => (
+          <div 
+            key={notif.id} 
+            className="p-4 border-b border-gray-800 hover:bg-[#0a1a4a] transition-colors cursor-pointer"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-[#F0E847] rounded-full flex items-center justify-center flex-shrink-0">
+                <Bell size={16} className="text-[#071139]" />
+              </div>
+              <div className="flex-1">
+                <p className="text-white text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {notif.message}
+                </p>
+                <p className="text-gray-400 text-xs mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {notif.time}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 
+// Account dropdown component
+const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+  
+  return (
+    <div className="absolute right-0 top-full mt-2 w-48 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
+      <Link 
+        href="/researcher/profile" 
+        className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors"
+        onClick={onClose}
+      >
+        <UserCircle size={20} className="text-white" />
+        <span className="text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>Profile</span>
+      </Link>
+      <div className="h-px bg-gray-700" />
+      <button 
+        className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors w-full text-left"
+        onClick={() => {
+          onClose();
+          // Add logout logic here
+          window.location.href = '/login';
+        }}
+      >
+                <LogOut size={20} style={{ color: '#FF3B3B' }} />
+        <span style={{ color: '#FF3B3B', fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
 
-
-
-// 2. Create the Dynamic Navbar Component
-
-
+      </button>
+    </div>
+  );
+};
 
 
 // Interface for the component's props
 interface NavbarProps {
-  role: keyof typeof NAV_LINKS; // Ensures the 'role' prop can only be 'main', 'researcher', or 'reviewer'
+  role: keyof typeof NAV_LINKS;
 }
 
-
-
-
-/**
- * A dynamic Navbar component that changes button links based on the user role.
- * @param role - The current user role ('main', 'researcher', or 'reviewer').
- */
 const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
   
-  // Select the correct set of links based on the passed 'role' prop
   const { mainLinks, iconLinks } = NAV_LINKS[role] || NAV_LINKS.main;
-  
-  // Check if it's the main/guest role
   const isMainRole = role === 'main';
   
-  // Handle scroll event
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -152,7 +179,6 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
   
-  // Determine background color based on role and scroll position
   const getBackgroundClass = () => {
     if (isMainRole) {
       return isScrolled ? 'bg-[#071139]' : 'bg-transparent';
@@ -161,47 +187,177 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   };
   
   return (
-    <nav className={`${getBackgroundClass()} p-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
-      {/* 1. Logo/Title (Constant) */}
-      <div className="text-white text-xl font-extrabold">
-        <a href="">
-          <Image 
-            src="/img/logonavbar.png" 
-            alt="Logo" 
-            width={350} 
-            height={350} 
-          />
-        </a>
-      </div>
+    <>
+      <nav className={`${getBackgroundClass()} p-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
+        {/* Mobile Burger Button and Logo */}
+        <div className="flex items-center gap-4">
+          {/* Mobile Burger Menu Button - Only show for researcher/reviewer */}
+          {!isMainRole && (
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden text-white p-2"
+              aria-label="Toggle menu"
+            >
+              <Menu size={24} />
+            </button>
+          )}
 
-
-
-      {/* 2. Navigation Links Container */}
-      <div className="flex items-center space-x-6">
-        {/* Main text-based navigation */}
-        <div className="flex space-x-4">
-          {mainLinks.map((link) => (
-            <NavButton key={link.href} href={link.href} text={link.text} icon={link.icon} />
-          ))}
+          <div className="text-white text-xl font-extrabold">
+            <a href="">
+              <Image 
+                src="/img/logonavbar.png" 
+                alt="Logo" 
+                width={350} 
+                height={350} 
+              />
+            </a>
+          </div>
         </div>
-        
-        {/* Icon-based navigation (separated with border if icons exist) */}
-        {iconLinks.length > 0 && (
-          <>
-            <div className="h-6 w-px bg-gray-600" /> {/* Vertical separator */}
-            <div className="flex space-x-2">
-              {iconLinks.map((link) => (
-                <IconNavButton key={link.href} {...link} />
-              ))}
-            </div>
-          </>
+
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center space-x-6">
+          <div className="flex space-x-4">
+            {mainLinks.map((link) => (
+              <NavButton 
+                key={link.href} 
+                href={link.href} 
+                text={link.text} 
+                icon={link.icon}
+                isActive={pathname === link.href}
+                showLine={true}
+              />
+            ))}
+          </div>
+          
+          {iconLinks.length > 0 && (
+            <>
+              <div className="h-6 w-px bg-gray-600" />
+              <div className="flex space-x-2 relative">
+                {/* Notification Bell */}
+                <button
+                  onClick={() => {
+                    setNotificationOpen(!notificationOpen);
+                    setAccountOpen(false);
+                  }}
+                  className="text-white hover:text-gray-300 p-2 transition duration-150 relative"
+                  aria-label="Notifications"
+                >
+                  <Bell size={20} />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-[#F0E847] rounded-full"></span>
+                </button>
+                
+                <NotificationDropdown isOpen={notificationOpen} />
+                
+                {/* Account Icon */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setAccountOpen(!accountOpen);
+                      setNotificationOpen(false);
+                    }}
+                    className="text-white hover:text-gray-300 p-2 transition duration-150"
+                    aria-label="Account"
+                  >
+                    <User size={20} />
+                  </button>
+                  
+                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+                {/* Mobile Icons - Always visible for researcher/reviewer */}
+        {!isMainRole && (
+          <div className="md:hidden flex items-center space-x-2">
+            {iconLinks.length > 0 && (
+              <>
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setNotificationOpen(!notificationOpen);
+                      setAccountOpen(false);
+                    }}
+                    className="text-white hover:text-gray-300 p-2 transition duration-150 relative"
+                    aria-label="Notifications"
+                  >
+                    <Bell size={20} />
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-[#F0E847] rounded-full"></span>
+                  </button>
+                  
+                  <NotificationDropdown isOpen={notificationOpen} />
+                </div>
+                
+                {/* Account Icon */}
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setAccountOpen(!accountOpen);
+                      setNotificationOpen(false);
+                    }}
+                    className="text-white hover:text-gray-300 p-2 transition duration-150"
+                    aria-label="Account"
+                  >
+                    <User size={20} />
+                  </button>
+                  
+                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} />
+                </div>
+              </>
+            )}
+          </div>
         )}
-      </div>
-    </nav>
+
+      </nav>
+
+          {/* Mobile Sidebar Drawer - NO OVERLAY, only for researcher/reviewer */}
+      {!isMainRole && (
+        <div 
+          className={`md:hidden fixed left-0 top-0 bottom-0 w-80 bg-[#071139] shadow-xl z-40 overflow-y-auto transition-transform duration-300 ${
+            mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
+        >
+          {/* Header with close button */}
+          <div className="flex justify-between items-center p-4 border-b border-gray-700">
+            <Image 
+              src="/img/logonavbar.png" 
+              alt="Logo" 
+              width={200} 
+              height={50} 
+            />
+            <button
+              onClick={() => setMobileMenuOpen(false)}
+              className="text-white p-2"
+              aria-label="Close menu"
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="flex flex-col pt-13 px-7 space-y-11">
+            {mainLinks.map((link) => (
+              <div key={link.href}>
+                <Link
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`text-xl transition-colors block ${
+                    pathname === link.href ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}
+                >
+                  {link.text}
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+    </>
   );
 };
-
-
-
 
 export default NavbarRoles;
