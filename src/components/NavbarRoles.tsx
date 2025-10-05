@@ -35,7 +35,7 @@ const NAV_LINKS = {
   researcher: {
     mainLinks: [
       { href: '/researchermodule', text: 'Dashboard' },
-      { href: '/researchermodule/submission', text: 'Submission' },
+      { href: '/researchermodule/submissions/new/step1', text: 'Submission' },
       { href: '/researchermodule/help center', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
@@ -146,14 +146,12 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
           window.location.href = '/login';
         }}
       >
-                <LogOut size={20} style={{ color: '#FF3B3B' }} />
+        <LogOut size={20} style={{ color: '#FF3B3B' }} />
         <span style={{ color: '#FF3B3B', fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
-
       </button>
     </div>
   );
 };
-
 
 // Interface for the component's props
 interface NavbarProps {
@@ -169,6 +167,16 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   
   const { mainLinks, iconLinks } = NAV_LINKS[role] || NAV_LINKS.main;
   const isMainRole = role === 'main';
+  
+  // Function to check if a link is active
+  const isLinkActive = (href: string) => {
+    // Special handling for submission pages - match entire /submissions path
+    if (href.includes('/submissions')) {
+      return pathname?.startsWith('/researchermodule/submissions');
+    }
+    // Exact match for other links
+    return pathname === href;
+  };
   
   useEffect(() => {
     const handleScroll = () => {
@@ -223,7 +231,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
                 href={link.href} 
                 text={link.text} 
                 icon={link.icon}
-                isActive={pathname === link.href}
+                isActive={isLinkActive(link.href)}
                 showLine={true}
               />
             ))}
@@ -268,7 +276,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           )}
         </div>
 
-                {/* Mobile Icons - Always visible for researcher/reviewer */}
+        {/* Mobile Icons - Always visible for researcher/reviewer */}
         {!isMainRole && (
           <div className="md:hidden flex items-center space-x-2">
             {iconLinks.length > 0 && (
@@ -309,10 +317,9 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
             )}
           </div>
         )}
-
       </nav>
 
-          {/* Mobile Sidebar Drawer - NO OVERLAY, only for researcher/reviewer */}
+      {/* Mobile Sidebar Drawer - NO OVERLAY, only for researcher/reviewer */}
       {!isMainRole && (
         <div 
           className={`md:hidden fixed left-0 top-0 bottom-0 w-80 bg-[#071139] shadow-xl z-40 overflow-y-auto transition-transform duration-300 ${
@@ -344,7 +351,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`text-xl transition-colors block ${
-                    pathname === link.href ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
+                    isLinkActive(link.href) ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
                   }`}
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}
                 >
@@ -355,7 +362,6 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           </div>
         </div>
       )}
-
     </>
   );
 };

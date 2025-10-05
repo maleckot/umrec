@@ -5,11 +5,11 @@ import NavbarRoles from '@/components/NavbarRoles';
 import Footer from '@/components/Footer';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import BackButton from '@/components/BackButton';
-import FileCard from '@/components/FileCard';
-import ActivityInfoCard from '@/components/ActivityInfoCard';
+import FileCard from '@/components/researcher/FileCard';
+import ActivityInfoCard from '@/components/researcher/ActivityInfoCard';
 import PreviewCard from '@/components/PreviewCard';
-import RevisionCard from '@/components/RevisionCard';
-import ResubmitButton from '@/components/ResubmitButton';
+import RevisionCard from '@/components/researcher/RevisionCard';
+import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 

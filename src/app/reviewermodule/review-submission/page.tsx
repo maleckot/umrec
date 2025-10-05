@@ -5,10 +5,10 @@ import NavbarRoles from '@/components/NavbarRoles';
 import Footer from '@/components/Footer';
 import Breadcrumbs from '@/components/Breadcrumbs';
 import BackButton from '@/components/BackButton';
-import SubmissionDetailsCard from '@/components/SubmissionDetailsCard';
+import SubmissionDetailsCard from '@/components/reviewer/SubmissionDetailsCard';
 import PreviewCard from '@/components/PreviewCard';
-import ReviewQuestionsCard from '@/components/ReviewQuestionsCard';
-import ReviewSubmitSuccessModal from '@/components/ReviewSubmitSuccessModal';
+import ReviewQuestionsCard from '@/components/reviewer/ReviewQuestionsCard';
+import ReviewSubmitSuccessModal from '@/components/reviewer/ReviewSubmitSuccessModal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 

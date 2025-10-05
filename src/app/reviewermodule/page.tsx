@@ -3,7 +3,7 @@
 
 import NavbarRoles from '@/components/NavbarRoles';
 import Footer from '@/components/Footer';
-import StartReviewModal from '@/components/StartReviewModal';
+import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
