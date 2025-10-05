@@ -28,7 +28,57 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/test-connection');
+      // Debug: Check if session exists
+      console.log('Login data:', data);
+      console.log('User ID:', data.user.id);
+      console.log('Session:', data.session);
+
+      // Wait a moment for session to be set in storage
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Check if auth token is being sent
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session after login:', session);
+
+      // Create a new client with the session explicitly set
+      const authenticatedSupabase = createClient();
+      await authenticatedSupabase.auth.setSession(data.session!);
+
+      // Now query with the authenticated client
+      const { data: profile, error: profileError } = await authenticatedSupabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+
+      console.log('Profile result:', profile, profileError);
+
+      if (profileError || !profile) {
+        setError('Failed to fetch user role: ' + (profileError?.message || 'Profile not found'));
+        setLoading(false);
+        return;
+      }
+
+      // Redirect based on role
+      switch (profile.role) {
+        case 'admin':
+          router.push('/admin/dashboard');
+          break;
+        case 'staff':
+          router.push('/staffmodule');
+          break;
+        case 'researcher':
+          router.push('/researchermodule');
+          break;
+        case 'reviewer':
+          router.push('/reviewermodule');
+          break;
+        case 'secretariat':
+          router.push('/secretariat/dashboard');
+          break;
+        default:
+          router.push('/dashboard');
+      }
     }
   };
 
