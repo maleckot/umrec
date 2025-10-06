@@ -1,11 +1,14 @@
 // app/staffmodule/page.tsx
 'use client';
 
-import Sidebar from '@/components/Sidebar';
-import Footer from '@/components/Footer';
-import { Bell } from 'lucide-react';
+import DashboardLayout from '@/components/DashboardLayout';
+import StatCard from '@/components/StatCard';
+import AttentionCard from '@/components/AttentionCard';
+import { useRouter } from 'next/navigation';
 
 export default function StaffDashboard() {
+  const router = useRouter();
+
   const stats = [
     {
       label: 'Total Submissions',
@@ -84,6 +87,7 @@ export default function StaffDashboard() {
       message: 'new submissions need document verification',
       subtext: 'These submissions need to be classified before assigning reviewers',
       action: 'Verify Submissions',
+      route: '/staffmodule/submissions/verify',
     },
     {
       id: 2,
@@ -91,6 +95,7 @@ export default function StaffDashboard() {
       message: 'reviewers have overdue reviews',
       subtext: 'Some reviewers are late by more than 7 days',
       action: 'View Reviewers',
+      route: '/staffmodule/reviewers',
     },
     {
       id: 3,
@@ -98,151 +103,109 @@ export default function StaffDashboard() {
       message: 'classified papers need to be assigned to reviewers',
       subtext: 'Assign reviewers to continue the review process',
       action: 'Assign Reviewers',
+      route: '/staffmodule/submissions/assign',
     },
   ];
 
   return (
-    <div className="flex min-h-screen bg-[#E8EAF6]">
-      {/* Sidebar */}
-      <Sidebar role="staff" roleTitle="Staff" />
+    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Dashboard" activeNav="dashboard">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+        {stats.map((stat, index) => (
+          <StatCard key={index} label={stat.label} value={stat.value} icon={stat.icon} />
+        ))}
+      </div>
 
-      {/* Main Content */}
-      <div className="flex-1 lg:ml-80 flex flex-col min-h-screen">
-        {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex items-center justify-between">
-          <h1 className="text-xl lg:text-2xl font-bold ml-12 lg:ml-0" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-            Dashboard
-          </h1>
-          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
-            <Bell size={24} className="text-gray-600" />
+      {/* Recent Submissions */}
+      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8">
+        <div className="flex items-center justify-between mb-4 lg:mb-6">
+          <h2 className="text-lg lg:text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+            Recent Submissions
+          </h2>
+          <button className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            View All
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 p-4 lg:p-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {stat.label}
-                  </p>
-                  <div className="text-gray-400">
-                    {stat.icon}
-                  </div>
-                </div>
-                <p className="text-3xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-                  {stat.value}
+       {/* Desktop Table */}
+<div className="hidden md:block overflow-x-auto">
+  <table className="w-full">
+    <thead>
+      <tr className="border-b border-gray-200">
+        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          TITLE
+        </th>
+        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          DATE
+        </th>
+        <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          STATUS
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {recentSubmissions.map((submission) => (
+        <tr key={submission.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+          <td className="py-4 px-4 text-left">
+            <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {submission.title}
+            </p>
+          </td>
+          <td className="py-4 px-4 text-center">
+            <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {submission.date}
+            </p>
+          </td>
+          <td className="py-4 px-4 text-center">
+            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {submission.status}
+            </span>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {recentSubmissions.map((submission) => (
+            <div key={submission.id} className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {submission.title}
+              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {submission.date}
                 </p>
+                <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {submission.status}
+                </span>
               </div>
-            ))}
-          </div>
-
-          {/* Recent Submissions */}
-          <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8">
-            <div className="flex items-center justify-between mb-4 lg:mb-6">
-              <h2 className="text-lg lg:text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-                Recent Submissions
-              </h2>
-              <button className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                View All
-              </button>
             </div>
-
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      TITLE
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      DATE
-                    </th>
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      STATUS
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSubmissions.map((submission) => (
-                    <tr key={submission.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                      <td className="py-4 px-4">
-                        <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {submission.title}
-                        </p>
-                      </td>
-                      <td className="py-4 px-4">
-                        <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {submission.date}
-                        </p>
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {submission.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {recentSubmissions.map((submission) => (
-                <div key={submission.id} className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.title}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {submission.date}
-                    </p>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {submission.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Needs Attention */}
-          <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100">
-            <h2 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-              Needs Attention
-            </h2>
-
-            <div className="space-y-4">
-              {needsAttention.map((item) => (
-                <div key={item.id} className="flex items-start gap-3 lg:gap-4 p-4 bg-red-50 rounded-lg border border-red-100">
-                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-800 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      <span className="text-red-600">{item.count}</span> {item.message}
-                    </p>
-                    <p className="text-xs text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {item.subtext}
-                    </p>
-                    <button className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {item.action}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
-
-        <Footer />
       </div>
-    </div>
+
+      {/* Needs Attention */}
+      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100">
+        <h2 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+          Needs Attention
+        </h2>
+
+        <div className="space-y-4">
+          {needsAttention.map((item) => (
+            <AttentionCard
+              key={item.id}
+              count={item.count}
+              message={item.message}
+              subtext={item.subtext}
+              action={item.action}
+              onActionClick={() => router.push(item.route)}
+            />
+          ))}
+        </div>
+      </div>
+    </DashboardLayout>
   );
 }

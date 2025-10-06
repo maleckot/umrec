@@ -36,7 +36,7 @@ const NAV_LINKS = {
     mainLinks: [
       { href: '/researchermodule', text: 'Dashboard' },
       { href: '/researchermodule/submissions/new/step1', text: 'Submission' },
-      { href: '/researchermodule/help center', text: 'Help Center' },
+      { href: '/help-center', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
       { href: '/researchermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },

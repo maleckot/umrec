@@ -22,14 +22,16 @@ interface MenuItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  key: string;
 }
 
 interface SidebarProps {
   role: 'staff' | 'secretariat' | 'admin';
   roleTitle: string;
+  activeNav?: 'dashboard' | 'submissions' | 'reviewers' | 'settings' | 'reports' | 'researcher-management' | 'reviewer-management';
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -40,11 +42,13 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
         label: 'Dashboard',
         href: `/${role}module`,
         icon: <LayoutDashboard size={24} />,
+        key: 'dashboard',
       },
       {
         label: 'Submissions',
         href: `/${role}module/submissions`,
         icon: <FileText size={24} />,
+        key: 'submissions',
       },
     ];
 
@@ -54,16 +58,19 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
           label: 'Reviewers',
           href: '/staffmodule/reviewers',
           icon: <Users size={24} />,
+          key: 'reviewers',
         },
         {
           label: 'Settings',
           href: '/staffmodule/settings',
           icon: <Settings size={24} />,
+          key: 'settings',
         },
         {
           label: 'Reports',
           href: '/staffmodule/reports',
           icon: <BarChart3 size={24} />,
+          key: 'reports',
         },
       ],
       secretariat: [
@@ -71,11 +78,13 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
           label: 'Reviewers',
           href: '/secretariatmodule/reviewers',
           icon: <Users size={24} />,
+          key: 'reviewers',
         },
         {
           label: 'Settings',
           href: '/secretariatmodule/settings',
           icon: <Settings size={24} />,
+          key: 'settings',
         },
       ],
       admin: [
@@ -83,21 +92,25 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
           label: 'Researcher Management',
           href: '/adminmodule/researcher-management',
           icon: <GraduationCap size={24} />,
+          key: 'researcher-management',
         },
         {
           label: 'Reviewer Management',
           href: '/adminmodule/reviewer-management',
           icon: <UserCog size={24} />,
+          key: 'reviewer-management',
         },
         {
           label: 'Reports',
           href: '/adminmodule/reports',
           icon: <BarChart3 size={24} />,
+          key: 'reports',
         },
         {
           label: 'Settings',
           href: '/adminmodule/settings',
           icon: <Settings size={24} />,
+          key: 'settings',
         },
       ],
     };
@@ -139,33 +152,36 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
           ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
-{/* Logo and Role Title */}
-<div className="px-5 py-6 border-b border-[#FFD700]/10 flex-shrink-0">
-  <div className="flex items-center gap-5">
-    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-      <Image
-        src="/img/umreclogonobg.png"
-        alt="UMREC Logo"
-        width={80}
-        height={80}
-        className="w-full h-full object-contain"
-      />
-    </div>
-    <div>
-      <p className="text-white font-bold text-2xl leading-tight" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        UMREC
-      </p>
-      <p className="text-[#FFD700] text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        {roleTitle}
-      </p>
-    </div>
-  </div>
-</div>
+        {/* Logo and Role Title */}
+        <div className="px-5 py-6 border-b border-[#FFD700]/10 flex-shrink-0">
+          <div className="flex items-center gap-5">
+            <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
+              <Image
+                src="/img/umreclogonobg.png"
+                alt="UMREC Logo"
+                width={80}
+                height={80}
+                className="w-full h-full object-contain"
+              />
+            </div>
+            <div>
+              <p className="text-white font-bold text-2xl leading-tight" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                UMREC
+              </p>
+              <p className="text-[#FFD700] text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {roleTitle}
+              </p>
+            </div>
+          </div>
+        </div>
 
         {/* Navigation Menu */}
         <nav className="flex-1 py-8 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+            // Use activeNav if provided, otherwise fall back to pathname matching
+            const isActive = activeNav 
+              ? activeNav === item.key
+              : pathname === item.href || pathname?.startsWith(item.href + '/');
             
             return (
               <Link
@@ -192,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle }) => {
         </nav>
 
         {/* Logout Button */}
-        <div className=" border-t border-[#FFD700]/10 flex-shrink-0">
+        <div className="border-t border-[#FFD700]/10 flex-shrink-0">
           <button
             onClick={() => {
               closeMobileMenu();
