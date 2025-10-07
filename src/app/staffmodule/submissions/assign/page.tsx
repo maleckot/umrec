@@ -1,10 +1,10 @@
 // app/staffmodule/submissions/assign/page.tsx
 'use client';
 
-import DashboardLayout from '@/components/DashboardLayout';
-import SearchBar from '@/components/SearchBar';
-import DataTable from '@/components/DataTable';
-import Pagination from '@/components/Pagination';
+import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
+import SearchBar from '@/components/staff-secretariat-admin/SearchBar';
+import DataTable from '@/components/staff-secretariat-admin/DataTable';
+import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState } from 'react';
 
 export default function AssignSubmissionsPage() {

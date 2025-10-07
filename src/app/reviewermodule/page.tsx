@@ -1,8 +1,8 @@
 // app/reviewermodule/page.tsx
 'use client';
 
-import NavbarRoles from '@/components/NavbarRoles';
-import Footer from '@/components/Footer';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

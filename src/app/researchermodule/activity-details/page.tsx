@@ -1,13 +1,13 @@
 // app/researchermodule/activity-details/page.tsx
 'use client';
 
-import NavbarRoles from '@/components/NavbarRoles';
-import Footer from '@/components/Footer';
-import Breadcrumbs from '@/components/Breadcrumbs';
-import BackButton from '@/components/BackButton';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
+import Breadcrumbs from '@/components/researcher-reviewer/Breadcrumbs';
+import BackButton from '@/components/researcher-reviewer/BackButton';
 import FileCard from '@/components/researcher/FileCard';
 import ActivityInfoCard from '@/components/researcher/ActivityInfoCard';
-import PreviewCard from '@/components/PreviewCard';
+import PreviewCard from '@/components/researcher-reviewer/PreviewCard';
 import RevisionCard from '@/components/researcher/RevisionCard';
 import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';

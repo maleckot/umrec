@@ -1,4 +1,4 @@
-// app/staffmodule/page.tsx
+// app/secretariatmodule/page.tsx
 'use client';
 
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -6,7 +6,7 @@ import StatCard from '@/components/staff-secretariat-admin/StatCard';
 import AttentionCard from '@/components/staff-secretariat-admin/AttentionCard';
 import { useRouter } from 'next/navigation';
 
-export default function StaffDashboard() {
+export default function SecretariatDashboard() {
   const router = useRouter();
 
   const stats = [
@@ -20,17 +20,8 @@ export default function StaffDashboard() {
       ),
     },
     {
-      label: 'Pending Classification',
-      value: '38',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
-    },
-    {
       label: 'Pending Reviews',
-      value: '16',
+      value: '38',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -40,10 +31,19 @@ export default function StaffDashboard() {
     },
     {
       label: 'Active Reviewers',
-      value: '86',
+      value: '16',
       icon: (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Completed Reviews',
+      value: '86',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     },
@@ -84,10 +84,10 @@ export default function StaffDashboard() {
     {
       id: 1,
       count: 2,
-      message: 'new submissions need document verification',
+      message: 'new submissions need document classification',
       subtext: 'These submissions need to be classified before assigning reviewers',
       action: 'Verify Submissions',
-      route: '/staffmodule/submissions/verify',
+      route: '/secretariatmodule/submissions/verify',
     },
     {
       id: 2,
@@ -95,20 +95,12 @@ export default function StaffDashboard() {
       message: 'reviewers have overdue reviews',
       subtext: 'Some reviewers are late by more than 7 days',
       action: 'View Reviewers',
-      route: '/staffmodule/submissions/reviewers',
-    },
-    {
-      id: 3,
-      count: 3,
-      message: 'classified papers need to be assigned to reviewers',
-      subtext: 'Assign reviewers to continue the review process',
-      action: 'Assign Reviewers',
-      route: '/staffmodule/submissions/assign',
+      route: '/secretariatmodule/submissions/reviewers',
     },
   ];
 
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Dashboard" activeNav="dashboard">
+    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Dashboard" activeNav="dashboard">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
         {stats.map((stat, index) => (
@@ -123,7 +115,7 @@ export default function StaffDashboard() {
             Recent Submissions
           </h2>
           <button 
-            onClick={() => router.push('/staffmodule/submissions')}
+            onClick={() => router.push('/secretariatmodule/submissions')}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer" 
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >

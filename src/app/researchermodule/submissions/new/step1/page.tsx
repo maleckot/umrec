@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import NavbarRoles from '@/components/NavbarRoles';
-import Footer from '@/components/Footer';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft } from 'lucide-react';
 
 export default function Step1ResearcherDetails() {

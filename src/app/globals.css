@@ -38,3 +38,29 @@ body {
 .editor-with-placeholder:focus:empty::before {
   content: none;
 }
+
+/* Hide native date picker icon */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* Hide spin buttons */
+input[type="date"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button {
+  display: none;
+  -webkit-appearance: none;
+}
+
+/* Firefox specific */
+input[type="date"]::-moz-calendar-picker-indicator {
+  opacity: 0;
+}

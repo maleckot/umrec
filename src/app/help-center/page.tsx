@@ -1,8 +1,8 @@
 // app/help-center/page.tsx
 'use client';
 
-import HelpCenterLayout from '@/components/helpcenter/HelpCenterLayout';
-import NavbarRoles from '@/components/NavbarRoles';
+import HelpCenterLayout from '@/components/researcher-reviewer/helpcenter/HelpCenterLayout';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 
 export default function HelpCenterPage() {
   return (

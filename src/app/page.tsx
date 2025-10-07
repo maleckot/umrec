@@ -1,8 +1,8 @@
 'use client';
 
 import Image from "next/image";
-import NavbarRoles from '../components/NavbarRoles';
-import Footer from '../components/Footer';
+import NavbarRoles from '../components/researcher-reviewer/NavbarRoles';
+import Footer from '../components/researcher-reviewer/Footer';
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
 

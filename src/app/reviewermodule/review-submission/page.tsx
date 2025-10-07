@@ -1,12 +1,12 @@
 // app/reviewermodule/review-submission/page.tsx
 'use client';
 
-import NavbarRoles from '@/components/NavbarRoles';
-import Footer from '@/components/Footer';
-import Breadcrumbs from '@/components/Breadcrumbs';
-import BackButton from '@/components/BackButton';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
+import Breadcrumbs from '@/components/researcher-reviewer/Breadcrumbs';
+import BackButton from '@/components/researcher-reviewer/BackButton';
 import SubmissionDetailsCard from '@/components/reviewer/SubmissionDetailsCard';
-import PreviewCard from '@/components/PreviewCard';
+import PreviewCard from '@/components/researcher-reviewer/PreviewCard';
 import ReviewQuestionsCard from '@/components/reviewer/ReviewQuestionsCard';
 import ReviewSubmitSuccessModal from '@/components/reviewer/ReviewSubmitSuccessModal';
 import { useRouter, useSearchParams } from 'next/navigation';

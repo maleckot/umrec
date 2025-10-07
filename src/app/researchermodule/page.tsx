@@ -1,7 +1,7 @@
 'use client';
 
-import NavbarRoles from '@/components/NavbarRoles';
-import Footer from '@/components/Footer';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // ADD THIS IMPORT
 

@@ -1,4 +1,4 @@
-// app/staffmodule/submissions/page.tsx
+// app/adminmodule/submissions/page.tsx
 'use client';
 
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -6,88 +6,33 @@ import SearchBar from '@/components/staff-secretariat-admin/SearchBar';
 import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';  // ← Already imported
 import { Calendar } from 'lucide-react';
 
-export default function SubmissionsPage() {
-  const router = useRouter();  // ← Already have this
+export default function AdminSubmissionsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Newest');
-  const [statusFilter, setStatusFilter] = useState('All Statuses');
+  const [statusFilter, setStatusFilter] = useState('Under Classification');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // ✅ Add ID to each submission
   const submissionsData = [
     {
-      id: 1,  // ← Add this
       title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
       date: '07-24-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 2,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-03-2025',
       status: 'Under Classification',
     },
     {
-      id: 3,  // ← Add this
+      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
+      date: '08-03-2025',
+      status: 'Unassigned',
+    },
+    {
       title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
       date: '08-15-2025',
       status: 'Under Review',
     },
     {
-      id: 4,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Review Complete',
-    },
-    {
-      id: 5,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '07-24-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 6,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-03-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 7,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 8,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Review Complete',
-    },
-    {
-      id: 9,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '07-24-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 10,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-03-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 11,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 12,  // ← Add this
       title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
       date: '08-15-2025',
       status: 'Review Complete',
@@ -139,15 +84,13 @@ export default function SubmissionsPage() {
     },
   ];
 
-  // ✅ Update handleRowClick to navigate to details page
   const handleRowClick = (row: any) => {
     console.log('Submission clicked:', row);
-    // Navigate to submission detail page using the submission ID
-    router.push(`/staffmodule/submissions/details?id=${row.id}`);
+    // Navigate to submission detail page
   };
 
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submissions" activeNav="submissions">
+    <DashboardLayout role="admin" roleTitle="Admin" pageTitle="Submissions" activeNav="submissions">
       <div className="bg-white rounded-xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100 flex flex-col" style={{ minHeight: '60vh' }}>
         {/* Search Bar */}
         <SearchBar
@@ -196,50 +139,56 @@ export default function SubmissionsPage() {
             </select>
           </div>
 
-          {/* Date Range - Start Date */}
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Date Range
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="dd / mm / yyyy"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                onFocus={(e) => (e.target.type = 'date')}
-                onBlur={(e) => {
-                  if (!e.target.value) e.target.type = 'text';
-                }}
-                className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
-            </div>
-          </div>
-
-          {/* Date Range - End Date */}
-          <div>
-            <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              to
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="dd / mm / yyyy"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                onFocus={(e) => (e.target.type = 'date')}
-                onBlur={(e) => {
-                  if (!e.target.value) e.target.type = 'text';
-                }}
-                className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+            {/* Date Range - Start Date */}
+        <div>
+          <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Date Range
+          </label>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="dd / mm / yyyy"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              onFocus={(e) => (e.target.type = 'date')}
+              onBlur={(e) => {
+                if (!e.target.value) e.target.type = 'text';
+              }}
+              className="w-full px-3 sm:px-4 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            />
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+              <Calendar className="text-gray-400" size={16} />
             </div>
           </div>
         </div>
+
+
+      {/* Date Range - End Date */}
+<div>
+  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1 sm:mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+    to
+  </label>
+  <div className="relative">
+    <input
+      type="text"
+      placeholder="dd / mm / yyyy"
+      value={endDate}
+      onChange={(e) => setEndDate(e.target.value)}
+      onFocus={(e) => (e.target.type = 'date')}
+      onBlur={(e) => {
+        if (!e.target.value) e.target.type = 'text';
+      }}
+      className="w-full px-3 sm:px-4 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+      style={{ fontFamily: 'Metropolis, sans-serif' }}
+    />
+    <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+      <Calendar className="text-gray-400" size={16} />
+    </div>
+  </div>
+</div>
+        </div>
+
 
         {/* Data Table */}
         <div className="flex-1 overflow-x-auto -mx-3 sm:mx-0">
@@ -256,9 +205,9 @@ export default function SubmissionsPage() {
         <div className="mt-4">
           <Pagination
             currentPage={currentPage}
-            totalPages={5}
+            totalPages={1}
             onPageChange={setCurrentPage}
-            resultsText="Showing 1 to 12 of 42 results"
+            resultsText="Showing 4 results"
           />
         </div>
       </div>

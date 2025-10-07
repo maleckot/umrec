@@ -4,8 +4,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle, Calendar, Clock, FileText } from 'lucide-react';
-import Footer from '@/components/Footer';
-import NavbarRoles from '@/components/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 
 export default function SubmissionSuccess() {
   const router = useRouter();

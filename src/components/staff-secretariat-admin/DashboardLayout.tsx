@@ -2,8 +2,8 @@
 'use client';
 
 import { ReactNode, useState, useRef, useEffect } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Footer from '@/components/Footer';
+import Sidebar from '@/components/staff-secretariat-admin/Sidebar';
+import Footer from '@/components/researcher-reviewer/Footer';
 import { Bell, X } from 'lucide-react';
 
 interface DashboardLayoutProps {
@@ -24,6 +24,7 @@ interface Notification {
 }
 
 export default function DashboardLayout({ role, roleTitle, pageTitle, children, activeNav = 'dashboard' }: DashboardLayoutProps) {
+  const [isMounted, setIsMounted] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([
     {
@@ -62,6 +63,11 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
 
   const notificationRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  // Fix hydration error
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Close notification dropdown when clicking outside
   useEffect(() => {
@@ -117,6 +123,19 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
     }
   };
 
+  // Prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="flex" style={{ backgroundColor: '#DAE0E7', minHeight: '100vh' }}>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex" style={{ backgroundColor: '#DAE0E7', minHeight: '100vh' }}>
       <Sidebar role={role} roleTitle={roleTitle} activeNav={activeNav} />
@@ -140,93 +159,94 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
                 </span>
               )}
             </button>
-{/* Notification Dropdown */}
-{isNotificationOpen && (
-  <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-[80vh] sm:max-h-none">
-    {/* Header */}
-    <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-[#101C50] sticky top-0 z-10">
-      <h3 className="text-base sm:text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Notifications
-      </h3>
-      {unreadCount > 0 && (
-        <button
-          onClick={markAllAsRead}
-          className="text-xs text-[#FFD700] hover:text-[#FFC700] font-medium cursor-pointer"
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          Mark all as read
-        </button>
-      )}
-    </div>
 
-    {/* Notifications List */}
-    <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
-      {notifications.length > 0 ? (
-        notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`px-3 sm:px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-              !notification.isRead ? 'bg-blue-50' : ''
-            }`}
-          >
-            <div className="flex items-start gap-2 sm:gap-3">
-              <div className="flex-shrink-0 mt-1">
-                {getNotificationIcon(notification.type)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between gap-2">
-                  <p className={`text-xs sm:text-sm font-semibold ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {notification.title}
-                  </p>
-                  <button
-                    onClick={() => deleteNotification(notification.id)}
-                    className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <p className="text-xs text-gray-600 mt-1 line-clamp-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {notification.message}
-                </p>
-                <div className="flex items-center justify-between mt-2 flex-wrap gap-1">
-                  <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {notification.time}
-                  </p>
-                  {!notification.isRead && (
+            {/* Notification Dropdown */}
+            {isNotificationOpen && (
+              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-[80vh] sm:max-h-none">
+                {/* Header */}
+                <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-[#101C50] sticky top-0 z-10">
+                  <h3 className="text-base sm:text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Notifications
+                  </h3>
+                  {unreadCount > 0 && (
                     <button
-                      onClick={() => markAsRead(notification.id)}
-                      className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer whitespace-nowrap"
+                      onClick={markAllAsRead}
+                      className="text-xs text-[#FFD700] hover:text-[#FFC700] font-medium cursor-pointer"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     >
-                      Mark as read
+                      Mark all as read
                     </button>
                   )}
                 </div>
-              </div>
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="px-4 py-8 text-center">
-          <Bell size={48} className="text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            No notifications
-          </p>
-        </div>
-      )}
-    </div>
 
-    {/* Footer */}
-    {notifications.length > 0 && (
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 sticky bottom-0">
-        <button className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium w-full text-center cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          View all notifications
-        </button>
-      </div>
-    )}
-  </div>
-)}
-        </div>
+                {/* Notifications List */}
+                <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`px-3 sm:px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                          !notification.isRead ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <div className="flex-shrink-0 mt-1">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <p className={`text-xs sm:text-sm font-semibold ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {notification.title}
+                              </p>
+                              <button
+                                onClick={() => deleteNotification(notification.id)}
+                                className="flex-shrink-0 text-gray-400 hover:text-gray-600 cursor-pointer"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {notification.message}
+                            </p>
+                            <div className="flex items-center justify-between mt-2 flex-wrap gap-1">
+                              <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {notification.time}
+                              </p>
+                              {!notification.isRead && (
+                                <button
+                                  onClick={() => markAsRead(notification.id)}
+                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer whitespace-nowrap"
+                                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                                >
+                                  Mark as read
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="px-4 py-8 text-center">
+                      <Bell size={48} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        No notifications
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer */}
+                {notifications.length > 0 && (
+                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 sticky bottom-0">
+                    <button className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium w-full text-center cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      View all notifications
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 p-4 lg:p-8">
