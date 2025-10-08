@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
-import DocumentList from '@/components/staff-secretariat-admin/submission-details/DocumentList';
+import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
@@ -19,7 +19,8 @@ export default function UnderReviewPage() {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  const documents = [
+  // Original documents that were consolidated
+  const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
     'Informed Consent Form.pdf',
@@ -66,17 +67,25 @@ export default function UnderReviewPage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
+      description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
-      title: 'Classification',
+      title: 'Classification - Expedited',
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'classification' as const,
     },
     {
       id: 4,
-      title: 'Review Completed',
-      date: 'Current Step',
+      title: 'Reviewers Assigned',
+      date: 'May 22, 2023 • 10:15 AM',
+      icon: 'assignment' as const,
+      description: '2 reviewers assigned',
+    },
+    {
+      id: 5,
+      title: 'Under Review',
+      date: 'May 22, 2023 • 10:16 AM',
       icon: 'review' as const,
       isCurrent: true,
     },
@@ -84,7 +93,7 @@ export default function UnderReviewPage() {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button with Icon */}
+      {/* Better Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -111,10 +120,12 @@ export default function UnderReviewPage() {
         {/* Main Content */}
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
-            <DocumentList
-              documents={documents}
-              title="Documents"
+            <ConsolidatedDocument
+              title="Consolidated Document"
               description="This submission is currently under review. Please wait for reviewers to complete their assessments."
+              consolidatedDate="May 16, 2023 • 11:23 AM"
+              fileUrl="/sample-document.pdf"
+              originalDocuments={originalDocuments}
             />
           )}
 
@@ -154,7 +165,7 @@ export default function UnderReviewPage() {
                 'Prof. Juan Dela Cruz',
                 'Prof. Anton John Garcia',
               ]}
-              statusMessage="This submission has been verified and classified, and is now under review."
+              statusMessage="This submission has been verified, consolidated, and classified. Now under review by assigned reviewers."
             />
           </div>
         )}

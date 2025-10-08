@@ -1,24 +1,24 @@
-// app/staffmodule/submissions/exempted/page.tsx
+// app/secretariatmodule/submissions/under-review/page.tsx
 'use client';
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
 import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
+import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 
-export default function ExemptedSubmissionPage() {
+export default function SecretariatUnderReviewPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  // Original documents that were consolidated
   const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
@@ -26,6 +26,28 @@ export default function ExemptedSubmissionPage() {
     'Validated Research Instrument.pdf',
     'Endorsement Letter.pdf',
     'Proposal defense certification/evaluation.pdf',
+  ];
+
+  const reviews = [
+    {
+      id: 1,
+      reviewerName: 'Prof. Juan Dela Cruz',
+      status: 'Complete' as const,
+      completedDate: 'May 25, 2023',
+      overallAssessment: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      feedbacks: [
+        {
+          document: 'Research Protocol',
+          comment: 'It is essential that [Specific Section/Issue Name] be addressed and revised accordingly',
+        },
+      ],
+    },
+    {
+      id: 2,
+      reviewerName: 'Prof. Anton John Garcia',
+      status: 'In Progress' as const,
+      dueDate: 'June 16, 2023',
+    },
   ];
 
   const historyEvents = [
@@ -40,31 +62,37 @@ export default function ExemptedSubmissionPage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
-      description: 'All documents verified and consolidated into one file',
+      description: 'All documents verified and consolidated by staff',
     },
     {
       id: 3,
-      title: 'Classification - Exempted',
+      title: 'Classification - Expedited',
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'classification' as const,
-      description: 'Submission classified as Exempted - No reviewers required',
+      description: 'Classified as Expedited by secretariat',
     },
     {
       id: 4,
-      title: 'Automatically Approved',
-      date: 'May 21, 2023 • 1:43 PM',
-      icon: 'complete' as const,
+      title: 'Reviewers Assigned',
+      date: 'May 22, 2023 • 10:15 AM',
+      icon: 'assignment' as const,
+      description: '2 reviewers assigned by staff',
+    },
+    {
+      id: 5,
+      title: 'Under Review',
+      date: 'May 22, 2023 • 10:16 AM',
+      icon: 'review' as const,
       isCurrent: true,
-      description: 'Exempted submissions are automatically approved by the UMREC system',
     },
   ];
 
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
+    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+      {/* Back Button */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/staffmodule/submissions')}
+          onClick={() => router.push('/secretariatmodule/submissions')}
           className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         >
@@ -86,40 +114,19 @@ export default function ExemptedSubmissionPage() {
       {/* Conditional Grid */}
       <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
         {/* Main Content */}
-        <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
+        <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
-            <>
-              {/* Exempted Notice */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-500 rounded-xl p-6">
-                <div className="flex items-start gap-4">
-                  <CheckCircle size={32} className="text-blue-600 flex-shrink-0 mt-1" />
-                  <div>
-                    <h3 className="text-xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Exempted Submission
-                    </h3>
-                    <p className="text-sm text-blue-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      This submission has been classified as Exempted and does not require reviewer assignment. It has been automatically approved by the UMREC system.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <ConsolidatedDocument
-                title="Consolidated Document"
-                description="This submission is exempted from review and has been automatically approved."
-                consolidatedDate="May 16, 2023 • 11:23 AM"
-                fileUrl="/sample-document.pdf"
-                originalDocuments={originalDocuments}
-              />
-            </>
+            <ConsolidatedDocument
+              title="Consolidated Document"
+              description="This submission is currently under review. Please wait for reviewers to complete their assessments."
+              consolidatedDate="May 16, 2023 • 11:23 AM"
+              fileUrl="/sample-document.pdf"
+              originalDocuments={originalDocuments}
+            />
           )}
 
           {activeTab === 'reviews' && (
-            <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
-              <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                No reviews required. This submission is classified as Exempted.
-              </p>
-            </div>
+            <ReviewsTab reviews={reviews} completionStatus="1/2 Reviews Complete" />
           )}
 
           {activeTab === 'history' && (
@@ -131,12 +138,12 @@ export default function ExemptedSubmissionPage() {
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
-              status="Exempted - Approved"
-              category="Exempted"
+              status="Under Review"
+              category="Expedited"
               details={{
                 submissionDate: 'July 24, 2025',
-                reviewersRequired: 0,
-                reviewersAssigned: 0,
+                reviewersRequired: 2,
+                reviewersAssigned: 2,
               }}
               authorInfo={{
                 name: 'Juan Dela Cruz',
@@ -147,10 +154,14 @@ export default function ExemptedSubmissionPage() {
               }}
               timeline={{
                 submitted: 'July 24, 2025',
-                reviewDue: 'N/A',
-                decisionTarget: 'May 21, 2025',
+                reviewDue: 'August 5, 2025',
+                decisionTarget: 'August 10, 2025',
               }}
-              statusMessage="This submission is exempted from review and has been automatically approved."
+              assignedReviewers={[
+                'Prof. Juan Dela Cruz',
+                'Prof. Anton John Garcia',
+              ]}
+              statusMessage="This submission is currently under review by assigned reviewers."
             />
           </div>
         )}

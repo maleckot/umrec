@@ -1,4 +1,4 @@
-// app/staffmodule/submissions/exempted/page.tsx
+// app/secretariatmodule/submissions/exempted/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -11,14 +11,13 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 
-export default function ExemptedSubmissionPage() {
+export default function SecretariatExemptedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  // Original documents that were consolidated
   const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
@@ -40,7 +39,7 @@ export default function ExemptedSubmissionPage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
-      description: 'All documents verified and consolidated into one file',
+      description: 'All documents verified and consolidated by staff',
     },
     {
       id: 3,
@@ -55,16 +54,16 @@ export default function ExemptedSubmissionPage() {
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'complete' as const,
       isCurrent: true,
-      description: 'Exempted submissions are automatically approved by the UMREC system',
+      description: 'Exempted submissions are automatically approved',
     },
   ];
 
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
+    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+      {/* Back Button */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/staffmodule/submissions')}
+          onClick={() => router.push('/secretariatmodule/submissions')}
           className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         >

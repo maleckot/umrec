@@ -5,12 +5,12 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import SearchBar from '@/components/staff-secretariat-admin/SearchBar';
 import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';  // ← Already imported
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calendar } from 'lucide-react';
 
 export default function SubmissionsPage() {
-  const router = useRouter();  // ← Already have this
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('Newest');
@@ -18,80 +18,77 @@ export default function SubmissionsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  // ✅ Add ID to each submission
-  const submissionsData = [
+  const itemsPerPage = 10;
+
+  // Expanded sample data with more items for pagination
+  const allSubmissionsData = [
     {
-      id: 1,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
+      id: 'SUB-2025-001',
+      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
       date: '07-24-2025',
       status: 'New Submission',
     },
     {
-      id: 2,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
+      id: 'SUB-2025-002',
+      title: 'Effectiveness of Online Learning Platforms in Higher Education',
       date: '08-03-2025',
       status: 'Under Classification',
     },
     {
-      id: 3,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
+      id: 'SUB-2025-003',
+      title: 'Impact of Social Media on Student Mental Health and Academic Performance',
       date: '08-15-2025',
+      status: 'Unassigned',
+    },
+    {
+      id: 'SUB-2025-004',
+      title: 'Analysis of Cybersecurity Threats in Cloud Computing Environments',
+      date: '08-20-2025',
       status: 'Under Review',
     },
     {
-      id: 4,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
+      id: 'SUB-2025-005',
+      title: 'Machine Learning Approaches for Early Disease Detection in Medical Imaging',
+      date: '09-01-2025',
+      status: 'Under Revision',
+    },
+    {
+      id: 'SUB-2025-006',
+      title: 'Sustainable Urban Planning: Green Infrastructure Implementation',
+      date: '09-05-2025',
       status: 'Review Complete',
     },
     {
-      id: 5,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '07-24-2025',
+      id: 'SUB-2025-007',
+      title: 'Blockchain Technology Applications in Supply Chain Management',
+      date: '09-10-2025',
       status: 'New Submission',
     },
     {
-      id: 6,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-03-2025',
+      id: 'SUB-2025-008',
+      title: 'The Role of Artificial Intelligence in Personalized Education',
+      date: '09-12-2025',
       status: 'Under Classification',
     },
     {
-      id: 7,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
+      id: 'SUB-2025-009',
+      title: 'Climate Change Adaptation Strategies for Coastal Communities',
+      date: '09-15-2025',
       status: 'Under Review',
     },
     {
-      id: 8,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Review Complete',
+      id: 'SUB-2025-010',
+      title: 'Investigating the Effects of Remote Work on Employee Productivity',
+      date: '09-18-2025',
+      status: 'Unassigned',
     },
-    {
-      id: 9,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '07-24-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 10,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-03-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 11,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 12,  // ← Add this
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management...',
-      date: '08-15-2025',
-      status: 'Review Complete',
-    },
+    // Add more dummy data for pagination
+    ...Array.from({ length: 40 }, (_, i) => ({
+      id: `SUB-2025-${String(i + 11).padStart(3, '0')}`,
+      title: `Research Study ${i + 11}: Various Topics in Science and Technology`,
+      date: `09-${String(Math.floor(i / 3) + 20).padStart(2, '0')}-2025`,
+      status: ['New Submission', 'Under Classification', 'Unassigned', 'Under Review', 'Under Revision', 'Review Complete'][i % 6],
+    })),
   ];
 
   const getStatusColor = (status: string) => {
@@ -100,16 +97,83 @@ export default function SubmissionsPage() {
         return 'text-blue-600 bg-blue-50';
       case 'Under Classification':
         return 'text-amber-600 bg-amber-50';
+      case 'Unassigned':
+        return 'text-orange-600 bg-orange-50';
       case 'Under Review':
         return 'text-purple-600 bg-purple-50';
+      case 'Under Revision':
+        return 'text-pink-600 bg-pink-50';
       case 'Review Complete':
         return 'text-green-600 bg-green-50';
-      case 'Unassigned':
-        return 'text-gray-600 bg-gray-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
   };
+
+  // Filter and sort data
+  const filteredAndSortedData = useMemo(() => {
+    let filtered = [...allSubmissionsData];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(item =>
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.id.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== 'All Statuses') {
+      filtered = filtered.filter(item => item.status === statusFilter);
+    }
+
+    // Apply date range filter
+    if (startDate || endDate) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.date);
+        const start = startDate ? new Date(startDate) : null;
+        const end = endDate ? new Date(endDate) : null;
+        
+        if (start && end) {
+          return itemDate >= start && itemDate <= end;
+        } else if (start) {
+          return itemDate >= start;
+        } else if (end) {
+          return itemDate <= end;
+        }
+        return true;
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'Newest':
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'Oldest':
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case 'A-Z':
+          return a.title.localeCompare(b.title);
+        case 'Z-A':
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPageData = filteredAndSortedData.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
 
   const columns = [
     {
@@ -139,12 +203,33 @@ export default function SubmissionsPage() {
     },
   ];
 
-  // ✅ Update handleRowClick to navigate to details page
+  // Navigate to appropriate page based on status
   const handleRowClick = (row: any) => {
-    console.log('Submission clicked:', row);
-    // Navigate to submission detail page using the submission ID
-    router.push(`/staffmodule/submissions/details?id=${row.id}`);
+    switch (row.status) {
+      case 'New Submission':
+        router.push(`/staffmodule/submissions/details?id=${row.id}`);
+        break;
+      case 'Under Classification':
+        router.push(`/staffmodule/submissions/waiting-classification?id=${row.id}`);
+        break;
+      case 'Unassigned':
+        router.push(`/staffmodule/submissions/assign-reviewers?id=${row.id}`);
+        break;
+      case 'Under Review':
+        router.push(`/staffmodule/submissions/under-review?id=${row.id}`);
+        break;
+      case 'Under Revision':
+        router.push(`/staffmodule/submissions/waiting-revision?id=${row.id}`);
+        break;
+      case 'Review Complete':
+        router.push(`/staffmodule/submissions/review-complete?id=${row.id}`);
+        break;
+      default:
+        router.push(`/staffmodule/submissions/details?id=${row.id}`);
+    }
   };
+
+  const resultsText = `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} results`;
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submissions" activeNav="submissions">
@@ -190,9 +275,10 @@ export default function SubmissionsPage() {
               <option value="All Statuses">All Statuses</option>
               <option value="New Submission">New Submission</option>
               <option value="Under Classification">Under Classification</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Review Complete">Review Complete</option>
               <option value="Unassigned">Unassigned</option>
+              <option value="Under Review">Under Review</option>
+              <option value="Under Revision">Under Revision</option>
+              <option value="Review Complete">Review Complete</option>
             </select>
           </div>
 
@@ -211,10 +297,12 @@ export default function SubmissionsPage() {
                 onBlur={(e) => {
                   if (!e.target.value) e.target.type = 'text';
                 }}
-                className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                className="w-full px-3 sm:px-4 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <Calendar className="text-gray-400" size={16} />
+              </div>
             </div>
           </div>
 
@@ -233,10 +321,12 @@ export default function SubmissionsPage() {
                 onBlur={(e) => {
                   if (!e.target.value) e.target.type = 'text';
                 }}
-                className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                className="w-full px-3 sm:px-4 py-2 pr-10 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
-              <Calendar className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                <Calendar className="text-gray-400" size={16} />
+              </div>
             </div>
           </div>
         </div>
@@ -246,7 +336,7 @@ export default function SubmissionsPage() {
           <div className="min-w-full inline-block align-middle">
             <DataTable
               columns={columns}
-              data={submissionsData}
+              data={currentPageData}
               onRowClick={handleRowClick}
             />
           </div>
@@ -256,9 +346,9 @@ export default function SubmissionsPage() {
         <div className="mt-4">
           <Pagination
             currentPage={currentPage}
-            totalPages={5}
+            totalPages={totalPages}
             onPageChange={setCurrentPage}
-            resultsText="Showing 1 to 12 of 42 results"
+            resultsText={resultsText}
           />
         </div>
       </div>

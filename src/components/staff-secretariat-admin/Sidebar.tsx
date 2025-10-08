@@ -61,16 +61,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
           key: 'reviewers',
         },
         {
-          label: 'Settings',
-          href: '/staffmodule/settings',
-          icon: <Settings size={24} />,
-          key: 'settings',
-        },
-        {
           label: 'Reports',
           href: '/staffmodule/reports',
           icon: <BarChart3 size={24} />,
           key: 'reports',
+        },
+        {
+          label: 'Settings',
+          href: '/staffmodule/settings',
+          icon: <Settings size={24} />,
+          key: 'settings',
         },
       ],
       secretariat: [

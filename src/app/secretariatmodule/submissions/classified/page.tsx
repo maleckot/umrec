@@ -1,4 +1,4 @@
-// app/staffmodule/submissions/exempted/page.tsx
+// app/secretariatmodule/submissions/classified/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -11,14 +11,14 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 
-export default function ExemptedSubmissionPage() {
+export default function SecretariatClassifiedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
+  const category = searchParams.get('category') || 'Expedited';
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  // Original documents that were consolidated
   const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
@@ -40,31 +40,63 @@ export default function ExemptedSubmissionPage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
-      description: 'All documents verified and consolidated into one file',
+      description: 'All documents verified and consolidated by staff',
     },
     {
       id: 3,
-      title: 'Classification - Exempted',
+      title: `Classification - ${category}`,
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'classification' as const,
-      description: 'Submission classified as Exempted - No reviewers required',
-    },
-    {
-      id: 4,
-      title: 'Automatically Approved',
-      date: 'May 21, 2023 • 1:43 PM',
-      icon: 'complete' as const,
       isCurrent: true,
-      description: 'Exempted submissions are automatically approved by the UMREC system',
+      description: `Submission classified as ${category} by secretariat`,
     },
   ];
 
+  const getCategoryColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'from-blue-50 to-indigo-50 border-blue-500';
+      case 'Expedited':
+        return 'from-yellow-50 to-amber-50 border-yellow-500';
+      case 'Full Review':
+        return 'from-red-50 to-rose-50 border-red-500';
+      default:
+        return 'from-gray-50 to-gray-100 border-gray-500';
+    }
+  };
+
+  const getCategoryTextColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'text-blue-900';
+      case 'Expedited':
+        return 'text-yellow-900';
+      case 'Full Review':
+        return 'text-red-900';
+      default:
+        return 'text-gray-900';
+    }
+  };
+
+  const getCategoryIconColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'text-blue-600';
+      case 'Expedited':
+        return 'text-yellow-600';
+      case 'Full Review':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
+    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+      {/* Back Button */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/staffmodule/submissions')}
+          onClick={() => router.push('/secretariatmodule/submissions')}
           className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         >
@@ -89,24 +121,29 @@ export default function ExemptedSubmissionPage() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
-              {/* Exempted Notice */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-500 rounded-xl p-6">
+              {/* Classification Summary */}
+              <div className={`bg-gradient-to-r ${getCategoryColor(category)} border-2 rounded-xl p-6`}>
                 <div className="flex items-start gap-4">
-                  <CheckCircle size={32} className="text-blue-600 flex-shrink-0 mt-1" />
+                  <CheckCircle size={32} className={`${getCategoryIconColor(category)} flex-shrink-0 mt-1`} />
                   <div>
-                    <h3 className="text-xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Exempted Submission
+                    <h3 className={`text-xl font-bold ${getCategoryTextColor(category)} mb-2`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Classification Summary
                     </h3>
-                    <p className="text-sm text-blue-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      This submission has been classified as Exempted and does not require reviewer assignment. It has been automatically approved by the UMREC system.
+                    <p className={`text-lg font-bold ${getCategoryTextColor(category)} mb-2`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Review Category: {category}
+                    </p>
+                    <p className={`text-sm ${getCategoryTextColor(category)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {category === 'Exempted' && 'This submission has been marked as Exempted from review. No reviewers will be assigned to this submission.'}
+                      {category === 'Expedited' && 'This submission has been marked as Expedited from review. The staff will now assign reviewers to this submission.'}
+                      {category === 'Full Review' && 'This submission has been marked as Full Review from review. The staff will now assign reviewers to this submission.'}
                     </p>
                   </div>
                 </div>
               </div>
 
               <ConsolidatedDocument
-                title="Consolidated Document"
-                description="This submission is exempted from review and has been automatically approved."
+                title="Documents"
+                description="This submission has been classified and is ready for the next step."
                 consolidatedDate="May 16, 2023 • 11:23 AM"
                 fileUrl="/sample-document.pdf"
                 originalDocuments={originalDocuments}
@@ -117,7 +154,7 @@ export default function ExemptedSubmissionPage() {
           {activeTab === 'reviews' && (
             <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
               <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                No reviews required. This submission is classified as Exempted.
+                No reviews available yet. Waiting for staff to assign reviewers.
               </p>
             </div>
           )}
@@ -131,11 +168,11 @@ export default function ExemptedSubmissionPage() {
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
-              status="Exempted - Approved"
-              category="Exempted"
+              status="Classified"
+              category={category}
               details={{
                 submissionDate: 'July 24, 2025',
-                reviewersRequired: 0,
+                reviewersRequired: category === 'Exempted' ? 0 : category === 'Expedited' ? 3 : 5,
                 reviewersAssigned: 0,
               }}
               authorInfo={{
@@ -147,10 +184,10 @@ export default function ExemptedSubmissionPage() {
               }}
               timeline={{
                 submitted: 'July 24, 2025',
-                reviewDue: 'N/A',
-                decisionTarget: 'May 21, 2025',
+                reviewDue: 'TBD',
+                decisionTarget: 'TBD',
               }}
-              statusMessage="This submission is exempted from review and has been automatically approved."
+              statusMessage={`This submission has been classified as ${category}. ${category === 'Exempted' ? 'No reviewers needed.' : 'Waiting for staff to assign reviewers.'}`}
             />
           </div>
         )}

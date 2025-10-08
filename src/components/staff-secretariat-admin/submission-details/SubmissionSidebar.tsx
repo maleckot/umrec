@@ -39,45 +39,47 @@ export default function SubmissionSidebar({
   actionType = 'primary',
 }: SubmissionSidebarProps) {
   return (
-    <div className="bg-gray-100 rounded-xl p-4 lg:p-6 border border-gray-200 space-y-4">
+    <div className="bg-gray-100 rounded-xl p-3 sm:p-4 lg:p-6 border border-gray-200 space-y-3 sm:space-y-4 lg:sticky lg:top-6">
       {/* Status */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Status
         </h4>
-        <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-          <span className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {status}
-          </span>
-        </div>
-        {category && (
-          <div className="flex items-center gap-2 mt-1">
-            <span className="w-2 h-2 rounded-full bg-green-600"></span>
-            <span className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Classification: {category}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+            <span className="text-xs sm:text-sm font-semibold text-gray-800 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {status}
             </span>
           </div>
-        )}
+          {category && (
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-green-600 flex-shrink-0"></span>
+              <span className="text-xs sm:text-sm font-semibold text-gray-800 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Classification: {category}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Details */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Details
         </h4>
-        <div className="space-y-1 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          <div className="flex justify-between">
-            <span>Submission Date:</span>
-            <span className="font-semibold text-gray-800">{details.submissionDate}</span>
+        <div className="space-y-1.5 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Submission Date:</span>
+            <span className="font-semibold text-gray-800 text-right">{details.submissionDate}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Reviewers Required:</span>
-            <span className="font-semibold text-gray-800">{details.reviewersRequired}</span>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Reviewers Required:</span>
+            <span className="font-semibold text-gray-800 text-right">{details.reviewersRequired}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Reviewers Assigned:</span>
-            <span className="font-semibold text-gray-800">{details.reviewersAssigned}</span>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Reviewers Assigned:</span>
+            <span className="font-semibold text-gray-800 text-right">{details.reviewersAssigned}</span>
           </div>
         </div>
       </div>
@@ -85,12 +87,12 @@ export default function SubmissionSidebar({
       {/* Assigned Reviewers */}
       {assignedReviewers && assignedReviewers.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Assigned Reviewers
           </h4>
-          <div className="bg-white border border-gray-300 rounded-lg p-3 space-y-2">
+          <div className="bg-white border border-gray-300 rounded-lg p-2 sm:p-3 space-y-1.5 sm:space-y-2">
             {assignedReviewers.map((reviewer, index) => (
-              <p key={index} className="text-xs text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <p key={index} className="text-xs text-gray-800 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 {reviewer}
               </p>
             ))}
@@ -100,29 +102,28 @@ export default function SubmissionSidebar({
 
       {/* Author Information */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Author Information
         </h4>
-        <div className="space-y-1 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <div className="space-y-1.5 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           <div className="flex justify-between gap-2">
-            <span>Name:</span>
-            <span className="font-semibold text-gray-800 text-right">{authorInfo.name}</span>
+            <span className="flex-shrink-0">Name:</span>
+            <span className="font-semibold text-gray-800 text-right break-words">{authorInfo.name}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span>Organization:</span>
-            <span className="font-semibold text-gray-800 text-right">{authorInfo.organization}</span>
+            <span className="flex-shrink-0">Organization:</span>
+            <span className="font-semibold text-gray-800 text-right break-words">{authorInfo.organization}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span>School:</span>
-            <span className="font-semibold text-gray-800 text-right">{authorInfo.school}</span>
+            <span className="flex-shrink-0">School:</span>
+            <span className="font-semibold text-gray-800 text-right break-words">{authorInfo.school}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span>College:</span>
+            <span className="flex-shrink-0">College:</span>
             <span className="font-semibold text-gray-800 text-right break-words">{authorInfo.college}</span>
           </div>
-          {/* Fixed Email - Now in same row */}
           <div className="flex justify-between gap-2">
-            <span className="whitespace-nowrap">Email:</span>
+            <span className="flex-shrink-0 whitespace-nowrap">Email:</span>
             <span className="font-semibold text-gray-800 text-right break-all">{authorInfo.email}</span>
           </div>
         </div>
@@ -130,29 +131,29 @@ export default function SubmissionSidebar({
 
       {/* Timeline */}
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Timeline
         </h4>
-        <div className="space-y-1 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          <div className="flex justify-between">
-            <span>Submitted:</span>
-            <span className="font-semibold text-gray-800">{timeline.submitted}</span>
+        <div className="space-y-1.5 text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Submitted:</span>
+            <span className="font-semibold text-gray-800 text-right">{timeline.submitted}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Review Due:</span>
-            <span className="font-semibold text-gray-800">{timeline.reviewDue}</span>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Review Due:</span>
+            <span className="font-semibold text-gray-800 text-right">{timeline.reviewDue}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Decision Target:</span>
-            <span className="font-semibold text-gray-800">{timeline.decisionTarget}</span>
+          <div className="flex justify-between gap-2">
+            <span className="flex-shrink-0">Decision Target:</span>
+            <span className="font-semibold text-gray-800 text-right">{timeline.decisionTarget}</span>
           </div>
         </div>
       </div>
 
       {/* Status Message */}
       {statusMessage && (
-        <div className="bg-[#101C50] text-white rounded-lg p-3">
-          <p className="text-xs italic text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <div className="bg-[#101C50] text-white rounded-lg p-2.5 sm:p-3">
+          <p className="text-xs italic text-center leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {statusMessage}
           </p>
         </div>
@@ -162,7 +163,7 @@ export default function SubmissionSidebar({
       {onAction && actionLabel && (
         <button
           onClick={onAction}
-          className={`w-full py-2 text-sm font-semibold rounded-lg transition-colors ${
+          className={`w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-colors ${
             actionType === 'primary'
               ? 'bg-[#101C50] text-white hover:opacity-90'
               : 'bg-gray-500 text-white hover:bg-gray-600'

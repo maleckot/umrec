@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
-import DocumentList from '@/components/staff-secretariat-admin/submission-details/DocumentList';
+import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import ReviewerAssignment from '@/components/staff-secretariat-admin/submission-details/ReviewerAssignment';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
@@ -20,7 +20,8 @@ export default function AssignReviewersPage() {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  const documents = [
+  // Original documents that were consolidated
+  const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
     'Informed Consent Form.pdf',
@@ -69,10 +70,11 @@ export default function AssignReviewersPage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
+      description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
-      title: 'Classification',
+      title: 'Classification - Expedited',
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'classification' as const,
       isCurrent: true,
@@ -81,7 +83,7 @@ export default function AssignReviewersPage() {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button with Icon */}
+      {/* Better Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -109,10 +111,12 @@ export default function AssignReviewersPage() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
-              <DocumentList
-                documents={documents}
-                title="Documents"
+              <ConsolidatedDocument
+                title="Consolidated Document"
                 description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
+                consolidatedDate="May 16, 2023 • 11:23 AM"
+                fileUrl="/sample-document.pdf"
+                originalDocuments={originalDocuments}
               />
               
               <ReviewerAssignment
@@ -160,7 +164,7 @@ export default function AssignReviewersPage() {
                 reviewDue: 'August 5, 2025',
                 decisionTarget: 'August 10, 2025',
               }}
-              statusMessage="This submission has been verified and classified, and is ready for reviewer assignment."
+              statusMessage="This submission has been verified, consolidated, and classified. Ready for reviewer assignment."
             />
           </div>
         )}

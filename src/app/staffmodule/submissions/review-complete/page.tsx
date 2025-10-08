@@ -7,7 +7,7 @@ import { ArrowLeft, CheckCircle } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
-import DocumentList from '@/components/staff-secretariat-admin/submission-details/DocumentList';
+import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
@@ -19,7 +19,8 @@ export default function ReviewCompletePage() {
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  const documents = [
+  // Original documents that were consolidated
+  const originalDocuments = [
     'Application Form Ethics Review.pdf',
     'Research Protocol.pdf',
     'Informed Consent Form.pdf',
@@ -68,10 +69,11 @@ export default function ReviewCompletePage() {
       title: 'Document Verification Complete',
       date: 'May 16, 2023 • 11:23 AM',
       icon: 'verification' as const,
+      description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
-      title: 'Classification',
+      title: 'Classification - Expedited',
       date: 'May 21, 2023 • 1:43 PM',
       icon: 'classification' as const,
     },
@@ -80,6 +82,7 @@ export default function ReviewCompletePage() {
       title: 'Reviewers Assigned',
       date: 'May 22, 2023 • 10:15 AM',
       icon: 'assignment' as const,
+      description: '2 reviewers assigned: Prof. Juan Dela Cruz, Prof. Anton John Garcia',
     },
     {
       id: 5,
@@ -93,6 +96,7 @@ export default function ReviewCompletePage() {
       date: 'May 28, 2023 • 3:30 PM',
       icon: 'complete' as const,
       isCurrent: true,
+      description: 'All reviewers have completed their assessments',
     },
   ];
 
@@ -141,10 +145,12 @@ export default function ReviewCompletePage() {
                 </div>
               </div>
 
-              <DocumentList
-                documents={documents}
-                title="Documents"
+              <ConsolidatedDocument
+                title="Consolidated Document"
                 description="All reviews have been completed. You can view the final assessments in the Reviews tab."
+                consolidatedDate="May 16, 2023 • 11:23 AM"
+                fileUrl="/sample-document.pdf"
+                originalDocuments={originalDocuments}
               />
             </>
           )}
