@@ -112,7 +112,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         .from('application_forms')
         .insert({
           submission_id: submission.id,
-          study_site: safeString(formData.step2?.studySiteType),
+          study_site: safeString(formData.step2?.study_site),
           researcher_first_name: safeString(formData.step2?.researcherFirstName),
           researcher_middle_name: safeString(formData.step2?.researcherMiddleName),
           researcher_last_name: safeString(formData.step2?.researcherLastName),

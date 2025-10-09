@@ -1,7 +1,7 @@
 // app/staffmodule/submissions/waiting-classification/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -10,50 +10,113 @@ import TabNavigation from '@/components/staff-secretariat-admin/submission-detai
 import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
 
 export default function WaitingClassificationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
+  const [data, setData] = useState<any>(null);
 
-  // Original documents that were consolidated
-  const originalDocuments = [
-    'Application Form Ethics Review.pdf',
-    'Research Protocol.pdf',
-    'Informed Consent Form.pdf',
-    'Validated Research Instrument.pdf',
-    'Endorsement Letter.pdf',
-    'Proposal defense certification/evaluation.pdf',
-  ];
+  useEffect(() => {
+    if (submissionId) {
+      loadData();
+    }
+  }, [submissionId]);
 
-  const historyEvents = [
+  const loadData = async () => {
+    if (!submissionId) return;
+
+    setLoading(true);
+    try {
+      const result = await getClassificationDetails(submissionId);
+
+      if (result.success) {
+        setData(result);
+      } else {
+        alert(result.error || 'Failed to load submission');
+        router.push('/staffmodule/submissions');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to load submission details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getFullName = () => {
+    if (!data?.submission) return '';
+    const { firstName, middleName, lastName } = data.submission.projectLeader;
+    return [firstName, middleName, lastName].filter(Boolean).join(' ');
+  };
+
+  const historyEvents = data ? [
     {
       id: 1,
       title: 'Submission Received',
-      date: 'May 15, 2023 • 09:45 AM',
+      date: formatDate(data.submission.submittedAt),
       icon: 'submission' as const,
     },
     {
       id: 2,
       title: 'Document Verification Complete',
-      date: 'May 16, 2023 • 11:23 AM',
+      date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
       icon: 'verification' as const,
       description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
       title: 'Waiting for Classification',
-      date: 'May 16, 2023 • 11:24 AM',
+      date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
       icon: 'classification' as const,
       isCurrent: true,
     },
-  ];
+  ] : [];
+
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading submission details...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data?.submission) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="text-center py-12">
+          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Submission not found
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -66,27 +129,35 @@ export default function WaitingClassificationPage() {
       </div>
 
       <SubmissionHeader
-        title="UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms"
-        submittedBy="Juan Dela Cruz"
-        submittedDate="July 24, 2025"
-        coAuthors="Jeon Wonwoo, Choi Seungcheol, and Lee Dokyeom"
-        submissionId="SUB-2025-001"
+        title={data.submission.title}
+        submittedBy={getFullName()}
+        submittedDate={formatDate(data.submission.submittedAt)}
+        coAuthors={data.submission.coAuthors || 'N/A'}
+        submissionId={data.submission.submissionId}
       />
 
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Conditional Grid - Full width for reviews/history */}
       <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
-        {/* Main Content */}
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
-            <ConsolidatedDocument
-              title="Consolidated Document"
-              description="This submission has been verified and is now with the secretariat for classification."
-              consolidatedDate="May 16, 2023 • 11:23 AM"
-              fileUrl="/sample-document.pdf"
-              originalDocuments={originalDocuments}
-            />
+            <>
+              {data.consolidatedDocument ? (
+                <ConsolidatedDocument
+                  title="Consolidated Document"
+                  description="This submission has been verified and is now with the secretariat for classification."
+                  consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
+                  fileUrl={data.consolidatedDocument.url}
+                  originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}
+                />
+              ) : (
+                <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
+                  <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Consolidated document is being generated...
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'reviews' && (
@@ -97,32 +168,29 @@ export default function WaitingClassificationPage() {
             </div>
           )}
 
-          {activeTab === 'history' && (
-            <HistoryTab events={historyEvents} />
-          )}
+          {activeTab === 'history' && <HistoryTab events={historyEvents} />}
         </div>
 
-        {/* Sidebar - Only show in overview tab */}
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
               status="Under Classification"
               details={{
-                submissionDate: 'July 24, 2025',
+                submissionDate: formatDate(data.submission.submittedAt),
                 reviewersRequired: 5,
                 reviewersAssigned: 0,
               }}
               authorInfo={{
-                name: 'Juan Dela Cruz',
-                organization: 'Internal (UMAK)',
+                name: getFullName(),
+                organization: data.submission.organization || 'N/A',
                 school: 'University of Makati',
-                college: 'College of Computing and Information Sciences',
-                email: 'jdelacruz.st2342@umak.edu.ph',
+                college: data.submission.college || 'N/A',
+                email: data.submission.projectLeader.email,
               }}
               timeline={{
-                submitted: 'July 24, 2025',
-                reviewDue: 'August 5, 2025',
-                decisionTarget: 'August 10, 2025',
+                submitted: formatDate(data.submission.submittedAt),
+                reviewDue: 'TBD',
+                decisionTarget: 'TBD',
               }}
               statusMessage="This submission has been verified and consolidated. Now with secretariat for classification."
             />

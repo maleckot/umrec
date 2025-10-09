@@ -1,7 +1,7 @@
 // app/staffmodule/submissions/assign-reviewers/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -11,34 +11,65 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import ReviewerAssignment from '@/components/staff-secretariat-admin/submission-details/ReviewerAssignment';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
 
 export default function AssignReviewersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  const category = searchParams.get('category') || 'Expedited'; // Get from backend
   
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
-  // Original documents that were consolidated
-  const originalDocuments = [
-    'Application Form Ethics Review.pdf',
-    'Research Protocol.pdf',
-    'Informed Consent Form.pdf',
-    'Validated Research Instrument.pdf',
-    'Endorsement Letter.pdf',
-    'Proposal defense certification/evaluation.pdf',
-  ];
+  useEffect(() => {
+    if (submissionId) {
+      loadData();
+    }
+  }, [submissionId]);
 
-  const reviewers = [
-    { id: 1, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
-    { id: 2, name: 'Prof. Maria Santos - 202', availability: 'Busy' },
-    { id: 3, name: 'Prof. Antonio Garcia - 203', availability: 'Available' },
-    { id: 4, name: 'Prof. Emily Johnson - 204', availability: 'Available' },
-    { id: 5, name: 'Prof. Michael Chen - 205', availability: 'Available' },
-  ];
+  const loadData = async () => {
+    if (!submissionId) return;
 
-  // Get max reviewers based on category (from backend settings)
+    setLoading(true);
+    try {
+      const result = await getClassificationDetails(submissionId);
+
+      if (result.success) {
+        setData(result);
+      } else {
+        alert(result.error || 'Failed to load submission');
+        router.push('/staffmodule/submissions');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to load submission details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getFullName = () => {
+    if (!data?.submission) return '';
+    const { firstName, middleName, lastName } = data.submission.projectLeader;
+    return [firstName, middleName, lastName].filter(Boolean).join(' ');
+  };
+
+  // Get classification from database
+  const category = data?.submission?.classificationType || 'Expedited';
+
+  // Get max reviewers based on category
   const getMaxReviewers = () => {
     switch (category) {
       case 'Exempted':
@@ -52,34 +83,69 @@ export default function AssignReviewersPage() {
     }
   };
 
+  const reviewers = [
+    { id: 1, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
+    { id: 2, name: 'Prof. Maria Santos - 202', availability: 'Busy' },
+    { id: 3, name: 'Prof. Antonio Garcia - 203', availability: 'Available' },
+    { id: 4, name: 'Prof. Emily Johnson - 204', availability: 'Available' },
+    { id: 5, name: 'Prof. Michael Chen - 205', availability: 'Available' },
+  ];
+
   const handleAssign = (selectedReviewers: number[]) => {
-    // Update backend with assigned reviewers
+    // TODO: Create assignReviewers server action
     console.log('Assigned reviewers:', selectedReviewers);
     router.push(`/staffmodule/submissions/under-review?id=${submissionId}`);
   };
 
-  const historyEvents = [
+  const historyEvents = data ? [
     {
       id: 1,
       title: 'Submission Received',
-      date: 'May 15, 2023 • 09:45 AM',
+      date: formatDate(data.submission.submittedAt),
       icon: 'submission' as const,
     },
     {
       id: 2,
       title: 'Document Verification Complete',
-      date: 'May 16, 2023 • 11:23 AM',
+      date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
       icon: 'verification' as const,
       description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
-      title: 'Classification - Expedited',
-      date: 'May 21, 2023 • 1:43 PM',
+      title: `Classification - ${category}`,
+      date: data.submission.classifiedAt ? formatDate(data.submission.classifiedAt) : 'N/A',
       icon: 'classification' as const,
       isCurrent: true,
     },
-  ];
+  ] : [];
+
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading submission details...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data?.submission) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="text-center py-12">
+          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Submission not found
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
@@ -96,11 +162,11 @@ export default function AssignReviewersPage() {
       </div>
 
       <SubmissionHeader
-        title="UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms"
-        submittedBy="Juan Dela Cruz"
-        submittedDate="July 24, 2025"
-        coAuthors="Jeon Wonwoo, Choi Seungcheol, and Lee Dokyeom"
-        submissionId="SUB-2025-001"
+        title={data.submission.title}
+        submittedBy={getFullName()}
+        submittedDate={formatDate(data.submission.submittedAt)}
+        coAuthors={data.submission.coAuthors || 'N/A'}
+        submissionId={data.submission.submissionId}
       />
 
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
@@ -111,13 +177,21 @@ export default function AssignReviewersPage() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
-              <ConsolidatedDocument
-                title="Consolidated Document"
-                description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
-                consolidatedDate="May 16, 2023 • 11:23 AM"
-                fileUrl="/sample-document.pdf"
-                originalDocuments={originalDocuments}
-              />
+              {data.consolidatedDocument ? (
+                <ConsolidatedDocument
+                  title="Consolidated Document"
+                  description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
+                  consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
+                  fileUrl={data.consolidatedDocument.url}
+                  originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}
+                />
+              ) : (
+                <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
+                  <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Consolidated document not available
+                  </p>
+                </div>
+              )}
               
               <ReviewerAssignment
                 category={category as any}
@@ -136,9 +210,7 @@ export default function AssignReviewersPage() {
             </div>
           )}
 
-          {activeTab === 'history' && (
-            <HistoryTab events={historyEvents} />
-          )}
+          {activeTab === 'history' && <HistoryTab events={historyEvents} />}
         </div>
 
         {/* Sidebar - Only show in overview tab */}
@@ -148,21 +220,21 @@ export default function AssignReviewersPage() {
               status="Classified"
               category={category}
               details={{
-                submissionDate: 'July 24, 2025',
+                submissionDate: formatDate(data.submission.submittedAt),
                 reviewersRequired: getMaxReviewers(),
                 reviewersAssigned: 0,
               }}
               authorInfo={{
-                name: 'Juan Dela Cruz',
-                organization: 'Internal (UMAK)',
+                name: getFullName(),
+                organization: data.submission.organization || 'N/A',
                 school: 'University of Makati',
-                college: 'College of Computing and Information Sciences',
-                email: 'jdelacruz.st2342@umak.edu.ph',
+                college: data.submission.college || 'N/A',
+                email: data.submission.projectLeader.email,
               }}
               timeline={{
-                submitted: 'July 24, 2025',
-                reviewDue: 'August 5, 2025',
-                decisionTarget: 'August 10, 2025',
+                submitted: formatDate(data.submission.submittedAt),
+                reviewDue: 'TBD',
+                decisionTarget: 'TBD',
               }}
               statusMessage="This submission has been verified, consolidated, and classified. Ready for reviewer assignment."
             />

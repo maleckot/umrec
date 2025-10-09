@@ -75,7 +75,7 @@ export default function ClassificationPanel({
         {/* Header */}
         <div className="bg-[#101C50] p-4 lg:p-6">
           <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Category Details
+            Category Details 
           </h3>
         </div>
 
@@ -86,8 +86,8 @@ export default function ClassificationPanel({
             <div className="flex items-start gap-3">
               <Info size={24} className="text-blue-700 flex-shrink-0 mt-1" />
               <div className="flex-1">
-                <p className="text-sm font-semibold text-blue-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  System-Selected Category:
+                <p className="text-sm font-semibold text-red-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  System-Selected Category:  <b>automatic classification is WORK IN PROGRESS 'not working'</b>
                 </p>
                 <p className="text-2xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {systemSuggestedCategory}

@@ -33,6 +33,19 @@ export default function StaffDashboard() {
     }
   };
 
+  // ✅ Helper function to handle submission click
+  const handleSubmissionClick = (submission: any) => {
+    if (submission.status === 'Under Classification') {
+      router.push(`/staffmodule/submissions/waiting-classification?id=${submission.id}`);
+    } 
+    else if (submission.status === 'Classified') {
+      router.push(`/staffmodule/submissions/assign-reviewers?id=${submission.id}`);
+    } 
+    else {
+      router.push(`/staffmodule/submissions/details?id=${submission.id}`);
+    }
+  };
+
   const stats = [
     {
       label: 'Total Submissions',
@@ -170,7 +183,7 @@ export default function StaffDashboard() {
                     <tr 
                       key={submission.id} 
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/staffmodule/submissions/details?id=${submission.id}`)}
+                      onClick={() => handleSubmissionClick(submission)}
                     >
                       <td className="py-4 px-4 text-left">
                         <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -202,7 +215,7 @@ export default function StaffDashboard() {
                 <div 
                   key={submission.id} 
                   className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
-                  onClick={() => router.push(`/staffmodule/submissions/details?id=${submission.id}`)}
+                  onClick={() => handleSubmissionClick(submission)}
                 >
                   <p className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {submission.title}

@@ -102,14 +102,13 @@ export async function getStaffDashboardData() {
   }
 }
 
-// ✅ Updated to include all status mappings
 function formatStatus(status: string): string {
   const statusMap: { [key: string]: string } = {
     'pending_verification': 'New Submission',
     'pending_review': 'New Submission',
     'awaiting_classification': 'Under Classification',
     'under_review': 'Under Review',
-    'classified': 'Under Classification',
+    'classified': 'Classified',
     'review_complete': 'Review Complete',
     'approved': 'Approved',
     'rejected': 'Rejected',
