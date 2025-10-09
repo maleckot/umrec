@@ -157,7 +157,7 @@ export default function ReviewSubmissionPage() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
       <NavbarRoles role="reviewer" />
 
-      <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
+      <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
         <div className="max-w-7xl mx-auto">
           {/* Breadcrumbs */}
           <Breadcrumbs items={breadcrumbItems} />

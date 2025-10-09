@@ -436,39 +436,58 @@ useEffect(() => {
           />
         )}
 
-        <div>
-          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Duration of the Study
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Start date
-              </label>
-              <input  
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                End date
-              </label>
-              <input
-                type="date"
-                value={formData.endDate}
-                onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-                required
-              />
-            </div>
-          </div>
+       {/* Duration of the Study - With Calendar Icons */}
+<div>
+  <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+    Duration of the Study <span className="text-red-600">*</span>
+  </label>
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {/* Start Date */}
+    <div>
+      <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        Start date
+      </label>
+      <div className="relative">
+        <input  
+          type="date"
+          value={formData.startDate}
+          onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+          className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+          style={{ fontFamily: 'Metropolis, sans-serif' }}
+          required
+        />
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
         </div>
+      </div>
+    </div>
+    
+    {/* End Date */}
+    <div>
+      <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        End date
+      </label>
+      <div className="relative">
+        <input
+          type="date"
+          value={formData.endDate}
+          onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+          className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+          style={{ fontFamily: 'Metropolis, sans-serif' }}
+          required
+        />
+        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
         {/* Number of Participants */}
         <TextInput

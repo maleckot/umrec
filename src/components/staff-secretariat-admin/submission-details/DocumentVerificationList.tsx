@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Check, Eye } from 'lucide-react';
+import { X, Check, Eye, RotateCcw } from 'lucide-react';
 import DocumentViewerModal from './DocumentViewerModal';
 
 interface Document {
@@ -11,15 +11,20 @@ interface Document {
   isVerified: boolean | null;
   comment?: string;
   fileUrl?: string;
+  previousState?: {
+    isVerified: boolean | null;
+    comment: string;
+  } | null;
 }
 
 interface DocumentVerificationListProps {
   documents: Document[];
   onVerify: (documentId: number, isApproved: boolean, comment?: string) => void;
+  onUndo?: (documentId: number) => void;
   isSaving?: boolean;
 }
 
-export default function DocumentVerificationList({ documents, onVerify, isSaving }: DocumentVerificationListProps) {
+export default function DocumentVerificationList({ documents, onVerify, onUndo, isSaving }: DocumentVerificationListProps) {
   const [activeCommentId, setActiveCommentId] = useState<number | null>(null);
   const [comments, setComments] = useState<{ [key: number]: string }>({});
   
@@ -55,6 +60,12 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
     setViewerOpen(true);
   };
 
+  const handleUndo = (docId: number) => {
+    if (onUndo) {
+      onUndo(docId);
+    }
+  };
+
   return (
     <>
       <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden">
@@ -85,7 +96,21 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
                   </button>
                   
                   <div className="flex items-center gap-2">
-                    {/* ✅ Keep buttons visible, just disable while saving */}
+                    {/* Undo Button - Shows when previousState exists */}
+                    {doc.previousState && onUndo && (
+                      <button
+                        onClick={() => handleUndo(doc.id)}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        title="Undo last action"
+                      >
+                        <RotateCcw size={14} />
+                        Undo
+                      </button>
+                    )}
+
+                    {/* Action buttons for unverified documents */}
                     {doc.isVerified === null && (
                       <>
                         <button
@@ -107,6 +132,7 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
                       </>
                     )}
                     
+                    {/* Approved status */}
                     {doc.isVerified === true && (
                       <div className="flex items-center gap-2 text-green-600">
                         <Check size={20} />
@@ -114,6 +140,7 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
                       </div>
                     )}
                     
+                    {/* Rejected status */}
                     {doc.isVerified === false && (
                       <div className="flex items-center gap-2 text-red-600">
                         <X size={20} />
@@ -123,6 +150,7 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
                   </div>
                 </div>
 
+                {/* Comment input for rejection */}
                 {activeCommentId === doc.id && doc.isVerified === null && (
                   <div className="p-3 bg-white border-t border-gray-200">
                     <label className="block text-xs font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -161,6 +189,7 @@ export default function DocumentVerificationList({ documents, onVerify, isSaving
                   </div>
                 )}
 
+                {/* Display feedback for rejected documents */}
                 {doc.isVerified === false && doc.comment && (
                   <div className="p-3 bg-red-50 border-t border-red-200">
                     <p className="text-xs font-semibold text-red-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>

@@ -77,52 +77,56 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center">
+    <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12">
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <Image 
           src="/img/login.png"
           alt="Login Background"
           fill
-          className="object-cover"
+          style={{
+            objectFit: 'cover',
+          }}
           priority
+          sizes="100vw"
         />
       </div>
 
       {/* Login Container */}
-      <div className="relative z-10 w-full max-w-2xl mx-4">
-        <div className="relative rounded-3xl p-1.5 overflow-hidden">
+      <div className="relative z-10 w-full max-w-xl sm:max-w-2xl mx-auto">
+        <div className="relative rounded-2xl sm:rounded-3xl p-1 sm:p-1.5 overflow-hidden">
           {/* Larger animated light beam - now 120 degrees */}
-          <div className="absolute inset-0 rounded-5xl animate-spin-slow" style={{
+          <div className="absolute inset-0 rounded-2xl sm:rounded-5xl animate-spin-slow" style={{
             background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
             filter: 'blur(20px)'
           }}></div>
           
           {/* Enhanced glow effect */}
-          <div className="absolute inset-0 rounded-3xl" style={{
-            boxShadow: '0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3)'
+          <div className="absolute inset-0 rounded-2xl sm:rounded-3xl" style={{
+            boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2), 0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3)'
           }}></div>
 
-          <div className="relative rounded-3xl p-12" style={{ backgroundColor: '#071139' }}>
+          <div className="relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12" style={{ backgroundColor: '#071139' }}>
             {/* Logo */}
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-center mb-6 sm:mb-8">
               <Image 
                 src="/img/umreclogonobg.png"
                 alt="UMREC Logo"
-                width={100}
-                height={100}
+                width={80}
+                height={80}
+                className="w-20 h-20 sm:w-24 sm:h-24 md:w-[100px] md:h-[100px]"
               />
             </div>
 
             {/* Title */}
-            <h1 className="text-3xl md:text-4xl text-center mb-10 font-bold" style={{ fontFamily: 'Marcellus, serif' }}>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl text-center mb-6 sm:mb-8 md:mb-10 font-bold" style={{ fontFamily: 'Marcellus, serif' }}>
               <span className="bg-gradient-to-r from-[#FFFFFF] to-[#F0E847] bg-clip-text text-transparent">
                 Log in to UMREConnect
               </span>
             </h1>
 
             {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
               {/* Email Input */}
               <div>
                 <input
@@ -130,7 +134,7 @@ export default function LoginPage() {
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-6 py-4 rounded-full text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
+                  className="w-full px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 rounded-full text-sm sm:text-base text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, backgroundColor: '#C8D3E0' }}
                   required
                 />
@@ -143,7 +147,7 @@ export default function LoginPage() {
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-6 py-4 rounded-full text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
+                  className="w-full px-4 sm:px-5 md:px-6 py-3 sm:py-3.5 md:py-4 rounded-full text-sm sm:text-base text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847]"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, backgroundColor: '#C8D3E0' }}
                   required
                 />
@@ -151,7 +155,7 @@ export default function LoginPage() {
 
               {/* Error Message */}
               {error && (
-                <div className="text-red-400 text-sm text-center bg-red-900/20 rounded-full px-4 py-2">
+                <div className="text-red-400 text-xs sm:text-sm text-center bg-red-900/20 rounded-full px-3 sm:px-4 py-2">
                   {error}
                 </div>
               )}
@@ -160,7 +164,7 @@ export default function LoginPage() {
               <div className="flex justify-end">
                 <Link 
                   href="/forgot-password" 
-                  className="text-[#F0E847] hover:underline text-sm"
+                  className="text-[#F0E847] hover:underline text-xs sm:text-sm"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}
                 >
                   Forgot Password?
@@ -171,7 +175,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 rounded-full transition duration-200 hover:opacity-90 disabled:opacity-50"
+                className="w-full py-3 sm:py-3.5 md:py-4 rounded-full text-sm sm:text-base transition duration-200 hover:opacity-90 disabled:opacity-50"
                 style={{ 
                   fontFamily: 'Metropolis, sans-serif', 
                   fontWeight: 700,
@@ -184,8 +188,8 @@ export default function LoginPage() {
             </form>
 
             {/* Register Link */}
-            <div className="mt-8 text-center">
-              <p className="text-white text-sm" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
+            <div className="mt-6 sm:mt-8 text-center">
+              <p className="text-white text-xs sm:text-sm" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
                 Don't have an account?{' '}
                 <Link 
                   href="/register" 

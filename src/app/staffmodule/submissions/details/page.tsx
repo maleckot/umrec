@@ -20,6 +20,10 @@ interface DocumentWithVerification {
   isVerified: boolean | null;
   comment: string;
   fileUrl?: string;
+  previousState?: {
+    isVerified: boolean | null;
+    comment: string;
+  } | null;
 }
 
 export default function SubmissionVerificationPage() {
@@ -59,6 +63,7 @@ export default function SubmissionVerificationPage() {
             isVerified: doc.isVerified, 
             comment: doc.comment || '',
             fileUrl: doc.url,
+            previousState: null,
           }));
 
           console.log('Mapped documents with verifications:', mappedDocs);
@@ -86,9 +91,18 @@ export default function SubmissionVerificationPage() {
     const originalDocuments = [...documents];
 
     try {
+      // Save previous state before updating
       const updatedDocuments = documents.map((doc, index) =>
         index === documentIndex
-          ? { ...doc, isVerified: isApproved, comment: comment || '' }
+          ? { 
+              ...doc, 
+              isVerified: isApproved, 
+              comment: comment || '',
+              previousState: {
+                isVerified: doc.isVerified,
+                comment: doc.comment,
+              }
+            }
           : doc
       );
       setDocuments(updatedDocuments);
@@ -116,55 +130,101 @@ export default function SubmissionVerificationPage() {
     }
   };
 
+  const handleUndo = async (documentIndex: number) => {
+    if (!submissionId || !documents[documentIndex].previousState) return;
+
+    setIsSaving(true);
+    const originalDocuments = [...documents];
+
+    try {
+      const previousState = documents[documentIndex].previousState!;
+      
+      // Restore previous state
+      const restoredDocuments = documents.map((doc, index) =>
+        index === documentIndex
+          ? { 
+              ...doc, 
+              isVerified: previousState.isVerified, 
+              comment: previousState.comment,
+              previousState: null,
+            }
+          : doc
+      );
+      setDocuments(restoredDocuments);
+
+      // Save to database
+      const result = await verifySubmissionDocuments(
+        submissionId,
+        [{
+          documentId: documents[documentIndex].id,
+          isApproved: previousState.isVerified === true,
+          comment: previousState.comment,
+        }],
+        undefined
+      );
+
+      if (!result.success) {
+        alert(`Error undoing action: ${result.error}`);
+        setDocuments(originalDocuments);
+      }
+    } catch (error) {
+      console.error('Error undoing verification:', error);
+      alert('Failed to undo action');
+      setDocuments(originalDocuments);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const allVerified = documents.length > 0 && documents.every(doc => doc.isVerified === true);
   const hasRejected = documents.some(doc => doc.isVerified === false);
   const allDocumentsVerified = documents.length > 0 && documents.every(doc => doc.isVerified !== null);
 
-const handleMarkComplete = async () => {
-  console.log('handleMarkComplete called');
-  console.log('allVerified:', allVerified);
-  console.log('submissionId:', submissionId);
-  
-  if (!allVerified || !submissionId) {
-    console.log('Conditions not met - returning early');
-    return;
-  }
-
-  setIsSaving(true);
-  try {
-    const verifications = documents.map(doc => ({
-      documentId: doc.id,
-      isApproved: doc.isVerified === true,
-      comment: doc.comment,
-    }));
-
-    console.log('Calling verifySubmissionDocuments with:', {
-      submissionId,
-      verifications,
-      overallFeedback: 'All documents have been verified and approved.'
-    });
-
-    const result = await verifySubmissionDocuments(
-      submissionId,
-      verifications,
-      'All documents have been verified and approved.'
-    );
-
-    console.log('Result from verifySubmissionDocuments:', result);
-
-    if (result.success) {
-      alert('Documents verified successfully!');
-      router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
-    } else {
-      alert(`Error: ${result.error}`);
+  const handleMarkComplete = async () => {
+    console.log('handleMarkComplete called');
+    console.log('allVerified:', allVerified);
+    console.log('submissionId:', submissionId);
+    
+    if (!allVerified || !submissionId) {
+      console.log('Conditions not met - returning early');
+      return;
     }
-  } catch (error) {
-    console.error('Error saving verification:', error);
-    alert('Failed to save verification');
-  } finally {
-    setIsSaving(false);
-  }
-};
+
+    setIsSaving(true);
+    try {
+      const verifications = documents.map(doc => ({
+        documentId: doc.id,
+        isApproved: doc.isVerified === true,
+        comment: doc.comment,
+      }));
+
+      console.log('Calling verifySubmissionDocuments with:', {
+        submissionId,
+        verifications,
+        overallFeedback: 'All documents have been verified and approved.'
+      });
+
+      const result = await verifySubmissionDocuments(
+        submissionId,
+        verifications,
+        'All documents have been verified and approved.'
+      );
+
+      console.log('Result from verifySubmissionDocuments:', result);
+
+      if (result.success) {
+        alert('Documents verified successfully!');
+        router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error saving verification:', error);
+      alert('Failed to save verification');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -253,8 +313,10 @@ const handleMarkComplete = async () => {
                     isVerified: doc.isVerified,
                     comment: doc.comment,
                     fileUrl: doc.fileUrl,
+                    previousState: doc.previousState,
                   }))}
                   onVerify={handleVerify}
+                  onUndo={handleUndo}
                   isSaving={isSaving}
                 />
               ) : (

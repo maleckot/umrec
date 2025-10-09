@@ -68,17 +68,17 @@ export default function ReviewerDashboard() {
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
       <NavbarRoles role="reviewer" />
 
-      <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
+      <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
         <div className="max-w-7xl mx-auto">
-          {/* Page Title */}
-          <h1 className="text-3xl md:text-4xl font-bold mb-8" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+          {/* Page Title - Responsive */}
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
             Reviewer Dashboard
           </h1>
 
-          {/* Stats Cards */}
+          {/* Stats Cards - Removed borders */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* New Assignments */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-[#101C50] flex items-center justify-between">
+            <div className="bg-white rounded-2xl p-6 shadow-md flex items-center justify-between">
               <div>
                 <p className="text-sm md:text-base text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   New Assignments
@@ -95,7 +95,7 @@ export default function ReviewerDashboard() {
             </div>
 
             {/* Overdue Reviews */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-[#101C50] flex items-center justify-between">
+            <div className="bg-white rounded-2xl p-6 shadow-md flex items-center justify-between">
               <div>
                 <p className="text-sm md:text-base text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Overdue Reviews
@@ -112,7 +112,7 @@ export default function ReviewerDashboard() {
             </div>
 
             {/* Completed Reviews */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-[#101C50] flex items-center justify-between">
+            <div className="bg-white rounded-2xl p-6 shadow-md flex items-center justify-between">
               <div>
                 <p className="text-sm md:text-base text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Completed Reviews
@@ -129,8 +129,8 @@ export default function ReviewerDashboard() {
             </div>
           </div>
 
-          {/* New Assignments Table */}
-          <div className="bg-white rounded-2xl p-6 md:p-8 border-2 border-[#101C50] mb-8">
+          {/* New Assignments Table - Removed border */}
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md mb-8">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
               New Assignments
             </h2>
@@ -237,8 +237,8 @@ export default function ReviewerDashboard() {
             </div>
           </div>
 
-          {/* Overdue Reviews Table */}
-          <div className="bg-white rounded-2xl p-6 md:p-8 border-2 border-[#101C50]">
+          {/* Overdue Reviews Table - Removed border */}
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#7C1100' }}>
               Overdue Reviews
             </h2>

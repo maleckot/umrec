@@ -67,16 +67,16 @@ const NavButton: React.FC<NavLinkProps & { isActive: boolean; onClick?: () => vo
       onClick={onClick}
       className="inline-block relative"
     >
-      <div className={`px-3 py-2 transition duration-150 flex items-center gap-2 whitespace-nowrap ${
+      <div className={`px-2 md:px-3 py-2 md:py-2 transition duration-150 flex items-center gap-2 whitespace-nowrap ${
         isActive ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
       }`}
-      style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}>
-        {IconComponent && <IconComponent size={20} />}
+      style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500, fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
+        {IconComponent && <IconComponent className="w-5 h-5 md:w-5 md:h-5" />}
         {text}
       </div>
       {/* Yellow line at the bottom - only show on desktop */}
       {isActive && showLine && (
-        <div className="absolute bottom-[-21px] left-0 right-0 h-[4px] bg-[#F0E847]"></div>
+        <div className="absolute bottom-[-16px] md:bottom-[-21px] left-0 right-0 h-[3px] md:h-[4px] bg-[#F0E847]"></div>
       )}
     </Link>
   );
@@ -196,9 +196,9 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   
   return (
     <>
-      <nav className={`${getBackgroundClass()} p-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
+      <nav className={`${getBackgroundClass()} py-3 md:py-4 px-4 md:px-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
         {/* Mobile Burger Button and Logo */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           {/* Mobile Burger Menu Button - Only show for researcher/reviewer */}
           {!isMainRole && (
             <button
@@ -211,12 +211,13 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           )}
 
           <div className="text-white text-xl font-extrabold">
-            <a href="">
+            <a href="/">
               <Image 
                 src="/img/logonavbar.png" 
                 alt="Logo" 
                 width={350} 
-                height={350} 
+                height={350}
+                className="w-44 md:w-[350px] h-auto"
               />
             </a>
           </div>
@@ -276,6 +277,22 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           )}
         </div>
 
+        {/* Mobile Navigation - Show Login button for main role */}
+        {isMainRole && (
+          <div className="md:hidden flex items-center">
+            {mainLinks.map((link) => (
+              <NavButton 
+                key={link.href} 
+                href={link.href} 
+                text={link.text} 
+                icon={link.icon}
+                isActive={isLinkActive(link.href)}
+                showLine={false}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Mobile Icons - Always visible for researcher/reviewer */}
         {!isMainRole && (
           <div className="md:hidden flex items-center space-x-2">
@@ -292,7 +309,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
                     aria-label="Notifications"
                   >
                     <Bell size={20} />
-                    <span className="absolute top-1 right-1 w-2 h-2 bg-[#F0E847] rounded-full"></span>
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#F0E847] rounded-full"></span>
                   </button>
                   
                   <NotificationDropdown isOpen={notificationOpen} />
