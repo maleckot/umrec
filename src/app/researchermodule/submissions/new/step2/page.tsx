@@ -1,16 +1,21 @@
 // app/researchermodule/submissions/new/step2/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SubmissionStepLayout from '@/components/researcher/submission/SubmissionStepLayout';
 import { TextInput, TextArea, Select, CheckboxGroup, RadioGroup, FileUpload } from '@/components/researcher/submission/FormComponents';
 
 export default function Step2ApplicationForm() {
   const router = useRouter();
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isClient, setIsClient] = useState(false); 
+
   const [formData, setFormData] = useState({
     title: '',
-    studySite: '',
+    studySiteType: '',
+    studySite:'',
     researcherFirstName: '',
     researcherMiddleName: '',
     researcherLastName: '',
@@ -24,7 +29,6 @@ export default function Step2ApplicationForm() {
     institutionAddress: '',
     typeOfStudy: [] as string[],
     typeOfStudyOthers: '',
-    multicenterType: '',
     sourceOfFunding: [] as string[],
     pharmaceuticalSponsor: '',
     fundingOthers: '',
@@ -34,7 +38,6 @@ export default function Step2ApplicationForm() {
     technicalReview: '',
     technicalReviewFile: null as File | null,
     submittedToOther: '',
-    // Checklist - Basic Requirements
     hasApplicationForm: true,
     hasResearchProtocol: false,
     hasInformedConsentEnglish: false,
@@ -46,7 +49,6 @@ export default function Step2ApplicationForm() {
     hasAssentFormOthers: false,
     assentFormOthers: '',
     hasEndorsementLetter: false,
-    // Supplementary Documents
     hasQuestionnaire: false,
     hasDataCollectionForms: false,
     hasProductBrochure: false,
@@ -57,36 +59,107 @@ export default function Step2ApplicationForm() {
     otherDocsDetails: '',
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem('step2Data');
-    if (saved) {
+useEffect(() => {
+  console.log('🔍 Step 2 useEffect triggered');
+  setIsClient(true);
+  
+  const saved = localStorage.getItem('step2Data');
+  const step1Raw = localStorage.getItem('step1Data');
+  
+  console.log('📦 Raw localStorage step1Data:', step1Raw);
+  console.log('📦 Raw localStorage step2Data:', saved);
+  
+  if (saved) {
+    try {
       const parsedData = JSON.parse(saved);
-      setFormData({...parsedData, technicalReviewFile: null}); // Don't persist file
-    } else {
-      // Pre-fill from step 1
-      const step1 = localStorage.getItem('step1Data');
-      if (step1) {
-        const step1Data = JSON.parse(step1);
+      
+      const isEmpty = !parsedData.title && !parsedData.email && !parsedData.mobileNo;
+      
+      if (isEmpty && step1Raw) {
+        console.log('ℹ️ Step 2 data exists but is empty, pre-filling from Step 1...');
+        const step1Data = JSON.parse(step1Raw);
+        
+        setFormData({
+          ...parsedData,
+          title: step1Data.title || parsedData.title,
+          researcherFirstName: step1Data.projectLeaderFirstName || parsedData.researcherFirstName,
+          researcherMiddleName: step1Data.projectLeaderMiddleName || parsedData.researcherMiddleName,
+          researcherLastName: step1Data.projectLeaderLastName || parsedData.researcherLastName,
+          mobileNo: step1Data.projectLeaderContact || parsedData.mobileNo,
+          email: step1Data.projectLeaderEmail || parsedData.email,
+          coResearcher: step1Data.coAuthors || parsedData.coResearcher,
+          institution: step1Data.organization === 'internal' ? 'University of Makati' : (step1Data.organization || parsedData.institution),
+          technicalReviewFile: null,
+        });
+      } else {
+        setFormData({ ...parsedData, technicalReviewFile: null });
+        console.log('Loaded existing Step 2 data');
+      }
+    } catch (error) {
+      console.error('Error loading step2 data:', error);
+    }
+  } else {
+    console.log('No Step 2 data found, checking Step 1...');
+    
+    if (step1Raw) {
+      try {
+        const step1Data = JSON.parse(step1Raw);
+        console.log('📥 Step 1 data parsed:', step1Data);
+        
         setFormData(prev => ({
           ...prev,
           title: step1Data.title || '',
-          studySite: step1Data.studySite || '',
           researcherFirstName: step1Data.projectLeaderFirstName || '',
           researcherMiddleName: step1Data.projectLeaderMiddleName || '',
           researcherLastName: step1Data.projectLeaderLastName || '',
           mobileNo: step1Data.projectLeaderContact || '',
           email: step1Data.projectLeaderEmail || '',
           coResearcher: step1Data.coAuthors || '',
-          college: step1Data.college || '',
-          institution: step1Data.institution || 'University of Makati',
+          institution: step1Data.organization === 'internal' ? 'University of Makati' : step1Data.organization || 'University of Makati',
         }));
+        console.log('Pre-filled from Step 1');
+      } catch (error) {
+        console.error('Error loading step1 data:', error);
       }
+    } else {
+      console.log('No Step 1 data found in localStorage');
     }
-  }, []);
+  }
+  
+  isInitialMount.current = false;
+}, []);
+
+
+  // Auto-save on data change
+useEffect(() => {
+  if (isInitialMount.current) {
+    return;
+  }
+
+  if (!isClient) return;
+
+  if (saveTimeoutRef.current) {
+    clearTimeout(saveTimeoutRef.current);
+  }
+
+  saveTimeoutRef.current = setTimeout(() => {
+    const dataToSave = { ...formData };
+    delete (dataToSave as any).technicalReviewFile;
+    localStorage.setItem('step2Data', JSON.stringify(dataToSave));
+    console.log('💾 Step 2 data auto-saved');
+  }, 1000);
+
+  return () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+  };
+}, [formData, isClient]);
+
 
   const handleNext = () => {
-    const dataToSave = {...formData};
-    delete (dataToSave as any).technicalReviewFile; // Don't save file to localStorage
+    const dataToSave = { ...formData };
+    delete (dataToSave as any).technicalReviewFile;
     localStorage.setItem('step2Data', JSON.stringify(dataToSave));
     router.push('/researchermodule/submissions/new/step3');
   };
@@ -116,6 +189,26 @@ export default function Step2ApplicationForm() {
     { value: 'others', label: 'Others (please specify)' }
   ];
 
+  if (!isClient) {
+    return (
+      <SubmissionStepLayout
+        stepNumber={2}
+        title="Application for Ethics Review"
+        description="Please accomplish this form and ensure accuracy of information."
+        onBack={handleBack}
+        onNext={handleNext}
+        totalSteps={8}
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading form...</p>
+          </div>
+        </div>
+      </SubmissionStepLayout>
+    );
+  }
+
   return (
     <SubmissionStepLayout
       stepNumber={2}
@@ -140,22 +233,20 @@ export default function Step2ApplicationForm() {
         <TextInput
           label="Title of Study"
           value={formData.title}
-          onChange={(val) => setFormData({...formData, title: val})}
+          onChange={(val) => setFormData({ ...formData, title: val })}
           required
         />
-
-        {/* Study Site */}
         <TextInput
           label="Study Site"
           value={formData.studySite}
-          onChange={(val) => setFormData({...formData, studySite: val})}
+          onChange={(val) => setFormData({ ...formData, studySite: val })}
           required
         />
 
         {/* Name of Researcher */}
         <div>
           <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          Name of Researcher <span className="text-red-600">*</span>
+            Name of Researcher <span className="text-red-600">*</span>
           </label>
           <p className="text-xs text-[#64748B] mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Format: First Name, MI, Last name
@@ -165,7 +256,7 @@ export default function Step2ApplicationForm() {
               type="text"
               placeholder="First Name"
               value={formData.researcherFirstName}
-              onChange={(e) => setFormData({...formData, researcherFirstName: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, researcherFirstName: e.target.value })}
               className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
               required
@@ -174,7 +265,7 @@ export default function Step2ApplicationForm() {
               type="text"
               placeholder="Middle Initial"
               value={formData.researcherMiddleName}
-              onChange={(e) => setFormData({...formData, researcherMiddleName: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, researcherMiddleName: e.target.value })}
               className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             />
@@ -182,7 +273,7 @@ export default function Step2ApplicationForm() {
               type="text"
               placeholder="Last Name"
               value={formData.researcherLastName}
-              onChange={(e) => setFormData({...formData, researcherLastName: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, researcherLastName: e.target.value })}
               className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
               required
@@ -191,72 +282,72 @@ export default function Step2ApplicationForm() {
         </div>
 
         {/* Contact Information */}
-<div>
-  <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    Contact Information
-  </label>
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <div>
-      <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Tel No
-      </label>
-      <input
-        type="tel"
-        value={formData.telNo}
-        onChange={(e) => setFormData({...formData, telNo: e.target.value})}
-        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      />
-    </div>
-    <div>
-      <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Mobile No <span className="text-red-600">*</span>
-      </label>
-      <input
-        type="tel"
-        value={formData.mobileNo}
-        onChange={(e) => setFormData({...formData, mobileNo: e.target.value})}
-        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-        required
-      />
-    </div>
-    <div>
-      <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Fax No
-      </label>
-      <input
-        type="text"
-        value={formData.faxNo}
-        onChange={(e) => setFormData({...formData, faxNo: e.target.value})}
-        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      />
-      <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Default: N/A
-      </p>
-    </div>
-    <div>
-      <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Email <span className="text-red-600">*</span>
-      </label>
-      <input
-        type="email"
-        value={formData.email}
-        onChange={(e) => setFormData({...formData, email: e.target.value})}
-        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-        required
-      />
-    </div>
-  </div>
-</div>
+        <div>
+          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Contact Information
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Tel No
+              </label>
+              <input
+                type="tel"
+                value={formData.telNo}
+                onChange={(e) => setFormData({ ...formData, telNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Mobile No <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="tel"
+                value={formData.mobileNo}
+                onChange={(e) => setFormData({ ...formData, mobileNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Fax No
+              </label>
+              <input
+                type="text"
+                value={formData.faxNo}
+                onChange={(e) => setFormData({ ...formData, faxNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+              <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Default: N/A
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Email <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                required
+              />
+            </div>
+          </div>
+        </div>
 
         {/* Co-researcher */}
         <TextArea
           label="Co-researcher (if any)"
           value={formData.coResearcher}
-          onChange={(val) => setFormData({...formData, coResearcher: val})}
+          onChange={(val) => setFormData({ ...formData, coResearcher: val })}
           placeholder="First Name MI, Last name (if multiple, separate with commas)"
           rows={2}
           helperText="If there are none, please write N/A"
@@ -266,7 +357,7 @@ export default function Step2ApplicationForm() {
         <TextInput
           label="College/Department"
           value={formData.college}
-          onChange={(val) => setFormData({...formData, college: val})}
+          onChange={(val) => setFormData({ ...formData, college: val })}
           required
         />
 
@@ -274,7 +365,7 @@ export default function Step2ApplicationForm() {
         <TextInput
           label="Institution"
           value={formData.institution}
-          onChange={(val) => setFormData({...formData, institution: val})}
+          onChange={(val) => setFormData({ ...formData, institution: val })}
           required
         />
 
@@ -282,7 +373,7 @@ export default function Step2ApplicationForm() {
         <TextInput
           label="Address of Institution"
           value={formData.institutionAddress}
-          onChange={(val) => setFormData({...formData, institutionAddress: val})}
+          onChange={(val) => setFormData({ ...formData, institutionAddress: val })}
           required
         />
 
@@ -291,7 +382,7 @@ export default function Step2ApplicationForm() {
           label="Type of Study"
           options={typeOfStudyOptions}
           selected={formData.typeOfStudy}
-          onChange={(val) => setFormData({...formData, typeOfStudy: val})}
+          onChange={(val) => setFormData({ ...formData, typeOfStudy: val })}
           required
         />
 
@@ -299,21 +390,21 @@ export default function Step2ApplicationForm() {
           <TextInput
             label="Please specify other type of study"
             value={formData.typeOfStudyOthers}
-            onChange={(val) => setFormData({...formData, typeOfStudyOthers: val})}
+            onChange={(val) => setFormData({ ...formData, typeOfStudyOthers: val })}
             required
           />
         )}
 
-        {/* Multicenter Type */}
+        {/* Study Site Type */}
         <RadioGroup
           label="Study Site Type"
           options={[
-            { value: 'international', label: 'Multicenter (International)' },
-            { value: 'national', label: 'Multicenter (National)' },
-            { value: 'single', label: 'Single Site' }
+            { value: 'Multicenter (International)', label: 'Multicenter (International)' },
+            { value: 'Multicenter (National)', label: 'Multicenter (National)' },
+            { value: 'Single Site', label: 'Single Site' }
           ]}
-          selected={formData.multicenterType}
-          onChange={(val) => setFormData({...formData, multicenterType: val})}
+          selected={formData.studySiteType}
+          onChange={(val) => setFormData({ ...formData, studySiteType: val })}
           required
         />
 
@@ -322,7 +413,7 @@ export default function Step2ApplicationForm() {
           label="Source of Funding"
           options={fundingOptions}
           selected={formData.sourceOfFunding}
-          onChange={(val) => setFormData({...formData, sourceOfFunding: val})}
+          onChange={(val) => setFormData({ ...formData, sourceOfFunding: val })}
           required
         />
 
@@ -330,7 +421,7 @@ export default function Step2ApplicationForm() {
           <TextInput
             label="Specify Pharmaceutical Company"
             value={formData.pharmaceuticalSponsor}
-            onChange={(val) => setFormData({...formData, pharmaceuticalSponsor: val})}
+            onChange={(val) => setFormData({ ...formData, pharmaceuticalSponsor: val })}
             placeholder="Company name"
             required
           />
@@ -340,12 +431,11 @@ export default function Step2ApplicationForm() {
           <TextInput
             label="Specify Other Funding Source"
             value={formData.fundingOthers}
-            onChange={(val) => setFormData({...formData, fundingOthers: val})}
+            onChange={(val) => setFormData({ ...formData, fundingOthers: val })}
             required
           />
         )}
 
-        {/* Duration of the Study */}
         <div>
           <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Duration of the Study
@@ -355,7 +445,7 @@ export default function Step2ApplicationForm() {
               <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Start date
               </label>
-              <input
+              <input  
                 type="date"
                 value={formData.startDate}
                 onChange={(e) => setFormData({...formData, startDate: e.target.value})}
@@ -384,7 +474,7 @@ export default function Step2ApplicationForm() {
         <TextInput
           label="No. of study participants"
           value={formData.numParticipants}
-          onChange={(val) => setFormData({...formData, numParticipants: val})}
+          onChange={(val) => setFormData({ ...formData, numParticipants: val })}
           type="number"
           required
         />
@@ -398,17 +488,16 @@ export default function Step2ApplicationForm() {
               { value: 'no', label: 'No' }
             ]}
             selected={formData.technicalReview}
-            onChange={(val) => setFormData({...formData, technicalReview: val})}
+            onChange={(val) => setFormData({ ...formData, technicalReview: val })}
             required
           />
-          
-          {/* Show file upload if Yes is selected */}
+
           {formData.technicalReview === 'yes' && (
             <div className="mt-4 ml-8">
               <FileUpload
                 label="Upload Technical Review Results"
                 value={formData.technicalReviewFile}
-                onChange={(file) => setFormData({...formData, technicalReviewFile: file})}
+                onChange={(file) => setFormData({ ...formData, technicalReviewFile: file })}
                 accept=".pdf"
                 helperText="PDF files only (max 10MB)"
                 required
@@ -425,10 +514,9 @@ export default function Step2ApplicationForm() {
             { value: 'no', label: 'No' }
           ]}
           selected={formData.submittedToOther}
-          onChange={(val) => setFormData({...formData, submittedToOther: val})}
+          onChange={(val) => setFormData({ ...formData, submittedToOther: val })}
           required
         />
-
         {/* Section 2: Checklist of Documents */}
         <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-6 rounded-lg">
           <h4 className="font-bold text-[#1E293B] text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -444,8 +532,7 @@ export default function Step2ApplicationForm() {
           <h5 className="font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Basic Requirements:
           </h5>
-          
-          {/* Application Form - Always checked */}
+
           <label className="flex items-center cursor-not-allowed opacity-75">
             <input
               type="checkbox"
@@ -458,12 +545,11 @@ export default function Step2ApplicationForm() {
             </span>
           </label>
 
-          {/* Research Protocol */}
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={formData.hasResearchProtocol}
-              onChange={(e) => setFormData({...formData, hasResearchProtocol: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasResearchProtocol: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -471,13 +557,12 @@ export default function Step2ApplicationForm() {
             </span>
           </label>
 
-          {/* Informed Consent Form */}
           <div className="ml-8 space-y-2">
             <label className="flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 checked={formData.hasInformedConsentEnglish}
-                onChange={(e) => setFormData({...formData, hasInformedConsentEnglish: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentEnglish: e.target.checked })}
                 className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
               />
               <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -488,7 +573,7 @@ export default function Step2ApplicationForm() {
               <input
                 type="checkbox"
                 checked={formData.hasInformedConsentFilipino}
-                onChange={(e) => setFormData({...formData, hasInformedConsentFilipino: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentFilipino: e.target.checked })}
                 className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
               />
               <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -499,7 +584,7 @@ export default function Step2ApplicationForm() {
               <input
                 type="checkbox"
                 checked={formData.hasInformedConsentOthers}
-                onChange={(e) => setFormData({...formData, hasInformedConsentOthers: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
                 className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
               />
               <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -511,14 +596,13 @@ export default function Step2ApplicationForm() {
                 type="text"
                 placeholder="Specify other language"
                 value={formData.informedConsentOthers}
-                onChange={(e) => setFormData({...formData, informedConsentOthers: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
                 className="ml-8 w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
             )}
           </div>
 
-          {/* Assent Form */}
           <div className="space-y-2">
             <p className="text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Assent Form (if applicable):
@@ -528,7 +612,7 @@ export default function Step2ApplicationForm() {
                 <input
                   type="checkbox"
                   checked={formData.hasAssentFormEnglish}
-                  onChange={(e) => setFormData({...formData, hasAssentFormEnglish: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormEnglish: e.target.checked })}
                   className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
                 />
                 <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -539,7 +623,7 @@ export default function Step2ApplicationForm() {
                 <input
                   type="checkbox"
                   checked={formData.hasAssentFormFilipino}
-                  onChange={(e) => setFormData({...formData, hasAssentFormFilipino: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormFilipino: e.target.checked })}
                   className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
                 />
                 <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -550,7 +634,7 @@ export default function Step2ApplicationForm() {
                 <input
                   type="checkbox"
                   checked={formData.hasAssentFormOthers}
-                  onChange={(e) => setFormData({...formData, hasAssentFormOthers: e.target.checked})}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
                   className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
                 />
                 <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -562,7 +646,7 @@ export default function Step2ApplicationForm() {
                   type="text"
                   placeholder="Specify other language"
                   value={formData.assentFormOthers}
-                  onChange={(e) => setFormData({...formData, assentFormOthers: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
                   className="ml-8 w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 />
@@ -570,12 +654,11 @@ export default function Step2ApplicationForm() {
             </div>
           </div>
 
-          {/* Endorsement Letter */}
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={formData.hasEndorsementLetter}
-              onChange={(e) => setFormData({...formData, hasEndorsementLetter: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -589,12 +672,12 @@ export default function Step2ApplicationForm() {
           <h5 className="font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Supplementary Documents:
           </h5>
-          
+
           <label className="flex items-center cursor-pointer">
             <input
               type="checkbox"
               checked={formData.hasQuestionnaire}
-              onChange={(e) => setFormData({...formData, hasQuestionnaire: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -606,7 +689,7 @@ export default function Step2ApplicationForm() {
             <input
               type="checkbox"
               checked={formData.hasDataCollectionForms}
-              onChange={(e) => setFormData({...formData, hasDataCollectionForms: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -618,7 +701,7 @@ export default function Step2ApplicationForm() {
             <input
               type="checkbox"
               checked={formData.hasProductBrochure}
-              onChange={(e) => setFormData({...formData, hasProductBrochure: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -630,7 +713,7 @@ export default function Step2ApplicationForm() {
             <input
               type="checkbox"
               checked={formData.hasFDAAuthorization}
-              onChange={(e) => setFormData({...formData, hasFDAAuthorization: e.target.checked})}
+              onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
               className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
             />
             <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -643,7 +726,7 @@ export default function Step2ApplicationForm() {
               <input
                 type="checkbox"
                 checked={formData.hasSpecialPopulationPermit}
-                onChange={(e) => setFormData({...formData, hasSpecialPopulationPermit: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, hasSpecialPopulationPermit: e.target.checked })}
                 className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
               />
               <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -655,7 +738,7 @@ export default function Step2ApplicationForm() {
                 type="text"
                 placeholder="Specify details"
                 value={formData.specialPopulationPermitDetails}
-                onChange={(e) => setFormData({...formData, specialPopulationPermitDetails: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
                 className="ml-8 mt-2 w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
@@ -667,7 +750,7 @@ export default function Step2ApplicationForm() {
               <input
                 type="checkbox"
                 checked={formData.hasOtherDocs}
-                onChange={(e) => setFormData({...formData, hasOtherDocs: e.target.checked})}
+                onChange={(e) => setFormData({ ...formData, hasOtherDocs: e.target.checked })}
                 className="w-5 h-5 text-[#3B82F6] border-2 border-gray-300 rounded focus:ring-2 focus:ring-[#3B82F6] cursor-pointer"
               />
               <span className="ml-3 text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -679,7 +762,7 @@ export default function Step2ApplicationForm() {
                 type="text"
                 placeholder="Specify other documents"
                 value={formData.otherDocsDetails}
-                onChange={(e) => setFormData({...formData, otherDocsDetails: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
                 className="ml-8 mt-2 w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />

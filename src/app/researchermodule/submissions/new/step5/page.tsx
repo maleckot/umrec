@@ -15,7 +15,6 @@ export default function Step5ResearchInstrument() {
     if (saved) {
       const parsedData = JSON.parse(saved);
       if (parsedData.fileName) {
-        // File restoration logic
       }
     }
   }, []);
@@ -26,14 +25,22 @@ export default function Step5ResearchInstrument() {
       return;
     }
 
-    const dataToSave = {
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedAt: new Date().toISOString()
+    // Convert file to base64 and store in sessionStorage
+    const reader = new FileReader();
+    reader.onload = () => {
+      sessionStorage.setItem('step5File', reader.result as string);
+      
+      const dataToSave = {
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedAt: new Date().toISOString()
+      };
+      localStorage.setItem('step5Data', JSON.stringify(dataToSave));
+      router.push('/researchermodule/submissions/new/step6');
     };
-    localStorage.setItem('step5Data', JSON.stringify(dataToSave));
-    router.push('/researchermodule/submissions/new/step6');
+    reader.readAsDataURL(file);
   };
+
 
   const handleBack = () => {
     router.push('/researchermodule/submissions/new/step4');

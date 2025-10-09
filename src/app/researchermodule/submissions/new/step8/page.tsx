@@ -8,6 +8,7 @@ import ReviewSectionCard from '@/components/researcher/submission/ReviewSectionC
 import ReviewField from '@/components/researcher/submission/ReviewField';
 import DocumentListItem from '@/components/researcher/submission/DocumentListItem';
 import { CheckCircle } from 'lucide-react';
+import { submitResearchApplication } from '@/app/actions/submitResearchApplication';
 
 export default function Step8ReviewSubmit() {
   const router = useRouter();
@@ -24,30 +25,61 @@ export default function Step8ReviewSubmit() {
     const step7 = JSON.parse(localStorage.getItem('step7Data') || '{}');
 
     setAllData({ step1, step2, step3, step4, step5, step6, step7 });
+
+    console.log('All collected data:', { step1, step2, step3, step4, step5, step6, step7 });
   }, []);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
-    setTimeout(() => {
-      const submissionId = `UMREC-${Date.now()}`;
-      
+    try {
+      console.log('Starting submission...');
+      console.log('Data to submit:', allData);
+
+      const files = {
+        step5: sessionStorage.getItem('step5File') || undefined,
+        step6: sessionStorage.getItem('step6File') || undefined,
+        step7: sessionStorage.getItem('step7File') || undefined,
+      };
+
+      console.log('Files to upload:', {
+        step5: files.step5 ? 'Present' : 'Missing',
+        step6: files.step6 ? 'Present' : 'Missing',
+        step7: files.step7 ? 'Present' : 'Missing',
+      });
+
+      const result = await submitResearchApplication(allData, files);
+
+      console.log('Server action result:', result);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Submission failed');
+      }
+
+      // Clear sessionStorage files
+      sessionStorage.removeItem('step5File');
+      sessionStorage.removeItem('step6File');
+      sessionStorage.removeItem('step7File');
+
+      // Store submission data for success page
       const submissionData = {
-        submissionId,
+        submissionId: result.submissionId,
         ...allData,
         submittedAt: new Date().toISOString(),
         status: 'Pending Review'
       };
-      
-      localStorage.setItem('lastSubmission', JSON.stringify(submissionData));
-      
-      for (let i = 1; i <= 7; i++) {
-        localStorage.removeItem(`step${i}Data`);
-      }
 
-      setIsSubmitting(false);
+      localStorage.setItem('lastSubmission', JSON.stringify(submissionData));
+
+      // Redirect to success page
       router.push('/researchermodule/submissions/new/success');
-    }, 2000);
+
+    } catch (error) {
+      console.error('Submission error details:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit application. Please try again.';
+      alert(`Error: ${errorMessage}`);
+      setIsSubmitting(false);
+    }
   };
 
   const handleBack = () => {
@@ -69,6 +101,19 @@ export default function Step8ReviewSubmit() {
     return 'N/A';
   };
 
+  const formatTypeOfStudy = (typeOfStudy: string[], typeOfStudyOthers?: string) => {
+    if (!typeOfStudy || typeOfStudy.length === 0) return 'N/A';
+
+    const formattedTypes = typeOfStudy.map(type => {
+      if (type.toLowerCase() === 'others' && typeOfStudyOthers) {
+        return `Others: ${typeOfStudyOthers}`;
+      }
+      return type;
+    });
+
+    return formattedTypes.join(', ');
+  };
+
   return (
     <SubmissionStepLayout
       stepNumber={8}
@@ -79,7 +124,8 @@ export default function Step8ReviewSubmit() {
       isNextDisabled={isSubmitting}
       totalSteps={8}
     >
-      <div className="space-y-6">
+
+
         {/* Alert Banner */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg">
           <div className="flex items-start space-x-3">
@@ -89,8 +135,7 @@ export default function Step8ReviewSubmit() {
                 Review Your Submission
               </h4>
               <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Please carefully review all the information below. You can click "Edit" on any section to make changes 
-                before submitting. Once submitted, your application will be reviewed by the UMREC.
+                Please carefully review all the information below. You can click "Edit" on any section to make changes.
               </p>
             </div>
           </div>
@@ -112,10 +157,13 @@ export default function Step8ReviewSubmit() {
             </button>
           </div>
           <div className="p-4 space-y-3">
-            <ReviewField label="Title of the Project" value={allData.step1?.protocolTitle || 'N/A'} fullWidth />
+            <ReviewField label="Title of the Project" value={allData.step1?.protocolTitle || allData.step1?.title || 'N/A'} fullWidth />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <ReviewField label="Project Leader Full Name" value={allData.step1?.principalInvestigator || 'N/A'} />
-              <ReviewField label="Email of the Project Leader" value={allData.step1?.emailAddress || 'N/A'} />
+              <ReviewField
+                label="Project Leader Full Name"
+                value={allData.step1?.principalInvestigator || `${allData.step1?.projectLeaderFirstName || ''} ${allData.step1?.projectLeaderLastName || ''}`.trim() || 'N/A'}
+              />
+              <ReviewField label="Email of the Project Leader" value={allData.step1?.emailAddress || allData.step1?.projectLeaderEmail || 'N/A'} />
             </div>
             <ReviewField label="Organization" value={allData.step1?.organization || allData.step1?.position || 'N/A'} fullWidth />
             {allData.step1?.coInvestigators && allData.step1.coInvestigators.length > 0 && (
@@ -149,41 +197,56 @@ export default function Step8ReviewSubmit() {
             </button>
           </div>
           <div className="p-4 space-y-4">
-            {/* 1. General Information */}
             <div>
               <h4 className="text-sm font-bold text-[#071139] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 1. General Information
               </h4>
               <div className="space-y-2 pl-4">
-                <ReviewField label="Research Type" value={allData.step2?.researchType || 'N/A'} fullWidth />
-                <ReviewField 
-                  label="Study Duration" 
-                  value={`${allData.step2?.formData?.startDate || 'N/A'} to ${allData.step2?.formData?.endDate || 'N/A'}`} 
-                  fullWidth 
+                <ReviewField
+                  label="Study Site Type"
+                  value={allData.step2?.studySiteType || 'N/A'}
+                  fullWidth
+                />
+                <ReviewField
+                  label="Type of Study"
+                  value={formatTypeOfStudy(
+                    allData.step2?.typeOfStudy,
+                    allData.step2?.typeOfStudyOthers
+                  )}
+                  fullWidth
+                />
+                <ReviewField
+                  label="Study Duration"
+                  value={`${allData.step2?.startDate || 'N/A'} to ${allData.step2?.endDate || 'N/A'}`}
+                  fullWidth
+                />
+                <ReviewField
+                  label="Number of Participants"
+                  value={allData.step2?.numParticipants || 'N/A'}
+                  fullWidth
                 />
               </div>
             </div>
 
-            {/* 2. Checklist of Documents */}
             <div>
               <h4 className="text-sm font-bold text-[#071139] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 2. Checklist of Documents
               </h4>
               <div className="pl-4 space-y-2">
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" strokeWidth={2} />
+                  <CheckCircle className={`w-4 h-4 ${allData.step5?.fileName ? 'text-green-600' : 'text-gray-300'}`} strokeWidth={2} />
                   <p className="text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Research Instrument: <strong>{allData.step5?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}</strong>
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" strokeWidth={2} />
+                  <CheckCircle className={`w-4 h-4 ${allData.step6?.fileName ? 'text-green-600' : 'text-gray-300'}`} strokeWidth={2} />
                   <p className="text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Proposal Defense Certification: <strong>{allData.step6?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}</strong>
                   </p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <CheckCircle className="w-4 h-4 text-green-600" strokeWidth={2} />
+                  <CheckCircle className={`w-4 h-4 ${allData.step7?.fileName ? 'text-green-600' : 'text-gray-300'}`} strokeWidth={2} />
                   <p className="text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Endorsement Letter: <strong>{allData.step7?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}</strong>
                   </p>
@@ -212,21 +275,9 @@ export default function Step8ReviewSubmit() {
             <div>
               <p className="text-xs text-[#64748B] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Protocol Summary</p>
               <p className="text-sm text-[#1E293B] line-clamp-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {stripHtmlTags(allData.step2?.formData?.abstract)}...
+                {stripHtmlTags(allData.step3?.formData?.introduction || '')}...
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <ReviewField label="Total Participants" value={allData.step3?.totalParticipants || 'N/A'} />
-              <ReviewField 
-                label="Age Range" 
-                value={`${allData.step3?.ageRangeMin || 'N/A'} - ${allData.step3?.ageRangeMax || 'N/A'} years`} 
-              />
-            </div>
-            <ReviewField 
-              label="Vulnerable Populations" 
-              value={allData.step3?.vulnerablePopulations || 'None'} 
-              fullWidth 
-            />
           </div>
         </div>
 
@@ -246,13 +297,25 @@ export default function Step8ReviewSubmit() {
             </button>
           </div>
           <div className="p-4">
-            <ReviewField 
-              label="Participant Type" 
-              value={getConsentTypeLabel(allData.step4?.consentType)} 
-              fullWidth 
+            <ReviewField
+              label="Participant Type"
+              value={getConsentTypeLabel(allData.step4?.consentType)}
+              fullWidth
             />
           </div>
         </div>
+
+        {/* Loading indicator */}
+        {isSubmitting && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <p className="text-sm text-blue-700 font-semibold">
+                Uploading files and submitting your application...
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Final Confirmation */}
         <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 sm:p-6 rounded-lg">
@@ -260,11 +323,10 @@ export default function Step8ReviewSubmit() {
             Declaration
           </h4>
           <p className="text-xs sm:text-sm text-[#475569] leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            By submitting this application, I/we certify that all information provided is accurate and complete to the best of my/our knowledge. 
+            By submitting this application, I/we certify that all information provided is accurate and complete to the best of my/our knowledge.
             I/we understand that any false or misleading information may result in the rejection of this application or withdrawal of ethics approval.
           </p>
         </div>
-      </div>
     </SubmissionStepLayout>
   );
 }

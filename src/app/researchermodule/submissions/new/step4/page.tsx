@@ -1,7 +1,7 @@
 // app/researchermodule/submissions/new/step4/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SubmissionStepLayout from '@/components/researcher/submission/SubmissionStepLayout';
 import RichTextEditor from '@/components/researcher/submission/RichTextEditor';
@@ -9,45 +9,115 @@ import { RadioGroup } from '@/components/researcher/submission/FormComponents';
 
 export default function Step4InformedConsent() {
   const router = useRouter();
-  const [consentType, setConsentType] = useState<'adult' | 'minor' | 'both' | ''>('');
-  const [formData, setFormData] = useState({
-    // Adult Consent Form - English & Tagalog
-    purposeEnglish: '',
-    purposeTagalog: '',
-    risksEnglish: '',
-    risksTagalog: '',
-    benefitsEnglish: '',
-    benefitsTagalog: '',
-    proceduresEnglish: '',
-    proceduresTagalog: '',
-    voluntarinessEnglish: '',
-    voluntarinessTagalog: '',
-    confidentialityEnglish: '',
-    confidentialityTagalog: '',
-    
-    // Minor Assent Form - Bilingual
-    introduction: '',
-    purpose: '',
-    choiceOfParticipants: '',
-    voluntariness: '',
-    procedures: '',
-    risks: '',
-    benefits: '',
-    confidentiality: '',
-    sharingFindings: '',
-    certificateAssent: '',
-    contactPerson: '',
-    contactNumber: ''
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [consentType, setConsentType] = useState<'adult' | 'minor' | 'both' | ''>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step4Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          return parsedData.consentType || '';
+        } catch (error) {
+          console.error('Error loading consent type:', error);
+        }
+      }
+    }
+    return '';
   });
 
-  useEffect(() => {
-    const saved = localStorage.getItem('step4Data');
-    if (saved) {
-      const parsedData = JSON.parse(saved);
-      setConsentType(parsedData.consentType || '');
-      setFormData(parsedData.formData || formData);
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step4Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          return parsedData.formData || {
+            purposeEnglish: '',
+            purposeTagalog: '',
+            risksEnglish: '',
+            risksTagalog: '',
+            benefitsEnglish: '',
+            benefitsTagalog: '',
+            proceduresEnglish: '',
+            proceduresTagalog: '',
+            voluntarinessEnglish: '',
+            voluntarinessTagalog: '',
+            confidentialityEnglish: '',
+            confidentialityTagalog: '',
+            introduction: '',
+            purpose: '',
+            choiceOfParticipants: '',
+            voluntariness: '',
+            procedures: '',
+            risks: '',
+            benefits: '',
+            confidentiality: '',
+            sharingFindings: '',
+            certificateAssent: '',
+            contactPerson: '',
+            contactNumber: ''
+          };
+        } catch (error) {
+          console.error('Error loading form data:', error);
+        }
+      }
     }
-  }, []);
+
+    return {
+      purposeEnglish: '',
+      purposeTagalog: '',
+      risksEnglish: '',
+      risksTagalog: '',
+      benefitsEnglish: '',
+      benefitsTagalog: '',
+      proceduresEnglish: '',
+      proceduresTagalog: '',
+      voluntarinessEnglish: '',
+      voluntarinessTagalog: '',
+      confidentialityEnglish: '',
+      confidentialityTagalog: '',
+      introduction: '',
+      purpose: '',
+      choiceOfParticipants: '',
+      voluntariness: '',
+      procedures: '',
+      risks: '',
+      benefits: '',
+      confidentiality: '',
+      sharingFindings: '',
+      certificateAssent: '',
+      contactPerson: '',
+      contactNumber: ''
+    };
+  });
+
+  // Auto-save on data change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = {
+        consentType,
+        formData
+      };
+      localStorage.setItem('step4Data', JSON.stringify(dataToSave));
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [consentType, formData]);
 
   const handleNext = () => {
     const dataToSave = {
@@ -384,12 +454,12 @@ export default function Step4InformedConsent() {
             </div>
 
             <RichTextEditor
-  label="Certificate of Assent Statement"
-  value={formData.certificateAssent}
-  onChange={(val) => setFormData({...formData, certificateAssent: val})}
-  helperText="Complete the certificate statement with your study details. Include sections covering: research description, confidentiality assurance, risks, benefits, and participants' rights. Provide text in both English and Tagalog."
-  maxWords={800}
-  placeholder={`I am/we are (name of the researchers)* from the University of Makati, currently working on a study to figure out (why some kids don't do well in school, and how to help those kids better). We are asking you to take part in the research study because (your teacher recommended you for this project.)
+              label="Certificate of Assent Statement"
+              value={formData.certificateAssent}
+              onChange={(val) => setFormData({...formData, certificateAssent: val})}
+              helperText="Complete the certificate statement with your study details. Include sections covering: research description, confidentiality assurance, risks, benefits, and participants' rights. Provide text in both English and Tagalog."
+              maxWords={800}
+              placeholder={`I am/we are (name of the researchers)* from the University of Makati, currently working on a study to figure out (why some kids don't do well in school, and how to help those kids better). We are asking you to take part in the research study because (your teacher recommended you for this project.)
 
 Ako/kami po si (pangalan ng mga mananaliksik) mula sa University of Makati ay kasalukuyang gumagawa ng pag-aaral upang malaman (kung bakit ang ilang bata ay may kahinaan sa kanilang pag-aaral at kung paano sila matutulungan).
 
@@ -418,11 +488,17 @@ Maaari mong itigil ang paglahok sa pagsasaliksik anumang oras.
 Ang iyong mga magulang ay hiningian ng permiso kung nais mong maging bahagi ng pag-aaral. Subalit, kung sila man ay nagbigay ng pahintulot, ang iyong desisiyon na maging bahagi ng pag-aaral ang siya pa rin masusunod.
 
 ● You can ask any questions you have, now or later. If you think of a question later, you or your parents can contact me at (provide contact information for researcher(s), and advisor if graduate student).`}
-  required
-/>
+              required
+            />
+          </div>
+        )}
 
-
-            {/* Contact Information */}
+        {/* Contact Information - Only show once outside conditional blocks */}
+        {consentType && (
+          <div className="space-y-4">
+            <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Contact Information
+            </h5>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>

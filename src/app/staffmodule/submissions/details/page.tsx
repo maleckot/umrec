@@ -1,7 +1,7 @@
 // app/staffmodule/submissions/details/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -11,9 +11,11 @@ import DocumentVerificationList from '@/components/staff-secretariat-admin/submi
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import { getSubmissionDetails } from '@/app/actions/getSubmissionDetails';
+import { verifySubmissionDocuments } from '@/app/actions/verifySubmissionDocuments';
 
-interface Document {
-  id: number;
+interface DocumentWithVerification {
+  id: string;
   name: string;
   isVerified: boolean | null;
   comment: string;
@@ -24,89 +26,200 @@ export default function SubmissionVerificationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  
+
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [submissionData, setSubmissionData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
-  const [documents, setDocuments] = useState<Document[]>([
-    { 
-      id: 1, 
-      name: 'Application Form Ethics Review', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-    { 
-      id: 2, 
-      name: 'Research Protocol', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-    { 
-      id: 3, 
-      name: 'Informed Consent Form', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-    { 
-      id: 4, 
-      name: 'Validated Research Instrument.pdf', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-    { 
-      id: 5, 
-      name: 'Endorsement Letter.pdf', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-    { 
-      id: 6, 
-      name: 'Proposal defense certification/evaluation.pdf', 
-      isVerified: null, 
-      comment: '',
-      fileUrl: '/sample-document.pdf'
-    },
-  ]);
+  const [documents, setDocuments] = useState<DocumentWithVerification[]>([]);
 
-  const handleVerify = (documentId: number, isApproved: boolean, comment?: string) => {
-    setDocuments(documents.map(doc =>
-      doc.id === documentId
-        ? { ...doc, isVerified: isApproved, comment: comment || '' }
-        : doc
-    ));
+  useEffect(() => {
+    console.log('📍 URL submission ID:', submissionId);
+    if (submissionId) {
+      loadSubmissionData();
+    }
+  }, [submissionId]);
+
+  const loadSubmissionData = async () => {
+    if (!submissionId) return;
+
+    setLoading(true);
+    try {
+      const result = await getSubmissionDetails(submissionId);
+
+      console.log('Result:', result);
+
+      if (result.success) {
+        setSubmissionData(result.submission);
+
+        if (result.documents && result.documents.length > 0) {
+          const mappedDocs: DocumentWithVerification[] = result.documents.map((doc: any) => ({
+            id: doc.id,
+            name: doc.name,
+            isVerified: doc.isVerified, 
+            comment: doc.comment || '',
+            fileUrl: doc.url,
+          }));
+
+          console.log('Mapped documents with verifications:', mappedDocs);
+          setDocuments(mappedDocs);
+        } else {
+          console.warn('No documents found');
+          setDocuments([]);
+        }
+      } else {
+        alert(result.error || 'Failed to load submission');
+        router.push('/staffmodule/submissions');
+      }
+    } catch (error) {
+      console.error('Error loading submission:', error);
+      alert('Failed to load submission details');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const allVerified = documents.every(doc => doc.isVerified === true);
+  const handleVerify = async (documentIndex: number, isApproved: boolean, comment?: string) => {
+    if (!submissionId) return;
+
+    setIsSaving(true);
+    const originalDocuments = [...documents];
+
+    try {
+      const updatedDocuments = documents.map((doc, index) =>
+        index === documentIndex
+          ? { ...doc, isVerified: isApproved, comment: comment || '' }
+          : doc
+      );
+      setDocuments(updatedDocuments);
+
+      const result = await verifySubmissionDocuments(
+        submissionId,
+        [{
+          documentId: documents[documentIndex].id,
+          isApproved,
+          comment: comment || '',
+        }],
+        undefined
+      );
+
+      if (!result.success) {
+        alert(`Error: ${result.error}`);
+        setDocuments(originalDocuments); 
+      }
+    } catch (error) {
+      console.error('Error saving verification:', error);
+      alert('Failed to save verification');
+      setDocuments(originalDocuments); 
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const allVerified = documents.length > 0 && documents.every(doc => doc.isVerified === true);
   const hasRejected = documents.some(doc => doc.isVerified === false);
+  const allDocumentsVerified = documents.length > 0 && documents.every(doc => doc.isVerified !== null);
 
-  const handleMarkComplete = () => {
-    if (allVerified) {
+const handleMarkComplete = async () => {
+  console.log('handleMarkComplete called');
+  console.log('allVerified:', allVerified);
+  console.log('submissionId:', submissionId);
+  
+  if (!allVerified || !submissionId) {
+    console.log('Conditions not met - returning early');
+    return;
+  }
+
+  setIsSaving(true);
+  try {
+    const verifications = documents.map(doc => ({
+      documentId: doc.id,
+      isApproved: doc.isVerified === true,
+      comment: doc.comment,
+    }));
+
+    console.log('Calling verifySubmissionDocuments with:', {
+      submissionId,
+      verifications,
+      overallFeedback: 'All documents have been verified and approved.'
+    });
+
+    const result = await verifySubmissionDocuments(
+      submissionId,
+      verifications,
+      'All documents have been verified and approved.'
+    );
+
+    console.log('Result from verifySubmissionDocuments:', result);
+
+    if (result.success) {
+      alert('Documents verified successfully!');
       router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
+    } else {
+      alert(`Error: ${result.error}`);
     }
+  } catch (error) {
+    console.error('Error saving verification:', error);
+    alert('Failed to save verification');
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
   };
 
-  const handleMarkIncomplete = () => {
-    if (hasRejected) {
-      router.push(`/staffmodule/submissions/waiting-revision?id=${submissionId}`);
-    }
+  const getFullName = () => {
+    if (!submissionData) return '';
+    const { firstName, middleName, lastName } = submissionData.projectLeader;
+    return [firstName, middleName, lastName].filter(Boolean).join(' ');
   };
 
   const historyEvents = [
     {
       id: 1,
       title: 'Submission Received',
-      date: 'May 15, 2023 • 09:45 AM',
+      date: submissionData ? formatDate(submissionData.submittedAt) : 'N/A',
       icon: 'submission' as const,
       isCurrent: true,
     },
   ];
 
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading submission details...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!submissionData) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="text-center py-12">
+          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Submission not found
+          </p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button with Icon */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -119,24 +232,42 @@ export default function SubmissionVerificationPage() {
       </div>
 
       <SubmissionHeader
-        title="UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms"
-        submittedBy="Juan Dela Cruz"
-        submittedDate="July 24, 2025"
-        coAuthors="Jeon Wonwoo, Choi Seungcheol, and Lee Dokyeom"
-        submissionId="SUB-2025-001"
+        title={submissionData.title}
+        submittedBy={getFullName()}
+        submittedDate={formatDate(submissionData.submittedAt)}
+        coAuthors={submissionData.coAuthors || 'N/A'}
+        submissionId={submissionData.submissionId}
       />
 
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Conditional Grid - Full width for reviews/history */}
       <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
-        {/* Main Content */}
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
-            <DocumentVerificationList
-              documents={documents}
-              onVerify={handleVerify}
-            />
+            <>
+              {documents.length > 0 ? (
+                <DocumentVerificationList
+                  documents={documents.map((doc, index) => ({
+                    id: index,
+                    name: doc.name,
+                    isVerified: doc.isVerified,
+                    comment: doc.comment,
+                    fileUrl: doc.fileUrl,
+                  }))}
+                  onVerify={handleVerify}
+                  isSaving={isSaving}
+                />
+              ) : (
+                <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
+                  <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    No documents found for this submission.
+                  </p>
+                  <p className="text-sm text-gray-400 mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Documents may not have been uploaded yet.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {activeTab === 'reviews' && (
@@ -152,50 +283,53 @@ export default function SubmissionVerificationPage() {
           )}
         </div>
 
-        {/* Sidebar - Only show in overview tab */}
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
               status="New Submission"
               details={{
-                submissionDate: 'July 24, 2025',
+                submissionDate: formatDate(submissionData.submittedAt),
                 reviewersRequired: 5,
                 reviewersAssigned: 0,
               }}
               authorInfo={{
-                name: 'Juan Dela Cruz',
-                organization: 'Internal (UMAK)',
+                name: getFullName(),
+                organization: submissionData.organization || 'N/A',
                 school: 'University of Makati',
-                college: 'College of Computing and Information Sciences',
-                email: 'jdelacruz.st2342@umak.edu.ph',
+                college: submissionData.college || 'N/A',
+                email: submissionData.projectLeader.email,
               }}
               timeline={{
-                submitted: 'July 24, 2025',
-                reviewDue: 'August 5, 2025',
-                decisionTarget: 'August 10, 2025',
+                submitted: formatDate(submissionData.submittedAt),
+                reviewDue: 'TBD',
+                decisionTarget: 'TBD',
               }}
               statusMessage={
                 hasRejected
-                  ? 'This submission needs document revision from the researcher.'
+                  ? 'This submission has rejected documents and needs revision from the researcher.'
                   : allVerified
-                  ? 'All documents verified. Ready to send to secretariat for classification.'
-                  : undefined
+                    ? 'All documents verified. Ready to send to secretariat for classification.'
+                    : documents.length === 0
+                      ? 'No documents have been uploaded yet.'
+                      : 'Please verify all documents.'
               }
               onAction={
-                allVerified && !hasRejected
-                  ? handleMarkComplete
-                  : hasRejected
-                  ? handleMarkIncomplete
-                  : undefined
+                isSaving || !allDocumentsVerified || hasRejected
+                  ? undefined  
+                  : allVerified
+                    ? handleMarkComplete
+                    : undefined
               }
               actionLabel={
-                allVerified && !hasRejected
-                  ? 'Mark as Complete'
-                  : hasRejected
-                  ? 'Mark as Incomplete'
-                  : undefined
+                isSaving
+                  ? 'Saving...'
+                  : hasRejected || !allDocumentsVerified
+                    ? undefined 
+                    : allVerified
+                      ? 'Mark as Complete'
+                      : undefined
               }
-              actionType={hasRejected ? 'secondary' : 'primary'}
+              actionType="primary"
             />
           </div>
         )}

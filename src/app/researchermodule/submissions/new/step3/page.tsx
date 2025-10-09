@@ -1,16 +1,16 @@
 // app/researchermodule/submissions/new/step3/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import SubmissionStepLayout from '@/components/researcher/submission/SubmissionStepLayout';
 import RichTextEditor from '@/components/researcher/submission/RichTextEditor';
 import { FileUpload } from '@/components/researcher/submission/FormComponents';
 import { Plus, X } from 'lucide-react';
 
-// Word limits configuration (can be changed from backend)
+// Word limits configuration
 const WORD_LIMITS = {
-  title: 0, // No limit
+  title: 0,
   introduction: 300,
   background: 500,
   problemStatement: 400,
@@ -21,7 +21,7 @@ const WORD_LIMITS = {
   samplingTechnique: 300,
   researchInstrument: 400,
   statisticalTreatment: 300,
-  references: 0 // No limit
+  references: 0
 };
 
 interface ResearcherSignature {
@@ -32,53 +32,123 @@ interface ResearcherSignature {
 
 export default function Step3ResearchProtocol() {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    title: '',
-    introduction: '',
-    background: '',
-    problemStatement: '',
-    scopeDelimitation: '',
-    literatureReview: '',
-    methodology: '',
-    population: '',
-    samplingTechnique: '',
-    researchInstrument: '',
-    statisticalTreatment: '',
-    references: '',
-  });
-
-  const [researchers, setResearchers] = useState<ResearcherSignature[]>([
-    { id: '1', name: '', signature: null }
-  ]);
-
-  useEffect(() => {
-    const saved = localStorage.getItem('step3Data');
-    if (saved) {
-      const parsedData = JSON.parse(saved);
-      setFormData(parsedData.formData || parsedData);
-      if (parsedData.researchers) {
-        // Don't persist files, only names
-        setResearchers(parsedData.researchers.map((r: any) => ({ ...r, signature: null })));
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const [formData, setFormData] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step3Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          return parsedData.formData || parsedData;
+        } catch (error) {
+          console.error('Error loading saved data:', error);
+        }
       }
-    } else {
-      // Pre-fill title and first researcher from step 1
+      
       const step1 = localStorage.getItem('step1Data');
       if (step1) {
-        const step1Data = JSON.parse(step1);
-        const fullName = `${step1Data.projectLeaderFirstName || ''} ${step1Data.projectLeaderMiddleName || ''} ${step1Data.projectLeaderLastName || ''}`.trim();
-        setFormData(prev => ({
-          ...prev, 
-          title: step1Data.title || '',
-        }));
-        setResearchers([{ id: '1', name: fullName, signature: null }]);
+        try {
+          const step1Data = JSON.parse(step1);
+          return {
+            title: step1Data.title || '',
+            introduction: '',
+            background: '',
+            problemStatement: '',
+            scopeDelimitation: '',
+            literatureReview: '',
+            methodology: '',
+            population: '',
+            samplingTechnique: '',
+            researchInstrument: '',
+            statisticalTreatment: '',
+            references: '',
+          };
+        } catch (error) {
+          console.error('Error loading step1 data:', error);
+        }
       }
     }
-  }, []);
+    
+    // Default empty state
+    return {
+      title: '',
+      introduction: '',
+      background: '',
+      problemStatement: '',
+      scopeDelimitation: '',
+      literatureReview: '',
+      methodology: '',
+      population: '',
+      samplingTechnique: '',
+      researchInstrument: '',
+      statisticalTreatment: '',
+      references: '',
+    };
+  });
+
+  const [researchers, setResearchers] = useState<ResearcherSignature[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step3Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          if (parsedData.researchers) {
+            return parsedData.researchers.map((r: any) => ({ ...r, signature: null }));
+          }
+        } catch (error) {
+          console.error('Error loading researchers:', error);
+        }
+      }
+      
+      // Fallback to step1 leader name
+      const step1 = localStorage.getItem('step1Data');
+      if (step1) {
+        try {
+          const step1Data = JSON.parse(step1);
+          const fullName = `${step1Data.projectLeaderFirstName || ''} ${step1Data.projectLeaderMiddleName || ''} ${step1Data.projectLeaderLastName || ''}`.trim();
+          return [{ id: '1', name: fullName, signature: null }];
+        } catch (error) {
+          console.error('Error loading step1 data:', error);
+        }
+      }
+    }
+    
+    return [{ id: '1', name: '', signature: null }];
+  });
+
+  // Auto-save on data change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = {
+        formData,
+        researchers: researchers.map(r => ({ id: r.id, name: r.name, signature: null }))
+      };
+      localStorage.setItem('step3Data', JSON.stringify(dataToSave));
+      console.log('✅ Data saved to localStorage');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, researchers]);
 
   const handleNext = () => {
     const dataToSave = {
       formData,
-      researchers: researchers.map(r => ({ id: r.id, name: r.name, signature: null })) // Don't save files
+      researchers: researchers.map(r => ({ id: r.id, name: r.name, signature: null }))
     };
     localStorage.setItem('step3Data', JSON.stringify(dataToSave));
     router.push('/researchermodule/submissions/new/step4');
@@ -132,6 +202,7 @@ export default function Step3ResearchProtocol() {
               <li>• <strong>Alignment & indentation:</strong> Align text left/center/right/justify, adjust indentation</li>
               <li>• <strong>Media uploads:</strong> Upload images and tables per section</li>
               <li>• <strong>Word limits:</strong> Some sections have maximum word counts - please stay within limits</li>
+              <li>• <strong>Auto-save:</strong> Your progress is automatically saved every few seconds</li>
             </ul>
           </div>
         </div>
@@ -154,7 +225,7 @@ export default function Step3ResearchProtocol() {
           />
         </div>
 
-        {/* All RichTextEditor sections remain the same */}
+        {/* All RichTextEditor sections */}
         <RichTextEditor
           label="II. Introduction (Highlights)"
           value={formData.introduction}
@@ -253,7 +324,7 @@ export default function Step3ResearchProtocol() {
           required
         />
 
-        {/* Accomplished By Section - FULLY RESPONSIVE */}
+        {/* Accomplished By Section */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg mt-10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <h4 className="font-bold text-[#1E293B] text-base sm:text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -277,7 +348,6 @@ export default function Step3ResearchProtocol() {
           <div className="space-y-4 sm:space-y-6">
             {researchers.map((researcher, index) => (
               <div key={researcher.id} className="bg-white p-4 sm:p-6 rounded-lg border-2 border-gray-200 relative">
-                {/* Remove Button */}
                 {researchers.length > 1 && (
                   <button
                     type="button"
@@ -294,7 +364,6 @@ export default function Step3ResearchProtocol() {
                 </h5>
 
                 <div className="space-y-4">
-                  {/* Printed Name */}
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Printed Name <span className="text-red-600">*</span>
@@ -310,7 +379,6 @@ export default function Step3ResearchProtocol() {
                     />
                   </div>
 
-                  {/* Signature Upload */}
                   <div>
                     <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Signature <span className="text-red-600">*</span>
@@ -339,7 +407,7 @@ export default function Step3ResearchProtocol() {
             Important Note:
           </h4>
           <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Please ensure all sections are completed thoroughly. Your research protocol will be reviewed by the ethics committee to assess the scientific merit and ethical considerations of your study. You can save your progress and return to edit later before final submission.
+            Your progress is automatically saved. You can safely close or refresh this page and return later. All your data will be preserved until final submission.
           </p>
         </div>
       </form>

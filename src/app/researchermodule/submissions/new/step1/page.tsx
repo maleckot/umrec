@@ -1,7 +1,7 @@
 // app/researchermodule/submissions/new/step1/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react'; // ✅ Add useEffect and useRef
 import { useRouter } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
@@ -9,9 +9,11 @@ import { ArrowLeft } from 'lucide-react';
 
 export default function Step1ResearcherDetails() {
   const router = useRouter();
+  const isInitialMount = useRef(true); 
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
+  
   const [formData, setFormData] = useState({
     title: '',
-    studySite: '',
     projectLeaderFirstName: '',
     projectLeaderMiddleName: '',
     projectLeaderLastName: '',
@@ -19,17 +21,39 @@ export default function Step1ResearcherDetails() {
     projectLeaderContact: '',
     coAuthors: '',
     organization: 'internal',
-    college: '',
-    typeOfStudy: [] as string[],
-    multicenter: '',
-    sourceOfFunding: [] as string[],
-    fundingOthers: '',
-    startDate: '',
-    endDate: '',
-    numParticipants: '',
-    technicalReview: '',
-    submittedToOtherUMREC: ''
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('step1Data');
+    if (saved) {
+      try {
+        const parsedData = JSON.parse(saved);
+        setFormData(parsedData);
+      } catch (error) {
+        console.error('Error loading Step 1 data:', error);
+      }
+    }
+    isInitialMount.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (isInitialMount.current) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      localStorage.setItem('step1Data', JSON.stringify(formData));
+      console.log('💾 Step 1 auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +74,6 @@ export default function Step1ResearcherDetails() {
           {/* Back Button, Step Number, and Title */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-6">
-              {/* Back Button - Same size as step number */}
               <button
                 onClick={handleBack}
                 className="w-12 h-12 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors cursor-pointer"
@@ -58,12 +81,10 @@ export default function Step1ResearcherDetails() {
                 <ArrowLeft size={20} className="text-[#1E293B]" />
               </button>
               
-              {/* Step Number */}
               <div className="w-12 h-12 bg-[#1E293B] text-white rounded-full flex items-center justify-center font-bold text-xl flex-shrink-0">
                 1
               </div>
               
-              {/* Title and Description */}
               <div>
                 <h1 className="text-2xl font-bold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Researcher Details
@@ -108,6 +129,7 @@ export default function Step1ResearcherDetails() {
                   required
                 />
               </div>
+
 
               {/* Project Leader Full Name */}
               <div>
@@ -208,7 +230,7 @@ export default function Step1ResearcherDetails() {
                 </select>
               </div>
 
-              {/* Navigation Button - Only Next */}
+              {/* Navigation Button */}
               <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
                 <button
                   type="submit"

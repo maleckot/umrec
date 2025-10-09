@@ -20,20 +20,27 @@ export default function Step7EndorsementLetter() {
     }
   }, []);
 
-  const handleNext = () => {
-    if (!file) {
-      alert('Please upload a valid endorsement letter.');
-      return;
-    }
+    const handleNext = () => {
+      if (!file) {
+        alert('Please upload a valid research instrument document.');
+        return;
+      }
 
-    const dataToSave = {
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedAt: new Date().toISOString()
+      // Convert file to base64 and store in sessionStorage
+      const reader = new FileReader();
+      reader.onload = () => {
+        sessionStorage.setItem('step7File', reader.result as string);
+        
+        const dataToSave = {
+          fileName: file.name,
+          fileSize: file.size,
+          uploadedAt: new Date().toISOString()
+        };
+        localStorage.setItem('step7Data', JSON.stringify(dataToSave));
+        router.push('/researchermodule/submissions/new/step8');
+      };
+      reader.readAsDataURL(file);
     };
-    localStorage.setItem('step7Data', JSON.stringify(dataToSave));
-    router.push('/researchermodule/submissions/new/step8');
-  };
 
   const handleBack = () => {
     router.push('/researchermodule/submissions/new/step6');

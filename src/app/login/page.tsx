@@ -28,23 +28,18 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      // Debug: Check if session exists
       console.log('Login data:', data);
       console.log('User ID:', data.user.id);
       console.log('Session:', data.session);
 
-      // Wait a moment for session to be set in storage
       await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Check if auth token is being sent
       const { data: { session } } = await supabase.auth.getSession();
       console.log('Current session after login:', session);
 
-      // Create a new client with the session explicitly set
       const authenticatedSupabase = createClient();
       await authenticatedSupabase.auth.setSession(data.session!);
 
-      // Now query with the authenticated client
       const { data: profile, error: profileError } = await authenticatedSupabase
         .from('profiles')
         .select('role')
@@ -59,10 +54,9 @@ export default function LoginPage() {
         return;
       }
 
-      // Redirect based on role
       switch (profile.role) {
         case 'admin':
-          router.push('/admin/dashboard');
+          router.push('/adminmodule');
           break;
         case 'staff':
           router.push('/staffmodule');
@@ -74,7 +68,7 @@ export default function LoginPage() {
           router.push('/reviewermodule');
           break;
         case 'secretariat':
-          router.push('/secretariat/dashboard');
+          router.push('/secretariatmodule');
           break;
         default:
           router.push('/dashboard');

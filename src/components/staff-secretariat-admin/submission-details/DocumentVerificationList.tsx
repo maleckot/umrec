@@ -1,7 +1,7 @@
 // components/staff-secretariat-admin/submission-details/DocumentVerificationList.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Check, Eye } from 'lucide-react';
 import DocumentViewerModal from './DocumentViewerModal';
 
@@ -10,29 +10,43 @@ interface Document {
   name: string;
   isVerified: boolean | null;
   comment?: string;
-  fileUrl?: string; // URL to the document
+  fileUrl?: string;
 }
 
 interface DocumentVerificationListProps {
   documents: Document[];
   onVerify: (documentId: number, isApproved: boolean, comment?: string) => void;
+  isSaving?: boolean;
 }
 
-export default function DocumentVerificationList({ documents, onVerify }: DocumentVerificationListProps) {
+export default function DocumentVerificationList({ documents, onVerify, isSaving }: DocumentVerificationListProps) {
   const [activeCommentId, setActiveCommentId] = useState<number | null>(null);
-  const [commentText, setCommentText] = useState('');
+  const [comments, setComments] = useState<{ [key: number]: string }>({});
   
-  // Document Viewer Modal State
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+
+  useEffect(() => {
+    const initialComments: { [key: number]: string } = {};
+    documents.forEach((doc) => {
+      if (doc.comment) {
+        initialComments[doc.id] = doc.comment;
+      }
+    });
+    setComments(initialComments);
+  }, [documents]);
 
   const handleReject = (docId: number) => {
     setActiveCommentId(docId);
   };
 
   const handleSubmitComment = (docId: number) => {
-    onVerify(docId, false, commentText);
-    setCommentText('');
+    const comment = comments[docId] || '';
+    
+    onVerify(docId, false, comment);
+    
+    setComments((prev) => ({ ...prev, [docId]: '' }));
+    
     setActiveCommentId(null);
   };
 
@@ -58,8 +72,8 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
           </div>
 
           <div className="space-y-3">
-            {documents.map((doc) => (
-              <div key={doc.id} className="border border-gray-200 rounded-lg overflow-hidden">
+            {documents.map((doc, index) => (
+              <div key={`doc-${index}-${doc.name}`} className="border border-gray-200 rounded-lg overflow-hidden">
                 <div className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors">
                   <button
                     onClick={() => handleViewDocument(doc)}
@@ -71,18 +85,21 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
                   </button>
                   
                   <div className="flex items-center gap-2">
+                    {/* ✅ Keep buttons visible, just disable while saving */}
                     {doc.isVerified === null && (
                       <>
                         <button
                           onClick={() => handleReject(doc.id)}
-                          className="p-2 rounded-full hover:bg-red-100 transition-colors"
+                          disabled={isSaving}
+                          className="p-2 rounded-full hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Reject"
                         >
                           <X size={20} className="text-red-600" />
                         </button>
                         <button
                           onClick={() => onVerify(doc.id, true)}
-                          className="p-2 rounded-full hover:bg-green-100 transition-colors"
+                          disabled={isSaving}
+                          className="p-2 rounded-full hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                           title="Approve"
                         >
                           <Check size={20} className="text-green-600" />
@@ -106,24 +123,25 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
                   </div>
                 </div>
 
-                {/* Comment Section */}
-                {activeCommentId === doc.id && (
+                {activeCommentId === doc.id && doc.isVerified === null && (
                   <div className="p-3 bg-white border-t border-gray-200">
                     <label className="block text-xs font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Feedback:
                     </label>
                     <textarea
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
+                      value={comments[doc.id] || ''}
+                      onChange={(e) => setComments((prev) => ({ ...prev, [doc.id]: e.target.value }))}
                       placeholder="Kindly resubmit your files, they appear to be incomplete."
                       className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                       rows={3}
+                      disabled={isSaving}
                     />
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => handleSubmitComment(doc.id)}
-                        className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                        disabled={isSaving || !comments[doc.id]?.trim()}
+                        className="px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
                         Submit Feedback
@@ -131,9 +149,10 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
                       <button
                         onClick={() => {
                           setActiveCommentId(null);
-                          setCommentText('');
+                          setComments((prev) => ({ ...prev, [doc.id]: '' }));
                         }}
-                        className="px-4 py-2 bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-400 transition-colors"
+                        disabled={isSaving}
+                        className="px-4 py-2 bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-400 transition-colors disabled:opacity-50"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
                         Cancel
@@ -142,7 +161,6 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
                   </div>
                 )}
 
-                {/* Show existing comment if rejected - DARKER TEXT */}
                 {doc.isVerified === false && doc.comment && (
                   <div className="p-3 bg-red-50 border-t border-red-200">
                     <p className="text-xs font-semibold text-red-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -159,7 +177,6 @@ export default function DocumentVerificationList({ documents, onVerify }: Docume
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
       {selectedDocument && (
         <DocumentViewerModal
           isOpen={viewerOpen}

@@ -35,7 +35,7 @@ const NAV_LINKS = {
   researcher: {
     mainLinks: [
       { href: '/researchermodule', text: 'Dashboard' },
-      { href: '/researchermodule/submissions/new/step1', text: 'Submission' },
+      { href: '/researchermodule/submissions/new', text: 'Submission' },
       { href: '/help-center', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [

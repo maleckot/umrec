@@ -20,20 +20,28 @@ export default function Step6ProposalDefense() {
     }
   }, []);
 
-  const handleNext = () => {
-    if (!file) {
-      alert('Please upload a valid proposal defense certification.');
-      return;
-    }
+      const handleNext = () => {
+        if (!file) {
+          alert('Please upload a valid research instrument document.');
+          return;
+        }
 
-    const dataToSave = {
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedAt: new Date().toISOString()
-    };
-    localStorage.setItem('step6Data', JSON.stringify(dataToSave));
-    router.push('/researchermodule/submissions/new/step7');
-  };
+        // Convert file to base64 and store in sessionStorage
+        const reader = new FileReader();
+        reader.onload = () => {
+          sessionStorage.setItem('step6File', reader.result as string);
+          
+          const dataToSave = {
+            fileName: file.name,
+            fileSize: file.size,
+            uploadedAt: new Date().toISOString()
+          };
+          localStorage.setItem('step6Data', JSON.stringify(dataToSave));
+          router.push('/researchermodule/submissions/new/step7');
+        };
+        reader.readAsDataURL(file);
+      };
+
 
   const handleBack = () => {
     router.push('/researchermodule/submissions/new/step5');

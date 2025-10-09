@@ -5,78 +5,168 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import Breadcrumbs from '@/components/researcher-reviewer/Breadcrumbs';
 import BackButton from '@/components/researcher-reviewer/BackButton';
-import FileCard from '@/components/researcher/FileCard';
 import ActivityInfoCard from '@/components/researcher/ActivityInfoCard';
 import PreviewCard from '@/components/researcher-reviewer/PreviewCard';
 import RevisionCard from '@/components/researcher/RevisionCard';
 import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { getSubmissionActivity } from '@/app/actions/getSubmissionActivity';
+
+interface Document {
+  id: number;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;
+  fileSize: number;
+  uploadedAt: string;
+  isApproved?: boolean | null;      
+  needsRevision?: boolean;           
+  revisionComment?: string | null;   
+}
 
 export default function ActivityDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activityId = searchParams.get('id');
+  const docId = searchParams.get('docId');
 
-  // Example data - in real app, fetch based on ID
-  const [activityData, setActivityData] = useState({
-    filename: 'Application Form Ethics Review.pdf',
-    fileType: 'PDF File',
-    fileUrl: '/path/to/your/file.pdf', // Replace with actual file URL
-    dateSubmitted: 'July 8, 2025',
-    status: 'Under Review', // Can be: "Under Review", "Requires Revision", "Approved", etc.
-    receivedForReview: 'Dr. Juan Dela Cruz',
+  const [loading, setLoading] = useState(true);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [submissionData, setSubmissionData] = useState({
+    dateSubmitted: '',
+    status: '',
+    submissionId: '',
+    title: '',
     revisionCount: 0,
-    needsRevision: false, // Set to false by default
+    needsRevision: false,
     revisionMessage: '',
   });
 
   useEffect(() => {
-    // Fetch activity data based on activityId and determine if revision is needed
     if (activityId) {
-      console.log('Loading activity:', activityId);
+      loadActivityData();
+    }
+  }, [activityId, docId]);
+
+  const loadActivityData = async () => {
+    if (!activityId) return;
+
+    setLoading(true);
+    try {
+      const result = await getSubmissionActivity(activityId);
       
-      // Example: Simulate different statuses based on ID
-      if (activityId === '3' || activityId === '4') {
-        // IDs 3 and 4 need revision
-        setActivityData({
-          filename: activityId === '3' ? 'Application Form Ethics Review.pdf' : 'Informed Consent Form.pdf',
-          fileType: 'PDF File',
-          fileUrl: '/path/to/your/file.pdf',
-          dateSubmitted: 'July 8, 2025',
-          status: 'Requires Revision',
-          receivedForReview: 'Dr. Juan Dela Cruz',
-          revisionCount: 1,
-          needsRevision: true,
-          revisionMessage: 'For the full ethical review to commence, it is essential that [Specific Section/Issue Name] be addressed and revised accordingly.',
+      if (result.success && result.submission && result.revisionInfo) {
+        let filteredDocs = result.documents;
+        
+        if (docId) {
+          filteredDocs = result.documents.filter(doc => doc.id.toString() === docId);
+        }
+        
+        setDocuments(filteredDocs);
+        const selected = filteredDocs[0] || null;
+        setSelectedDocument(selected);
+        
+        setSubmissionData({
+          title: result.submission.title,
+          submissionId: result.submission.submissionId,
+          dateSubmitted: formatDate(result.submission.submittedAt),
+          status: getStatusLabel(result.submission.status),
+          revisionCount: result.revisionInfo.revisionCount,
+          needsRevision: selected?.needsRevision || false,
+          revisionMessage: selected?.revisionComment || result.revisionInfo.message,
         });
       } else {
-        // IDs 1, 2, 5 are just for viewing
-        setActivityData({
-          filename: 'Title of the project.pdf',
-          fileType: 'PDF File',
-          fileUrl: '/path/to/your/file.pdf',
-          dateSubmitted: 'July 8, 2025',
-          status: activityId === '5' ? 'Approved' : 'Under Review',
-          receivedForReview: 'Dr. Juan Dela Cruz',
-          revisionCount: 0,
-          needsRevision: false,
-          revisionMessage: '',
-        });
+        alert(result.error || 'Failed to load activity');
+        router.push('/researchermodule');
       }
+    } catch (error) {
+      console.error('Error loading activity:', error);
+      alert('Failed to load activity details');
+    } finally {
+      setLoading(false);
     }
-  }, [activityId]);
-
-  const handleResubmit = () => {
-    console.log('Resubmit clicked');
-    router.push('/researcher/submission');
   };
 
-  // Breadcrumb items
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const getStatusLabel = (status: string) => {
+    const statusMap: { [key: string]: string } = {
+      'new_submission': 'Under Review',
+      'awaiting_classification': 'Under Initial Review',
+      'needs_revision': 'Requires Revision',
+      'under_review': 'Under Ethics Review',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+    };
+    return statusMap[status] || status;
+  };
+
+  const getDocumentTypeLabel = (type: string) => {
+    const typeMap: { [key: string]: string } = {
+      'consolidated_application': 'Consolidated Application',
+      'research_instrument': 'Research Instrument',
+      'endorsement_letter': 'Endorsement Letter',
+      'proposal_defense': 'Proposal Defense',
+      'application_form': 'Application Form',
+      'research_protocol': 'Research Protocol',
+      'consent_form': 'Consent Form',
+    };
+    return typeMap[type] || type;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const handleResubmit = () => {
+    const documentTypeToStep: { [key: string]: string } = {
+      'application_form': 'step2',
+      'research_protocol': 'step3',
+      'consent_form': 'step4',
+      'research_instrument': 'step5',
+      'proposal_defense': 'step6',
+      'endorsement_letter': 'step7',
+    };
+
+    if (selectedDocument && selectedDocument.needsRevision) {
+      const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
+      router.push(`/researchermodule/submissions/new/${step}?mode=revision&id=${activityId}`);
+    } else {
+      router.push(`/researchermodule/submissions/new/step1`);
+    }
+  };
+
   const breadcrumbItems = [
     { label: 'Dashboard', href: '/researchermodule' },
     { label: 'Activity Details' },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+        <NavbarRoles role="researcher" />
+        <div className="flex-grow flex items-center justify-center mt-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50] mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading activity details...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
@@ -84,46 +174,86 @@ export default function ActivityDetailsPage() {
 
       <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
         <div className="max-w-7xl mx-auto">
-          {/* Breadcrumbs */}
           <Breadcrumbs items={breadcrumbItems} />
           
           <BackButton label="Activity Details" href="/researchermodule" />
 
-          {/* File Card */}
           <div className="mb-6">
-            <FileCard
-              filename={activityData.filename}
-              fileType={activityData.fileType}
-              fileUrl={activityData.fileUrl}
-            />
+            <h1 
+              className="text-3xl font-bold" 
+              style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}
+            >
+              {submissionData.title}
+            </h1>
+            <p 
+              className="text-gray-600 mt-2" 
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            >
+              Submission ID: {submissionData.submissionId}
+            </p>
           </div>
 
-          {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Activity Info */}
             <div className="lg:col-span-1">
               <ActivityInfoCard
-                dateSubmitted={activityData.dateSubmitted}
-                status={activityData.status}
-                receivedForReview={activityData.receivedForReview}
-                revisionCount={activityData.revisionCount}
+                dateSubmitted={submissionData.dateSubmitted}
+                status={submissionData.status}
+                receivedForReview="UMREC Review Committee"
+                revisionCount={submissionData.revisionCount}
               />
             </div>
 
-            {/* Right Column - Preview and Conditional Revision */}
+            {/* Right Column - Documents and Preview */}
             <div className="lg:col-span-2 space-y-6">
-              <PreviewCard fileUrl={activityData.fileUrl} filename={activityData.filename} />
+              {/* Document Info Card */}
+              {selectedDocument && (
+                <div className="bg-white rounded-xl p-6 border border-gray-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 
+                        className="font-bold text-lg text-[#101C50] mb-1" 
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      >
+                        {getDocumentTypeLabel(selectedDocument.fileType)}
+                      </h3>
+                      <p 
+                        className="text-sm text-gray-500" 
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      >
+                        {selectedDocument.fileName} • {formatFileSize(selectedDocument.fileSize)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-              {/* Revision Card - Only show if needs revision */}
-              {activityData.needsRevision && (
+              {/* Document Preview */}
+              {selectedDocument ? (
+                <PreviewCard 
+                  fileUrl={selectedDocument.fileUrl} 
+                  filename={selectedDocument.fileName} 
+                />
+              ) : (
+                <div className="bg-white rounded-xl p-6 border border-gray-200">
+                  <p className="text-gray-500 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    No document available for preview
+                  </p>
+                </div>
+              )}
+
+              {submissionData.needsRevision && submissionData.revisionMessage && (
                 <RevisionCard
-                  message={activityData.revisionMessage}
-                  isVisible={activityData.needsRevision}
+                  message={submissionData.revisionMessage}
+                  isVisible={submissionData.needsRevision}
                 />
               )}
 
-              {/* Resubmit Button - Only show if needs revision */}
-              {activityData.needsRevision && (
+              {submissionData.needsRevision && (
                 <ResubmitButton onClick={handleResubmit} />
               )}
             </div>
