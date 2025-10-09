@@ -20,10 +20,10 @@ interface DocumentWithVerification {
   isVerified: boolean | null;
   comment: string;
   fileUrl?: string;
-  previousState?: {
+    previousState?: {
     isVerified: boolean | null;
     comment: string;
-  } | null;
+  } | null; 
 }
 
 export default function SubmissionVerificationPage() {
@@ -65,19 +65,6 @@ export default function SubmissionVerificationPage() {
             fileUrl: doc.url,
             previousState: null,
           }));
-      if (result.documents && result.documents.length > 0) {
-
-        const filteredDocs = result.documents.filter(
-          (doc: any) => doc.type !== 'consolidated_application'
-        );
-
-        const mappedDocs: DocumentWithVerification[] = filteredDocs.map((doc: any) => ({
-          id: doc.id,
-          name: doc.name,
-          isVerified: doc.isVerified, 
-          comment: doc.comment || '',
-          fileUrl: doc.url,
-        }));
 
           console.log('Mapped documents with verifications:', mappedDocs);
           setDocuments(mappedDocs);
@@ -104,7 +91,6 @@ export default function SubmissionVerificationPage() {
     const originalDocuments = [...documents];
 
     try {
-      // Save previous state before updating
       const updatedDocuments = documents.map((doc, index) =>
         index === documentIndex
           ? { 
@@ -130,7 +116,7 @@ export default function SubmissionVerificationPage() {
         undefined
       );
 
-      if (!result.success) {
+     if (!result.success) {
         alert(`Error: ${result.error}`);
         setDocuments(originalDocuments); 
       }
@@ -193,7 +179,7 @@ export default function SubmissionVerificationPage() {
   const hasRejected = documents.some(doc => doc.isVerified === false);
   const allDocumentsVerified = documents.length > 0 && documents.every(doc => doc.isVerified !== null);
 
-  const handleMarkComplete = async () => {
+ const handleMarkComplete = async () => {
     console.log('handleMarkComplete called');
     console.log('allVerified:', allVerified);
     console.log('submissionId:', submissionId);
@@ -238,36 +224,6 @@ export default function SubmissionVerificationPage() {
       setIsSaving(false);
     }
   };
-    if (result.success) {
-      console.log('✅ Documents verified. Generating consolidated PDF...');
-      
-      try {
-        const { generateConsolidatedFromDatabase } = await import('@/app/actions/generateConsolidatedFromDatabase');
-        const pdfResult = await generateConsolidatedFromDatabase(submissionId);
-
-        if (pdfResult.success) {
-          console.log('✅ Consolidated PDF generated successfully');
-          alert('Documents verified and consolidated PDF generated successfully!');
-        } else {
-          console.error('❌ Failed to generate PDF:', pdfResult.error);
-          alert(`Documents verified, but failed to generate consolidated PDF: ${pdfResult.error}`);
-        }
-      } catch (pdfError) {
-        console.error('❌ Error generating PDF:', pdfError);
-        alert('Documents verified, but failed to generate consolidated PDF');
-      }
-
-      router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
-    } else {
-      alert(`Error: ${result.error}`);
-    }
-  } catch (error) {
-    console.error('Error saving verification:', error);
-    alert('Failed to save verification');
-  } finally {
-    setIsSaving(false);
-  }
-};
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -357,6 +313,7 @@ export default function SubmissionVerificationPage() {
                     comment: doc.comment,
                     fileUrl: doc.fileUrl,
                     previousState: doc.previousState,
+
                   }))}
                   onVerify={handleVerify}
                   onUndo={handleUndo}
