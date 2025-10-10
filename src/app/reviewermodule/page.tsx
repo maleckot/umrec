@@ -4,52 +4,46 @@
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getReviewerDashboardData } from '@/app/actions/getReviewerDashboardData';
 
 export default function ReviewerDashboard() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
-  // Sample data - replace with actual data from API
-  const stats = {
-    newAssignments: 2,
-    overdueReviews: 1,
-    completedReviews: 24,
+  useEffect(() => {
+
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const result = await getReviewerDashboardData();
+      if (result.success) {
+        setDashboardData(result);
+      } else {
+        console.error('Failed to load dashboard data:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const newAssignments = [
-    {
-      id: 1,
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Expedited',
-      assignedDate: '08-03-2025',
-      dueDate: '08-27-2025',
-    },
-    {
-      id: 2,
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Full Review',
-      assignedDate: '08-23-2025',
-      dueDate: '09-02-2025',
-    },
-  ];
+  const stats = {
+    newAssignments: dashboardData?.stats.newAssignments || 0,
+    overdueReviews: dashboardData?.stats.overdueReviews || 0,
+    completedReviews: dashboardData?.stats.completedReviews || 0,
+  };
 
-  const overdueReviews = [
-    {
-      id: 3,
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Expedited',
-      dueDate: '08-27-2025',
-    },
-    {
-      id: 4,
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Full Review',
-      dueDate: '09-02-2025',
-    },
-  ];
+  const newAssignments = dashboardData?.newAssignments || [];
+  const overdueReviews = dashboardData?.overdueReviews || [];
 
   const handleStartReview = (assignment: any) => {
     console.log('Opening modal for:', assignment);
@@ -61,8 +55,25 @@ export default function ReviewerDashboard() {
     console.log('Confirmed review for:', selectedSubmission);
     setModalOpen(false);
     // Navigate to review submission page
-    router.push(`/reviewermodule/review-submission?id=${selectedSubmission.id}`);
+    router.push(`/reviewermodule/review-submission?id=${selectedSubmission.submissionId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+        <NavbarRoles role="reviewer" />
+        <div className="flex-grow flex items-center justify-center mt-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading dashboard...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
@@ -75,7 +86,7 @@ export default function ReviewerDashboard() {
             Reviewer Dashboard
           </h1>
 
-          {/* Stats Cards - Removed borders */}
+          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* New Assignments */}
             <div className="bg-white rounded-2xl p-6 shadow-md flex items-center justify-between">
@@ -129,206 +140,226 @@ export default function ReviewerDashboard() {
             </div>
           </div>
 
-          {/* New Assignments Table - Removed border */}
+          {/* New Assignments Table */}
           <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md mb-8">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
               New Assignments
             </h2>
 
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full table-fixed">
-                <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left pb-4 pr-4 w-[40%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      TITLE
-                    </th>
-                    <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      CATEGORY
-                    </th>
-                    <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      ASSIGNED DATE
-                    </th>
-                    <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      DUE DATE
-                    </th>
-                    <th className="text-center pb-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      ACTION
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {newAssignments.map((assignment) => (
-                    <tr key={assignment.id} className="border-b border-gray-200">
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {newAssignments.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  No new assignments
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full table-fixed">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="text-left pb-4 pr-4 w-[40%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          TITLE
+                        </th>
+                        <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          CATEGORY
+                        </th>
+                        <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          ASSIGNED DATE
+                        </th>
+                        <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          DUE DATE
+                        </th>
+                        <th className="text-center pb-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          ACTION
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {newAssignments.map((assignment: any) => (
+                        <tr key={assignment.id} className="border-b border-gray-200">
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {assignment.title}
+                            </p>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {assignment.category}
+                            </p>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {assignment.assignedDate}
+                            </p>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {assignment.dueDate}
+                            </p>
+                          </td>
+                          <td className="py-4 text-center">
+                            <button
+                              onClick={() => handleStartReview(assignment)}
+                              className="px-6 py-2.5 w-[140px] bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
+                              style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                            >
+                              Start Review
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {newAssignments.map((assignment: any) => (
+                    <div key={assignment.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
+                        <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {assignment.title}
                         </p>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {assignment.category}
-                        </p>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {assignment.assignedDate}
-                        </p>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
+                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {assignment.category}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ASSIGNED DATE</p>
+                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {assignment.assignedDate}
+                          </p>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</p>
+                        <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {assignment.dueDate}
                         </p>
-                      </td>
-                      <td className="py-4 text-center">
-                        <button
-                          onClick={() => handleStartReview(assignment)}
-                          className="px-6 py-2.5 w-[140px] bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
-                          style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
-                        >
-                          Start Review
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                      <button
+                        onClick={() => handleStartReview(assignment)}
+                        className="w-full px-6 py-2.5 bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
+                        style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                      >
+                        Start Review
+                      </button>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {newAssignments.map((assignment) => (
-                <div key={assignment.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
-                    <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {assignment.title}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
-                      <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {assignment.category}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ASSIGNED DATE</p>
-                      <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {assignment.assignedDate}
-                      </p>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</p>
-                    <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {assignment.dueDate}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleStartReview(assignment)}
-                    className="w-full px-6 py-2.5 bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
-                    style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
-                  >
-                    Start Review
-                  </button>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
 
-          {/* Overdue Reviews Table - Removed border */}
+          {/* Overdue Reviews Table */}
           <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#7C1100' }}>
               Overdue Reviews
             </h2>
 
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full table-fixed">
-                <thead>
-                  <tr className="border-b-2 border-gray-300">
-                    <th className="text-left pb-4 pr-4 w-[55%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      TITLE
-                    </th>
-                    <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      CATEGORY
-                    </th>
-                    <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      DUE DATE
-                    </th>
-                    <th className="text-center pb-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
-                      ACTION
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {overdueReviews.map((review) => (
-                    <tr key={review.id} className="border-b border-gray-200">
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {overdueReviews.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  No overdue reviews
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full table-fixed">
+                    <thead>
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="text-left pb-4 pr-4 w-[55%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          TITLE
+                        </th>
+                        <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          CATEGORY
+                        </th>
+                        <th className="text-left pb-4 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          DUE DATE
+                        </th>
+                        <th className="text-center pb-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 700 }}>
+                          ACTION
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overdueReviews.map((review: any) => (
+                        <tr key={review.id} className="border-b border-gray-200">
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {review.title}
+                            </p>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {review.category}
+                            </p>
+                          </td>
+                          <td className="py-4 pr-4">
+                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {review.dueDate}
+                            </p>
+                          </td>
+                          <td className="py-4 text-center">
+                            <button
+                              onClick={() => handleStartReview(review)}
+                              className="px-6 py-2.5 w-[140px] bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
+                              style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                            >
+                              Start Review
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {overdueReviews.map((review: any) => (
+                    <div key={review.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
+                        <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {review.title}
                         </p>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {review.category}
-                        </p>
-                      </td>
-                      <td className="py-4 pr-4">
-                        <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {review.dueDate}
-                        </p>
-                      </td>
-                      <td className="py-4 text-center">
-                        <button
-                          onClick={() => handleStartReview(review)}
-                          className="px-6 py-2.5 w-[140px] bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
-                          style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
-                        >
-                          Start Review
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
+                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {review.category}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</p>
+                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {review.dueDate}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleStartReview(review)}
+                        className="w-full px-6 py-2.5 bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
+                        style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                      >
+                        Start Review
+                      </button>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-4">
-              {overdueReviews.map((review) => (
-                <div key={review.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
-                    <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {review.title}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
-                      <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {review.category}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</p>
-                      <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {review.dueDate}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleStartReview(review)}
-                    className="w-full px-6 py-2.5 bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
-                    style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
-                  >
-                    Start Review
-                  </button>
                 </div>
-              ))}
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>

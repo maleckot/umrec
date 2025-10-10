@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface Reviewer {
-  id: number;
+  id: string;  // ✅ Changed from number to string (UUID)
   name: string;
+  email?: string;
   availability: string;
 }
 
@@ -14,11 +15,11 @@ interface ReviewerAssignmentProps {
   category: 'Exempted' | 'Expedited' | 'Full Review';
   reviewers: Reviewer[];
   maxReviewers: number;
-  onAssign: (selectedReviewers: number[]) => void;
+  onAssign: (selectedReviewers: string[]) => void; 
 }
 
 export default function ReviewerAssignment({ category, reviewers, maxReviewers, onAssign }: ReviewerAssignmentProps) {
-  const [selectedReviewers, setSelectedReviewers] = useState<number[]>([]);
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]); 
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
@@ -26,7 +27,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
     r.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleToggleReviewer = (reviewerId: number) => {
+  const handleToggleReviewer = (reviewerId: string) => {  
     if (selectedReviewers.includes(reviewerId)) {
       setSelectedReviewers(selectedReviewers.filter(id => id !== reviewerId));
     } else {

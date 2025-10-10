@@ -12,6 +12,8 @@ import ReviewerAssignment from '@/components/staff-secretariat-admin/submission-
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
+import { getReviewers } from '@/app/actions/getReviewers';
+import { assignReviewers } from '@/app/actions/assignReviewers'; 
 
 export default function AssignReviewersPage() {
   const router = useRouter();
@@ -20,6 +22,7 @@ export default function AssignReviewersPage() {
   
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [reviewers, setReviewers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
 
   useEffect(() => {
@@ -33,14 +36,26 @@ export default function AssignReviewersPage() {
 
     setLoading(true);
     try {
-      const result = await getClassificationDetails(submissionId);
+      // Load submission details
+      const submissionResult = await getClassificationDetails(submissionId);
+      
+      // Load reviewers from database
+      const reviewersResult = await getReviewers();
 
-      if (result.success) {
-        setData(result);
+      if (submissionResult.success) {
+        setData(submissionResult);
       } else {
-        alert(result.error || 'Failed to load submission');
+        alert(submissionResult.error || 'Failed to load submission');
         router.push('/staffmodule/submissions');
+        return;
       }
+
+      if (reviewersResult.success) {
+        setReviewers(reviewersResult.reviewers || []);
+      } else {
+        console.error('Failed to load reviewers:', reviewersResult.error);
+      }
+
     } catch (error) {
       console.error('Error:', error);
       alert('Failed to load submission details');
@@ -83,19 +98,23 @@ export default function AssignReviewersPage() {
     }
   };
 
-  const reviewers = [
-    { id: 1, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
-    { id: 2, name: 'Prof. Maria Santos - 202', availability: 'Busy' },
-    { id: 3, name: 'Prof. Antonio Garcia - 203', availability: 'Available' },
-    { id: 4, name: 'Prof. Emily Johnson - 204', availability: 'Available' },
-    { id: 5, name: 'Prof. Michael Chen - 205', availability: 'Available' },
-  ];
-
-  const handleAssign = (selectedReviewers: number[]) => {
-    // TODO: Create assignReviewers server action
-    console.log('Assigned reviewers:', selectedReviewers);
-    router.push(`/staffmodule/submissions/under-review?id=${submissionId}`);
-  };
+const handleAssign = async (selectedReviewers: string[]) => {
+  console.log('Assigning reviewers:', selectedReviewers);
+  
+  try {
+    const result = await assignReviewers(submissionId!, selectedReviewers);
+    
+    if (result.success) {
+      alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
+      router.push(`/staffmodule/submissions/under-review?id=${submissionId}`);
+    } else {
+      alert(result.error || 'Failed to assign reviewers');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to assign reviewers');
+  }
+};
 
   const historyEvents = data ? [
     {

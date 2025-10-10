@@ -41,6 +41,9 @@ export default function StaffDashboard() {
     else if (submission.status === 'Classified') {
       router.push(`/staffmodule/submissions/assign-reviewers?id=${submission.id}`);
     } 
+    else if (submission.status === 'Under Review') {
+      router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);
+    } 
     else {
       router.push(`/staffmodule/submissions/details?id=${submission.id}`);
     }
