@@ -13,6 +13,7 @@ import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getSubmissionDetails } from '@/app/actions/getSubmissionDetails';
 import { verifySubmissionDocuments } from '@/app/actions/verifySubmissionDocuments';
+import { completeVerification } from '@/app/actions/completeVerification';
 
 interface DocumentWithVerification {
   id: string;
@@ -20,10 +21,10 @@ interface DocumentWithVerification {
   isVerified: boolean | null;
   comment: string;
   fileUrl?: string;
-    previousState?: {
+  previousState?: {
     isVerified: boolean | null;
     comment: string;
-  } | null; 
+  } | null;
 }
 
 export default function SubmissionVerificationPage() {
@@ -57,14 +58,17 @@ export default function SubmissionVerificationPage() {
         setSubmissionData(result.submission);
 
         if (result.documents && result.documents.length > 0) {
-          const mappedDocs: DocumentWithVerification[] = result.documents.map((doc: any) => ({
-            id: doc.id,
-            name: doc.name,
-            isVerified: doc.isVerified, 
-            comment: doc.comment || '',
-            fileUrl: doc.url,
-            previousState: null,
-          }));
+          // Filter out consolidated files
+          const mappedDocs: DocumentWithVerification[] = result.documents
+            .filter((doc: any) => !doc.name.toLowerCase().includes('consolidated'))
+            .map((doc: any) => ({
+              id: doc.id,
+              name: doc.name,
+              isVerified: doc.isVerified,
+              comment: doc.comment || '',
+              fileUrl: doc.url,
+              previousState: null,
+            }));
 
           console.log('Mapped documents with verifications:', mappedDocs);
           setDocuments(mappedDocs);
@@ -93,15 +97,15 @@ export default function SubmissionVerificationPage() {
     try {
       const updatedDocuments = documents.map((doc, index) =>
         index === documentIndex
-          ? { 
-              ...doc, 
-              isVerified: isApproved, 
-              comment: comment || '',
-              previousState: {
-                isVerified: doc.isVerified,
-                comment: doc.comment,
-              }
+          ? {
+            ...doc,
+            isVerified: isApproved,
+            comment: comment || '',
+            previousState: {
+              isVerified: doc.isVerified,
+              comment: doc.comment,
             }
+          }
           : doc
       );
       setDocuments(updatedDocuments);
@@ -116,14 +120,14 @@ export default function SubmissionVerificationPage() {
         undefined
       );
 
-     if (!result.success) {
+      if (!result.success) {
         alert(`Error: ${result.error}`);
-        setDocuments(originalDocuments); 
+        setDocuments(originalDocuments);
       }
     } catch (error) {
       console.error('Error saving verification:', error);
       alert('Failed to save verification');
-      setDocuments(originalDocuments); 
+      setDocuments(originalDocuments);
     } finally {
       setIsSaving(false);
     }
@@ -137,16 +141,16 @@ export default function SubmissionVerificationPage() {
 
     try {
       const previousState = documents[documentIndex].previousState!;
-      
+
       // Restore previous state
       const restoredDocuments = documents.map((doc, index) =>
         index === documentIndex
-          ? { 
-              ...doc, 
-              isVerified: previousState.isVerified, 
-              comment: previousState.comment,
-              previousState: null,
-            }
+          ? {
+            ...doc,
+            isVerified: previousState.isVerified,
+            comment: previousState.comment,
+            previousState: null,
+          }
           : doc
       );
       setDocuments(restoredDocuments);
@@ -179,11 +183,9 @@ export default function SubmissionVerificationPage() {
   const hasRejected = documents.some(doc => doc.isVerified === false);
   const allDocumentsVerified = documents.length > 0 && documents.every(doc => doc.isVerified !== null);
 
- const handleMarkComplete = async () => {
+  const handleMarkComplete = async () => {
     console.log('handleMarkComplete called');
-    console.log('allVerified:', allVerified);
-    console.log('submissionId:', submissionId);
-    
+
     if (!allVerified || !submissionId) {
       console.log('Conditions not met - returning early');
       return;
@@ -197,29 +199,17 @@ export default function SubmissionVerificationPage() {
         comment: doc.comment,
       }));
 
-      console.log('Calling verifySubmissionDocuments with:', {
-        submissionId,
-        verifications,
-        overallFeedback: 'All documents have been verified and approved.'
-      });
-
-      const result = await verifySubmissionDocuments(
-        submissionId,
-        verifications,
-        'All documents have been verified and approved.'
-      );
-
-      console.log('Result from verifySubmissionDocuments:', result);
+      const result = await completeVerification(submissionId, verifications);
 
       if (result.success) {
-        alert('Documents verified successfully!');
+        alert('Documents verified and consolidated PDF generated successfully!');
         router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
       } else {
         alert(`Error: ${result.error}`);
       }
     } catch (error) {
-      console.error('Error saving verification:', error);
-      alert('Failed to save verification');
+      console.error('Error:', error);
+      alert('Failed to complete verification');
     } finally {
       setIsSaving(false);
     }
@@ -313,7 +303,6 @@ export default function SubmissionVerificationPage() {
                     comment: doc.comment,
                     fileUrl: doc.fileUrl,
                     previousState: doc.previousState,
-
                   }))}
                   onVerify={handleVerify}
                   onUndo={handleUndo}
@@ -377,7 +366,7 @@ export default function SubmissionVerificationPage() {
               }
               onAction={
                 isSaving || !allDocumentsVerified || hasRejected
-                  ? undefined  
+                  ? undefined
                   : allVerified
                     ? handleMarkComplete
                     : undefined
@@ -386,7 +375,7 @@ export default function SubmissionVerificationPage() {
                 isSaving
                   ? 'Saving...'
                   : hasRejected || !allDocumentsVerified
-                    ? undefined 
+                    ? undefined
                     : allVerified
                       ? 'Mark as Complete'
                       : undefined

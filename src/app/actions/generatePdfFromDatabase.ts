@@ -51,7 +51,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       .from('research_submissions')
       .select('*')
       .eq('id', submissionId)
-      .eq('user_id', user.id)
       .single();
 
     if (submissionError || !submission) {

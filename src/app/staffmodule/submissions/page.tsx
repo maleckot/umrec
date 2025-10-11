@@ -5,189 +5,118 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import SearchBar from '@/components/staff-secretariat-admin/SearchBar';
 import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar } from 'lucide-react';
+import { getAllSubmissions } from '@/app/actions/getAllSubmissions';
 
 export default function SubmissionsPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('Newest');
+  const [sortBy, setSortBy] = useState<'Newest' | 'Oldest' | 'A-Z' | 'Z-A'>('Newest');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
   const itemsPerPage = 10;
 
-  // Expanded sample data with more items for pagination
-  const allSubmissionsData = [
-    {
-      id: 'SUB-2025-001',
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      date: '07-24-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 'SUB-2025-002',
-      title: 'Effectiveness of Online Learning Platforms in Higher Education',
-      date: '08-03-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 'SUB-2025-003',
-      title: 'Impact of Social Media on Student Mental Health and Academic Performance',
-      date: '08-15-2025',
-      status: 'Unassigned',
-    },
-    {
-      id: 'SUB-2025-004',
-      title: 'Analysis of Cybersecurity Threats in Cloud Computing Environments',
-      date: '08-20-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 'SUB-2025-005',
-      title: 'Machine Learning Approaches for Early Disease Detection in Medical Imaging',
-      date: '09-01-2025',
-      status: 'Under Revision',
-    },
-    {
-      id: 'SUB-2025-006',
-      title: 'Sustainable Urban Planning: Green Infrastructure Implementation',
-      date: '09-05-2025',
-      status: 'Review Complete',
-    },
-    {
-      id: 'SUB-2025-007',
-      title: 'Blockchain Technology Applications in Supply Chain Management',
-      date: '09-10-2025',
-      status: 'New Submission',
-    },
-    {
-      id: 'SUB-2025-008',
-      title: 'The Role of Artificial Intelligence in Personalized Education',
-      date: '09-12-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 'SUB-2025-009',
-      title: 'Climate Change Adaptation Strategies for Coastal Communities',
-      date: '09-15-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 'SUB-2025-010',
-      title: 'Investigating the Effects of Remote Work on Employee Productivity',
-      date: '09-18-2025',
-      status: 'Unassigned',
-    },
-    // Add more dummy data for pagination
-    ...Array.from({ length: 40 }, (_, i) => ({
-      id: `SUB-2025-${String(i + 11).padStart(3, '0')}`,
-      title: `Research Study ${i + 11}: Various Topics in Science and Technology`,
-      date: `09-${String(Math.floor(i / 3) + 20).padStart(2, '0')}-2025`,
-      status: ['New Submission', 'Under Classification', 'Unassigned', 'Under Review', 'Under Revision', 'Review Complete'][i % 6],
-    })),
-  ];
+  useEffect(() => {
+    loadSubmissions();
+  }, [currentPage, searchQuery, sortBy, statusFilter, startDate, endDate]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'New Submission':
-        return 'text-blue-600 bg-blue-50';
-      case 'Under Classification':
-        return 'text-amber-600 bg-amber-50';
-      case 'Unassigned':
-        return 'text-orange-600 bg-orange-50';
-      case 'Under Review':
-        return 'text-purple-600 bg-purple-50';
-      case 'Under Revision':
-        return 'text-pink-600 bg-pink-50';
-      case 'Review Complete':
-        return 'text-green-600 bg-green-50';
-      default:
-        return 'text-gray-600 bg-gray-100';
+  const loadSubmissions = async () => {
+    setLoading(true);
+    try {
+      const result = await getAllSubmissions({
+        page: currentPage,
+        limit: itemsPerPage,
+        searchQuery,
+        sortBy,
+        statusFilter: statusFilter === 'All Statuses' ? undefined : statusFilter,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+      });
+
+      if (result.success) {
+        setSubmissions(result.data || []);
+        setTotalCount(result.total || 0);
+      } else {
+        console.error('Failed to load submissions:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading submissions:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Filter and sort data
-  const filteredAndSortedData = useMemo(() => {
-    let filtered = [...allSubmissionsData];
-
-    // Apply search filter
-    if (searchQuery) {
-      filtered = filtered.filter(item =>
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Apply status filter
-    if (statusFilter !== 'All Statuses') {
-      filtered = filtered.filter(item => item.status === statusFilter);
-    }
-
-    // Apply date range filter
-    if (startDate || endDate) {
-      filtered = filtered.filter(item => {
-        const itemDate = new Date(item.date);
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-        
-        if (start && end) {
-          return itemDate >= start && itemDate <= end;
-        } else if (start) {
-          return itemDate >= start;
-        } else if (end) {
-          return itemDate <= end;
-        }
-        return true;
-      });
-    }
-
-    // Apply sorting
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'Newest':
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
-        case 'Oldest':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
-        case 'A-Z':
-          return a.title.localeCompare(b.title);
-        case 'Z-A':
-          return b.title.localeCompare(a.title);
-        default:
-          return 0;
-      }
-    });
-
-    return filtered;
-  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
+  const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentPageData = filteredAndSortedData.slice(startIndex, endIndex);
+  const endIndex = Math.min(startIndex + itemsPerPage, totalCount);
 
-  // Reset to page 1 when filters change
-  useMemo(() => {
-    setCurrentPage(1);
-  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
+  function formatStatus(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'new_submission': 'New Submission',
+      'pending_review': 'Review Pending',
+      'awaiting_classification': 'Under Classification',
+      'under_review': 'Under Review',
+      'classified': 'Classified',
+      'review_complete': 'Review Complete',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'needs_revision': 'Needs Revision',
+      'revision_requested': 'Revision Requested',
+    };
+    return statusMap[status] || status;
+  }
+
+  function getStatusColor(status: string): string {
+    const colorMap: { [key: string]: string } = {
+      'new_submission': 'bg-blue-50 text-blue-600',
+      'pending_review': 'bg-blue-50 text-blue-600',
+      'awaiting_classification': 'bg-amber-50 text-amber-600',
+      'under_review': 'bg-purple-50 text-purple-600',
+      'classified': 'bg-amber-50 text-amber-600',
+      'review_complete': 'bg-green-50 text-green-600',
+      'approved': 'bg-green-50 text-green-600',
+      'rejected': 'bg-red-50 text-red-600',
+      'needs_revision': 'bg-red-50 text-red-600',
+      'revision_requested': 'bg-orange-50 text-orange-600',
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-600';
+  }
 
   const columns = [
     {
       key: 'title',
       label: 'TITLE',
       align: 'left' as const,
+      render: (value: string, row: any) => (
+        <div>
+          <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {value}
+          </p>
+          <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            ID: {row.submission_id}
+          </p>
+        </div>
+      ),
     },
     {
-      key: 'date',
+      key: 'submitted_at',
       label: 'DATE',
       align: 'center' as const,
       render: (value: string) => (
         <span className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {value}
+          {new Date(value).toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric',
+          })}
         </span>
       ),
     },
@@ -196,45 +125,40 @@ export default function SubmissionsPage() {
       label: 'STATUS',
       align: 'center' as const,
       render: (value: string) => (
-        <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {value}
+        <span 
+          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`} 
+          style={{ fontFamily: 'Metropolis, sans-serif' }}
+        >
+          {formatStatus(value)}
         </span>
       ),
     },
   ];
 
-  // Navigate to appropriate page based on status
-  const handleRowClick = (row: any) => {
-    switch (row.status) {
-      case 'New Submission':
-        router.push(`/staffmodule/submissions/details?id=${row.id}`);
-        break;
-      case 'Under Classification':
-        router.push(`/staffmodule/submissions/waiting-classification?id=${row.id}`);
-        break;
-      case 'Unassigned':
-        router.push(`/staffmodule/submissions/assign-reviewers?id=${row.id}`);
-        break;
-      case 'Under Review':
-        router.push(`/staffmodule/submissions/under-review?id=${row.id}`);
-        break;
-      case 'Under Revision':
-        router.push(`/staffmodule/submissions/waiting-revision?id=${row.id}`);
-        break;
-      case 'Review Complete':
-        router.push(`/staffmodule/submissions/review-complete?id=${row.id}`);
-        break;
-      default:
-        router.push(`/staffmodule/submissions/details?id=${row.id}`);
+  const handleRowClick = (submission: any) => {
+      if (submission.status === 'awaiting_classification') {
+      router.push(`/staffmodule/submissions/waiting-classification?id=${submission.id}`);
+    } 
+    else if (submission.status === 'classified') {
+      router.push(`/staffmodule/submissions/assign-reviewers?id=${submission.id}`);
+    } 
+    else if (submission.status === 'under_review') {
+      router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);
+    } 
+    else {
+      router.push(`/staffmodule/submissions/details?id=${submission.id}`);
     }
   };
 
-  const resultsText = `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} results`;
+  const resultsText = `Showing ${startIndex + 1}-${endIndex} of ${totalCount} results`;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submissions" activeNav="submissions">
       <div className="bg-white rounded-xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100 flex flex-col" style={{ minHeight: '60vh' }}>
-        {/* Search Bar */}
         <SearchBar
           placeholder="Search submissions..."
           value={searchQuery}
@@ -250,7 +174,7 @@ export default function SubmissionsPage() {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => setSortBy(e.target.value as 'Newest' | 'Oldest' | 'A-Z' | 'Z-A')}
               className="w-full px-3 sm:px-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 cursor-pointer"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
@@ -273,12 +197,13 @@ export default function SubmissionsPage() {
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               <option value="All Statuses">All Statuses</option>
-              <option value="New Submission">New Submission</option>
-              <option value="Under Classification">Under Classification</option>
-              <option value="Unassigned">Unassigned</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Under Revision">Under Revision</option>
-              <option value="Review Complete">Review Complete</option>
+              <option value="new_submission">New Submission</option>
+              <option value="awaiting_classification">Under Classification</option>
+              <option value="under_review">Under Review</option>
+              <option value="review_complete">Review Complete</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="needs_revision">Needs Revision</option>
             </select>
           </div>
 
@@ -331,26 +256,63 @@ export default function SubmissionsPage() {
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="flex-1 overflow-x-auto -mx-3 sm:mx-0">
-          <div className="min-w-full inline-block align-middle">
-            <DataTable
-              columns={columns}
-              data={currentPageData}
-              onRowClick={handleRowClick}
-            />
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Loading submissions...
+              </p>
+            </div>
           </div>
-        </div>
+        ) : submissions.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center py-12">
+              <svg 
+                className="w-16 h-16 text-gray-300 mx-auto mb-4" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                />
+              </svg>
+              <p className="text-gray-500 text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                No submissions found
+              </p>
+              <p className="text-gray-400 text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {searchQuery || statusFilter !== 'All Statuses' 
+                  ? 'Try adjusting your filters' 
+                  : 'No submissions have been submitted yet'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 overflow-x-auto -mx-3 sm:mx-0">
+              <div className="min-w-full inline-block align-middle">
+                <DataTable
+                  columns={columns}
+                  data={submissions}
+                  onRowClick={handleRowClick}
+                />
+              </div>
+            </div>
 
-        {/* Pagination */}
-        <div className="mt-4">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            resultsText={resultsText}
-          />
-        </div>
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                resultsText={resultsText}
+              />
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
   );

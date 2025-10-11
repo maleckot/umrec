@@ -1,4 +1,4 @@
-// src/app/actions/getSecretariatDashboardData.ts
+// app/actions/getSecretariatDashboardData.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -7,102 +7,136 @@ export async function getSecretariatDashboardData() {
   try {
     const supabase = await createClient();
 
-    // Get authenticated user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
-      return { success: false, error: 'Not authenticated' };
+      throw new Error('User not authenticated');
     }
 
-    // Get all submissions
-    const { data: submissions, error: submissionsError } = await supabase
+    // 1. Total submissions
+    const { count: totalSubmissions } = await supabase
       .from('research_submissions')
-      .select('*')
-      .order('submitted_at', { ascending: false });
+      .select('*', { count: 'exact', head: true });
 
-    if (submissionsError) {
-      return { success: false, error: 'Failed to fetch submissions' };
-    }
+    // 2. Pending classification (new submissions not yet classified)
+    const { count: pendingClassification } = await supabase
+      .from('research_submissions')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'new_submission');
 
-    // Calculate stats
-    const stats = {
-      totalSubmissions: submissions.length,
-      pendingClassification: submissions.filter(s => s.status === 'under_classification').length,
-      activeReviewers: 0, // TODO: Calculate from reviews
-      completedClassifications: submissions.filter(s => s.status === 'classified' || s.status === 'under_review').length,
-    };
+    // 3. Active reviewers
+    const { data: activeReviewersData } = await supabase
+      .from('reviewer_assignments')
+      .select('reviewer_id')
+      .is('completed_at', null);
+    
+    const activeReviewers = new Set(activeReviewersData?.map(r => r.reviewer_id)).size;
 
-    // Get pending classification submissions (those with consolidated PDFs)
-    const pendingClassification = submissions
-      .filter(s => s.status === 'under_classification')
-      .slice(0, 5)
-      .map(s => ({
-        id: s.id,
-        submissionId: s.submission_id,
-        title: s.title,
-        submittedBy: `${s.project_leader_first_name} ${s.project_leader_last_name}`,
-        date: new Date(s.submitted_at).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        }),
-        status: 'Under Classification',
-        statusColor: 'text-amber-600 bg-amber-50',
-      }));
+    // 4. Completed classifications (all classified submissions)
+    const { count: completedClassifications } = await supabase
+      .from('research_submissions')
+      .select('*', { count: 'exact', head: true })
+      .not('classification_type', 'is', null);
 
-    const recentSubmissions = submissions.slice(0, 4).map(s => {
-      const statusMap: any = {
-        'submitted': { label: 'New Submission', color: 'text-blue-600 bg-blue-50' },
-        'pending_verification': { label: 'New Submission', color: 'text-blue-600 bg-blue-50' },
-        'pending_review': { label: 'New Submission', color: 'text-blue-600 bg-blue-50' },
-        'under_classification': { label: 'Under Classification', color: 'text-amber-600 bg-amber-50' },
-        'awaiting_classification': { label: 'Under Classification', color: 'text-amber-600 bg-amber-50' },
-        'classified': { label: 'Classified', color: 'text-amber-600 bg-amber-50' },
-        'exempted': { label: 'Exempted', color: 'text-green-600 bg-green-50' },
-        'under_review': { label: 'Under Review', color: 'text-purple-600 bg-purple-50' },
-        'review_complete': { label: 'Review Complete', color: 'text-green-600 bg-green-50' },
-        'approved': { label: 'Approved', color: 'text-green-600 bg-green-50' },
-        'rejected': { label: 'Rejected', color: 'text-red-600 bg-red-50' },
-        'needs_revision': { label: 'Needs Revision', color: 'text-red-600 bg-red-50' },
-        'revision_requested': { label: 'Revision Requested', color: 'text-orange-600 bg-orange-50' },
-      };
-      const statusInfo = statusMap[s.status] || { label: s.status, color: 'text-gray-600 bg-gray-50' };
+    // 5. Recent submissions (last 10)
+    const { data: recentSubmissions } = await supabase
+      .from('research_submissions')
+      .select('id, submission_id, title, submitted_at, status')
+      .order('submitted_at', { ascending: false })
+      .limit(10);
 
-      return {
-        id: s.id,
-        title: s.title,
-        submissionId: s.submission_id,
-        date: new Date(s.submitted_at).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        }),
-        dbStatus: s.status,  // Original database status
-        classificationType: s.classification_type, // ✅ Add classification type
-        status: statusInfo.label,
-        statusColor: statusInfo.color,
-      };
-    });
+    // 6. Pending classification list with submitter info
+    const { data: pendingClassificationList } = await supabase
+      .from('research_submissions')
+      .select(`
+        id,
+        submission_id,
+        title,
+        submitted_at,
+        profiles:user_id (full_name)
+      `)
+      .eq('status', 'new_submission')
+      .order('submitted_at', { ascending: true })
+      .limit(5);
 
+    // 7. Overdue reviews (>7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Attention items
-    const attention = {
-      needsClassification: stats.pendingClassification,
-      overdueReviews: 0, // TODO: Calculate
-    };
+    const { count: overdueReviews } = await supabase
+      .from('reviewer_assignments')
+      .select('*', { count: 'exact', head: true })
+      .lte('due_date', sevenDaysAgo.toISOString())
+
+    // Format data
+    const formattedRecentSubmissions = recentSubmissions?.map(sub => ({
+      id: sub.id,
+      submissionId: sub.submission_id,
+      title: sub.title,
+      date: new Date(sub.submitted_at).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+      }),
+      status: formatStatus(sub.status),
+      statusColor: getStatusColor(sub.status),
+    })) || [];
+
+    const formattedPendingClassification = pendingClassificationList?.map(sub => ({
+      id: sub.id,
+      submissionId: sub.submission_id,
+      title: sub.title,
+      submittedBy: (sub.profiles as any)?.full_name || 'Unknown',
+      date: new Date(sub.submitted_at).toLocaleDateString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+      }),
+    })) || [];
 
     return {
       success: true,
-      stats,
-      recentSubmissions,
-      pendingClassification,
-      attention,
+      stats: {
+        totalSubmissions: totalSubmissions || 0,
+        pendingClassification: pendingClassification || 0,
+        activeReviewers: activeReviewers || 0,
+        completedClassifications: completedClassifications || 0,
+      },
+      recentSubmissions: formattedRecentSubmissions,
+      pendingClassification: formattedPendingClassification,
+      attention: {
+        needsClassification: pendingClassification || 0,
+        overdueReviews: overdueReviews || 0,
+      },
     };
-
   } catch (error) {
-    console.error('Error fetching dashboard data:', error);
+    console.error('Error fetching secretariat dashboard data:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch data',
+      error: error instanceof Error ? error.message : 'Failed to fetch dashboard data',
     };
   }
+}
+
+function formatStatus(status: string): string {
+  const statusMap: { [key: string]: string } = {
+    'new_submission': 'New Submission',
+    'awaiting_classification': 'Under Classification',
+    'under_review': 'Under Review',
+    'review_complete': 'Review Complete',
+    'approved': 'Approved',
+    'rejected': 'Rejected',
+  };
+  return statusMap[status] || status;
+}
+
+function getStatusColor(status: string): string {
+  const colorMap: { [key: string]: string } = {
+    'new_submission': 'bg-blue-50 text-blue-600',
+    'awaiting_classification': 'bg-amber-50 text-amber-600',
+    'under_review': 'bg-purple-50 text-purple-600',
+    'review_complete': 'bg-green-50 text-green-600',
+    'approved': 'bg-green-50 text-green-600',
+    'rejected': 'bg-red-50 text-red-600',
+  };
+  return colorMap[status] || 'bg-gray-100 text-gray-600';
 }

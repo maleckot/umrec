@@ -105,15 +105,15 @@ export default function ResearcherDashboard() {
     });
   };
 
-  const getTabLabel = (tab: string) => {
-    const labels: { [key: string]: string } = {
-      'all': 'All Activities',
-      'revision': 'Needs Revision',
-      'pending': 'Pending',
-      'approved': 'Approved'
-    };
-    return labels[tab] || tab;
-  };
+  // const getTabLabel = (tab: string) => {
+  //   const labels: { [key: string]: string } = {
+  //     'all': 'All Activities',
+  //     'revision': 'Needs Revision',
+  //     'pending': 'Pending',
+  //     'approved': 'Approved'
+  //   };
+  //   return labels[tab] || tab;
+  // };
 
   if (loading) {
     return (

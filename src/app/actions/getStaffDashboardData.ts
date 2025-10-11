@@ -49,23 +49,42 @@ export async function getStaffDashboardData() {
     const { count: needsVerification } = await supabase
       .from('research_submissions')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending_verification');
+      .eq('status', 'new_submission');
 
     // 7. Get classified submissions needing reviewer assignment
     const { count: needsAssignment } = await supabase
       .from('research_submissions')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'awaiting_classification');
+      .eq('status', 'classified');
 
-    // 8. Get overdue reviews
+    // 8. Get overdue reviews - DEBUG VERSION
+    const now = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const { count: overdueReviews } = await supabase
-      .from('research_submissions')
+    // First, check if we can read the table AT ALL
+    const { data: testData, error: testError } = await supabase
+      .from('reviewer_assignments')
+      .select('*')
+      .limit(1);
+
+    console.log('🟢 Can read reviewer_assignments?', { 
+      hasData: !!testData, 
+      error: testError?.message 
+    });
+
+    // Now try the count query for reviews overdue by MORE than 7 days
+    const { count: overdueCount, error: countError } = await supabase
+      .from('reviewer_assignments')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'under_review')
-      .lt('submitted_at', sevenDaysAgo.toISOString());
+      .lte('due_date', sevenDaysAgo.toISOString())  // ✅ due_date <= 7 days ago
+
+    console.log('🔴 Overdue (>7 days) query result:', { 
+      count: overdueCount, 
+      sevenDaysAgo: sevenDaysAgo.toISOString(),
+      error: countError?.message 
+    });
+
 
     return {
       success: true,
@@ -89,7 +108,7 @@ export async function getStaffDashboardData() {
       })),
       attention: {
         needsVerification: needsVerification || 0,
-        overdueReviews: overdueReviews || 0,
+        overdueReviews: overdueCount || 0,  
         needsAssignment: needsAssignment || 0,
       },
     };
@@ -104,8 +123,8 @@ export async function getStaffDashboardData() {
 
 function formatStatus(status: string): string {
   const statusMap: { [key: string]: string } = {
-    'pending_verification': 'New Submission',
-    'pending_review': 'New Submission',
+    'new_submission': 'New Submission',
+    'pending_review': 'Review Pending',
     'awaiting_classification': 'Under Classification',
     'under_review': 'Under Review',
     'classified': 'Classified',
@@ -120,9 +139,9 @@ function formatStatus(status: string): string {
 
 function getStatusColor(status: string): string {
   const colorMap: { [key: string]: string } = {
-    'pending_verification': 'bg-blue-50 text-blue-600',
+    'new_submission': 'bg-blue-50 text-blue-600',
     'pending_review': 'bg-blue-50 text-blue-600',
-    'awaiting_classification': 'bg-amber-50 text-amber-600', // ✅ Make sure this matches
+    'awaiting_classification': 'bg-amber-50 text-amber-600',
     'under_review': 'bg-purple-50 text-purple-600',
     'classified': 'bg-amber-50 text-amber-600',
     'review_complete': 'bg-green-50 text-green-600',

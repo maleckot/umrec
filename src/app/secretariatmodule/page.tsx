@@ -34,23 +34,8 @@ export default function SecretariatDashboard() {
   };
 
   const handleSubmissionClick = (submission: any) => {
-    // Check if submission has been classified and route accordingly
-    if (submission.classificationType) {
-      // If classified, go to specific classification page
-      if (submission.classificationType === 'Exempted') {
-        router.push(`/secretariatmodule/submissions/exempted?id=${submission.id}`);
-      } else if (submission.classificationType === 'Expedited' || submission.classificationType === 'Full Review') {
-        router.push(`/secretariatmodule/submissions/classified?id=${submission.id}&category=${submission.classificationType}`);
-      } else {
-        router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
-      }
-    } else if (submission.status === 'Under Classification') {
-      // If still needs classification, go to details page
-      router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
-    } else {
-      // Default to details page
-      router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
-    }
+    // Route to details page for all submissions
+    router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
   };
 
   const stats = [
@@ -147,7 +132,7 @@ export default function SecretariatDashboard() {
                 Pending Classification
               </h2>
               <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Consolidated submissions ready for classification
+                Submissions ready for classification
               </p>
             </div>
           </div>
@@ -194,7 +179,7 @@ export default function SecretariatDashboard() {
                     </td>
                     <td className="py-4 px-4 text-center">
                       <button
-                        onClick={() => router.push(`/secretariatmodule/submissions/classify?id=${submission.id}`)}
+                        onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
@@ -228,7 +213,7 @@ export default function SecretariatDashboard() {
                   </div>
                 </div>
                 <button
-                  onClick={() => router.push(`/secretariatmodule/submissions/classify?id=${submission.id}`)}
+                  onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)}
                   className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >

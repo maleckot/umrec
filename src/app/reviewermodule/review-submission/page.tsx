@@ -10,7 +10,8 @@ import PreviewCard from '@/components/researcher-reviewer/PreviewCard';
 import ReviewQuestionsCard from '@/components/reviewer/ReviewQuestionsCard';
 import ReviewSubmitSuccessModal from '@/components/reviewer/ReviewSubmitSuccessModal';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { getSubmissionForReview } from '@/app/actions/getSubmissionForReview';
 
 export default function ReviewSubmissionPage() {
   const router = useRouter();
@@ -21,20 +22,32 @@ export default function ReviewSubmissionPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isRevisionRequested, setIsRevisionRequested] = useState(false);
   const [reviewAnswers, setReviewAnswers] = useState<any>({});
+  const [submissionData, setSubmissionData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample data
-  const submissionData = {
-    title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-    description: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-    category: 'Full Review',
-    dateSubmitted: '08-10-2025',
-    dueDate: '09-30-2025',
-    researchDescription: 'This study investigates the relationship between dietary patterns and cardiovascular performance in adults aged 25-45. The research will collect data through surveys, cognitive assessments, and food diaries.',
-    fileUrl: '/path/to/file.pdf',
-    filename: 'Research Protocol.pdf',
+  useEffect(() => {
+    if (submissionId) {
+      loadSubmissionData();
+    }
+  }, [submissionId]);
+
+  const loadSubmissionData = async () => {
+    setLoading(true);
+    try {
+      const result = await getSubmissionForReview(submissionId!);
+      if (result.success) {
+        setSubmissionData(result.data);
+      } else {
+        console.error('Failed to load submission:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading submission:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Review sections with questions - Updated with proper structure
+  // Review sections with questions
   const reviewSections = [
     {
       title: 'Check the appropriate box.',
@@ -137,8 +150,7 @@ export default function ReviewSubmissionPage() {
       // Submit review
       console.log('Review submitted with answers:', reviewAnswers);
       
-      // Determine if revision was requested based on recommendation
-      const recommendation = reviewAnswers[5]; // Question ID 5 is the recommendation
+      const recommendation = reviewAnswers[5];
       const needsRevision = recommendation === 'Approved with Minor revision/s' || 
                            recommendation === 'Major revision/s and resubmission required' ||
                            recommendation === 'Disapproved';
@@ -153,37 +165,71 @@ export default function ReviewSubmissionPage() {
     router.push('/reviewermodule');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+        <NavbarRoles role="reviewer" />
+        <div className="flex-grow flex items-center justify-center mt-24">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading submission...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!submissionData) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+        <NavbarRoles role="reviewer" />
+        <div className="flex-grow flex items-center justify-center mt-24">
+          <div className="text-center">
+            <p className="text-gray-600 text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Submission not found
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
       <NavbarRoles role="reviewer" />
 
       <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
         <div className="max-w-7xl mx-auto">
-          {/* Breadcrumbs */}
           <Breadcrumbs items={breadcrumbItems} />
-
           <BackButton label="Review Submission" href="/reviewermodule" />
 
           {/* Submission Details */}
           <SubmissionDetailsCard
-            description={submissionData.description}
-            category={submissionData.category}
+            description={submissionData.title}
+            category={submissionData.classification_type || 'N/A'}
             dateSubmitted={submissionData.dateSubmitted}
             dueDate={submissionData.dueDate}
-            researchDescription={submissionData.researchDescription}
+            researchDescription={submissionData.research_description || 'No description provided'}
           />
 
-          {/* Two Column Layout - Adjusted proportions */}
+          {/* Two Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Left Column - PDF Preview (3 columns) */}
+            {/* Left Column - PDF Preview */}
             <div className="lg:col-span-3">
               <h3 className="text-lg md:text-xl font-bold mb-4" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
                 Reviewing Submission
               </h3>
-              <PreviewCard fileUrl={submissionData.fileUrl} filename={submissionData.filename} />
+              <PreviewCard 
+                fileUrl={submissionData.pdf_url} 
+                filename={submissionData.pdf_filename || 'Research Document.pdf'} 
+              />
             </div>
 
-            {/* Right Column - Review Questions (2 columns) */}
+            {/* Right Column - Review Questions */}
             <div className="lg:col-span-2">
               <div className="mb-4">
                 <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -222,7 +268,7 @@ export default function ReviewSubmissionPage() {
       {/* Success Modal */}
       <ReviewSubmitSuccessModal
         isOpen={showSuccessModal}
-        onClose={handleModalClose}
+        onClose={handleModalClose}  
         submissionTitle={submissionData.title}
         isRevisionRequested={isRevisionRequested}
       />

@@ -1,4 +1,3 @@
-// app/staffmodule/submissions/waiting-classification/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -11,6 +10,8 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
+import { generatePdfFromDatabase } from '@/app/actions/generatePdfFromDatabase';
+import { createClient } from '@/utils/supabase/client';
 
 export default function WaitingClassificationPage() {
   const router = useRouter();
@@ -20,6 +21,8 @@ export default function WaitingClassificationPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [data, setData] = useState<any>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
 
   useEffect(() => {
     if (submissionId) {
@@ -36,6 +39,12 @@ export default function WaitingClassificationPage() {
 
       if (result.success) {
         setData(result);
+        
+        // Check if consolidated document exists
+        if (!result.consolidatedDocument) {
+          // PDF doesn't exist, generate it in background
+          generateConsolidatedPdf();
+        }
       } else {
         alert(result.error || 'Failed to load submission');
         router.push('/staffmodule/submissions');
@@ -44,7 +53,86 @@ export default function WaitingClassificationPage() {
       console.error('Error:', error);
       alert('Failed to load submission details');
     } finally {
-      setLoading(false);
+      setLoading(false); // Page loads regardless of PDF status
+    }
+  };
+
+  const generateConsolidatedPdf = async () => {
+    if (!submissionId) return;
+
+    setGeneratingPdf(true);
+    setPdfError(null);
+
+    try {
+      console.log('🔄 Generating consolidated PDF...');
+      
+      const pdfResult = await generatePdfFromDatabase(submissionId);
+
+      if (!pdfResult.success) {
+        throw new Error(pdfResult.error);
+      }
+
+      if (!pdfResult.pdfData) {
+        throw new Error('PDF data is missing');
+      }
+
+      console.log('✅ PDF generated, uploading...');
+
+      const supabase = createClient();
+      
+      // Convert base64 to Blob for client-side upload
+      const base64Data = pdfResult.pdfData.split(',')[1] || pdfResult.pdfData;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const pdfBlob = new Blob([byteArray], { type: 'application/pdf' });
+
+      // Upload to storage
+      const fileName = `consolidated_${submissionId}_${Date.now()}.pdf`;
+      const filePath = `consolidated/${fileName}`;
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('research-documents')
+        .upload(filePath, pdfBlob, {
+          contentType: 'application/pdf',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      // Save to database
+      const { error: docError } = await supabase
+        .from('uploaded_documents')
+        .insert({
+          submission_id: submissionId,
+          file_name: fileName,
+          file_url: uploadData.path,
+          document_type: 'consolidated_application',
+          file_size: pdfBlob.size,
+          uploaded_at: new Date().toISOString()
+        });
+
+      if (docError) {
+        throw new Error(`Database save failed: ${docError.message}`);
+      }
+
+      console.log('✅ Consolidated PDF saved successfully');
+      
+      // Reload data to show the new PDF
+      const result = await getClassificationDetails(submissionId);
+      if (result.success) {
+        setData(result);
+      }
+    } catch (error) {
+      console.error('❌ PDF generation error:', error);
+      setPdfError(error instanceof Error ? error.message : 'Failed to generate PDF');
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -88,6 +176,7 @@ export default function WaitingClassificationPage() {
     },
   ] : [];
 
+  // Only show full-page loading on initial load
   if (loading) {
     return (
       <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
@@ -142,7 +231,31 @@ export default function WaitingClassificationPage() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
-              {data.consolidatedDocument ? (
+              {/* Show loading only in the document area */}
+              {generatingPdf ? (
+                <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-base font-medium text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Consolidated document is being generated...
+                  </p>
+                </div>
+              ) : pdfError ? (
+                <div className="bg-red-50 rounded-xl p-6 border border-red-200">
+                  <p className="text-red-700 font-semibold mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    ❌ Failed to generate consolidated document
+                  </p>
+                  <p className="text-sm text-red-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {pdfError}
+                  </p>
+                  <button
+                    onClick={generateConsolidatedPdf}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Retry Generation
+                  </button>
+                </div>
+              ) : data.consolidatedDocument ? (
                 <ConsolidatedDocument
                   title="Consolidated Document"
                   description="This submission has been verified and is now with the secretariat for classification."
@@ -153,7 +266,7 @@ export default function WaitingClassificationPage() {
               ) : (
                 <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
                   <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Consolidated document is being generated...
+                    Consolidated document not found.
                   </p>
                 </div>
               )}

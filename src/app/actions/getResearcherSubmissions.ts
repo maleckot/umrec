@@ -8,6 +8,8 @@ export async function getResearcherSubmissions() {
     const supabase = await createClient();
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    console.log('Auth user:', user?.id);
+    console.log('Auth error:', userError);
     if (userError || !user) {
       return { 
         success: false, 
@@ -17,14 +19,17 @@ export async function getResearcherSubmissions() {
         currentSubmission: null
       };
     }
-
+    console.log('Current user email:', user?.email);
+    console.log('Current user ID:', user?.id);
     // Fetch all submissions for this researcher
     const { data: submissions, error: submissionsError } = await supabase
       .from('research_submissions')
       .select('*')
       .eq('user_id', user.id)
       .order('submitted_at', { ascending: false });
-
+      console.log('Submissions count:', submissions?.length);
+      console.log('Submissions error:', submissionsError);
+      console.log('Raw submissions:', submissions);
     if (submissionsError) {
       return { 
         success: false, 
@@ -37,7 +42,6 @@ export async function getResearcherSubmissions() {
 
     const submissionList = submissions || [];
 
-    // Fetch documents for each submission WITH verification status
     const submissionsWithDocuments = await Promise.all(
       submissionList.map(async (submission) => {
         const { data: documents } = await supabase
@@ -46,16 +50,13 @@ export async function getResearcherSubmissions() {
           .eq('submission_id', submission.id)
           .order('uploaded_at', { ascending: true });
 
-        // ✅ Fetch verifications for this submission
         const { data: verifications } = await supabase
           .from('document_verifications')
           .select('*')
           .eq('submission_id', submission.id);
 
-        // Generate signed URLs for documents
         const documentsWithUrls = await Promise.all(
           (documents || []).map(async (doc) => {
-            // ✅ Find verification for this specific document
             const verification = verifications?.find(v => v.document_id === doc.id);
 
             const { data: urlData } = await supabase.storage
@@ -68,7 +69,6 @@ export async function getResearcherSubmissions() {
               fileType: doc.document_type,
               fileUrl: urlData?.signedUrl || null,
               fileSize: doc.file_size,
-              // ✅ Add verification status
               isApproved: verification?.is_approved ?? null,
               needsRevision: verification?.is_approved === false,
               revisionComment: verification?.feedback_comment || null,
@@ -85,10 +85,10 @@ export async function getResearcherSubmissions() {
 
     const stats = {
       active: submissionList.filter(s => 
-        ['new_submission', 'awaiting_classification', 'under_review', 'submitted', 'pending'].includes(s.status)
+        ['new_submission', 'awaiting_classification', 'under_review', 'submitted', 'pending_review', 'classified'].includes(s.status)
       ).length,
       pending: submissionList.filter(s => 
-        ['under_review', 'pending'].includes(s.status)
+        ['under_review', 'pending_review','classified'].includes(s.status)
       ).length,
       needsRevision: submissionList.filter(s => 
         s.status === 'needs_revision'

@@ -27,7 +27,7 @@ export async function saveClassification(
       .update({
         classification_type: category,  
         assigned_reviewers_count: reviewersRequired,
-        status: category === 'Exempted' ? 'exempted' : 'classified',
+        status: 'classified',
         classified_at: new Date().toISOString(),
         classified_by: user.id,
       })

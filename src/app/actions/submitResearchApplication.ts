@@ -34,7 +34,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       return value && value.trim() !== '' ? value : null;
     };
 
-    // Helper to upload file to Supabase Storage
     const uploadFile = async (base64Data: string, fileName: string, fileType: string) => {
       try {
         const base64Response = await fetch(base64Data);
@@ -91,7 +90,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         num_participants: parseNumber(formData.step2?.numParticipants),
         technical_review: safeString(formData.step2?.technicalReview),
         submitted_to_other_umrec: safeString(formData.step2?.submittedToOther),
-        status: 'pending_review',
+        status: 'new_submission',
         submitted_at: new Date().toISOString(),
         study_site: safeString(formData.step2?.studySiteType),
 
@@ -100,11 +99,9 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       .single();
 
     if (submissionError) {
-      console.error('❌ Submission insert error:', submissionError);
       throw submissionError;
     }
 
-    console.log('✅ Submission created with ID:', submission.id);
 
     // 2. Insert application form
     if (formData.step2 && Object.keys(formData.step2).length > 0) {
@@ -153,7 +150,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         throw appFormError;
       }
 
-      console.log('✅ Application form created');
     }
 
     // 3. Insert research protocol
@@ -264,9 +260,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       if (docsError) throw docsError;
     }
 
-    // ✅ 6. GENERATE AND SAVE 3 SEPARATE PDFs
-    console.log('📄 Generating separate PDFs...');
-
     try {
       // Helper to upload generated PDF
       const uploadGeneratedPdf = async (pdfResult: any, documentType: string, baseFileName: string) => {
@@ -291,7 +284,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
           return;
         }
 
-        // Save PDF record to database
         await supabase
           .from('uploaded_documents')
           .insert({
@@ -301,27 +293,19 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
             file_size: pdfBuffer.length,
             file_url: pdfPath,
           });
-
-        console.log(`✅ ${documentType} PDF generated and saved`);
       };
 
-      // Generate Application Form PDF
       const appFormPdf = await generateApplicationFormPdf(formData);
       await uploadGeneratedPdf(appFormPdf, 'application_form', 'Application_For_Ethics_Review');
 
-      // Generate Research Protocol PDF
       const protocolPdf = await generateResearchProtocolPdf(formData);
       await uploadGeneratedPdf(protocolPdf, 'research_protocol', 'Research_Protocol');
-
-      // Generate Consent Form PDF
+        
       const consentPdf = await generateConsentFormPdf(formData);
       await uploadGeneratedPdf(consentPdf, 'consent_form', 'Informed_Consent_Form');
 
-      console.log('✅ All separate PDFs generated successfully');
-
     } catch (pdfError) {
       console.error('PDF generation error (non-critical):', pdfError);
-      // Don't throw - submission succeeds even if PDF generation fails
     }
 
     revalidatePath('/researchermodule/submissions');
