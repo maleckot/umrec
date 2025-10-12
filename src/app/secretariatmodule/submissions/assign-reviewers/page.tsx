@@ -1,9 +1,9 @@
-// app/staffmodule/submissions/assign-reviewers/page.tsx
+// app/secretariatmodule/submissions/assign-reviewers/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -13,7 +13,7 @@ import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-d
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
 import { getReviewers } from '@/app/actions/getReviewers';
-import { assignReviewers } from '@/app/actions/assignReviewers'; 
+import { assignReviewers } from '@/app/actions/assignReviewers';
 
 export default function AssignReviewersPage() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function AssignReviewersPage() {
         setData(submissionResult);
       } else {
         alert(submissionResult.error || 'Failed to load submission');
-        router.push('/staffmodule/submissions');
+        router.push('/secretariatmodule/submissions');
         return;
       }
 
@@ -98,23 +98,63 @@ export default function AssignReviewersPage() {
     }
   };
 
-const handleAssign = async (selectedReviewers: string[]) => {
-  console.log('Assigning reviewers:', selectedReviewers);
-  
-  try {
-    const result = await assignReviewers(submissionId!, selectedReviewers);
-    
-    if (result.success) {
-      alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
-      router.push(`/staffmodule/submissions/under-review?id=${submissionId}`);
-    } else {
-      alert(result.error || 'Failed to assign reviewers');
+  // Helper functions for category styling
+  const getCategoryColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'from-blue-50 to-indigo-50 border-blue-500';
+      case 'Expedited':
+        return 'from-yellow-50 to-amber-50 border-yellow-500';
+      case 'Full Review':
+        return 'from-red-50 to-rose-50 border-red-500';
+      default:
+        return 'from-gray-50 to-gray-100 border-gray-500';
     }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Failed to assign reviewers');
-  }
-};
+  };
+
+  const getCategoryTextColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'text-blue-900';
+      case 'Expedited':
+        return 'text-yellow-900';
+      case 'Full Review':
+        return 'text-red-900';
+      default:
+        return 'text-gray-900';
+    }
+  };
+
+  const getCategoryIconColor = (cat: string) => {
+    switch (cat) {
+      case 'Exempted':
+        return 'text-blue-600';
+      case 'Expedited':
+        return 'text-yellow-600';
+      case 'Full Review':
+        return 'text-red-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  const handleAssign = async (selectedReviewers: string[]) => {
+    console.log('Assigning reviewers:', selectedReviewers);
+    
+    try {
+      const result = await assignReviewers(submissionId!, selectedReviewers);
+      
+      if (result.success) {
+        alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
+        router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
+      } else {
+        alert(result.error || 'Failed to assign reviewers');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to assign reviewers');
+    }
+  };
 
   const historyEvents = data ? [
     {
@@ -141,7 +181,7 @@ const handleAssign = async (selectedReviewers: string[]) => {
 
   if (loading) {
     return (
-      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -156,7 +196,7 @@ const handleAssign = async (selectedReviewers: string[]) => {
 
   if (!data?.submission) {
     return (
-      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
         <div className="text-center py-12">
           <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Submission not found
@@ -167,11 +207,11 @@ const handleAssign = async (selectedReviewers: string[]) => {
   }
 
   return (
-    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
       {/* Better Back Button */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/staffmodule/submissions')}
+          onClick={() => router.push('/secretariatmodule/submissions')}
           className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         >
@@ -196,10 +236,30 @@ const handleAssign = async (selectedReviewers: string[]) => {
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
+              {/* Classification Summary */}
+              <div className={`bg-gradient-to-r ${getCategoryColor(category)} border-2 rounded-xl p-6`}>
+                <div className="flex items-start gap-4">
+                  <CheckCircle size={32} className={`${getCategoryIconColor(category)} flex-shrink-0 mt-1`} />
+                  <div>
+                    <h3 className={`text-xl font-bold ${getCategoryTextColor(category)} mb-2`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Classification Summary
+                    </h3>
+                    <p className={`text-lg font-bold ${getCategoryTextColor(category)} mb-2`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Review Category: {category}
+                    </p>
+                    <p className={`text-sm ${getCategoryTextColor(category)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {category === 'Exempted' && 'This submission has been marked as Exempted from review. No reviewers will be assigned to this submission.'}
+                      {category === 'Expedited' && 'This submission has been marked as Expedited review. Please assign the required reviewers to proceed with the review process.'}
+                      {category === 'Full Review' && 'This submission has been marked as Full Review. Please assign the required reviewers to proceed with the comprehensive review process.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {data.consolidatedDocument ? (
                 <ConsolidatedDocument
                   title="Consolidated Document"
-                  description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
+                  description="Please ensure the research paper is thoroughly reviewed before assigning it to reviewers."
                   consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
                   fileUrl={data.consolidatedDocument.url}
                   originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}

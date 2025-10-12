@@ -22,6 +22,7 @@ export default function SecretariatSubmissionDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
+  const [revisionComments, setRevisionComments] = useState('');
 
   useEffect(() => {
     if (submissionId) {
@@ -95,7 +96,7 @@ export default function SecretariatSubmissionDetailsPage() {
     if (!submissionId) return;
 
     try {
-      const result = await saveClassification(submissionId, category);
+      const result = await saveClassification(submissionId, category, revisionComments);
 
       console.log('Classification saved:', category);
       
@@ -187,6 +188,39 @@ export default function SecretariatSubmissionDetailsPage() {
                   </p>
                 </div>
               )}
+
+              {/* Revision Comments Section */}
+              <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Comments for Revision
+                </h3>
+                <p className="text-sm text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Add any comments or feedback regarding revisions needed before classification. This will be visible to the researcher.
+                </p>
+                <textarea
+                  value={revisionComments}
+                  onChange={(e) => setRevisionComments(e.target.value)}
+                  placeholder="Enter your comments here... (e.g., Please update the methodology section, Add missing references, Clarify research objectives)"
+                  className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
+                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '120px' }}
+                  maxLength={1000}
+                />
+
+                <div className="flex justify-between items-center mt-2">
+                  <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {revisionComments.length} / 1000 characters
+                  </p>
+                  {revisionComments.length > 0 && (
+                    <button
+                      onClick={() => setRevisionComments('')}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
 
               <ClassificationPanel
                 systemSuggestedCategory={data.submission.aiSuggestedClassification || "Expedited"}
