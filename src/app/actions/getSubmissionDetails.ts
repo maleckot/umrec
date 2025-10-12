@@ -28,7 +28,6 @@ export async function getSubmissionDetails(submissionId: string) {
       .eq('submission_id', submission.id)
       .order('uploaded_at', { ascending: true });
 
-    // ✅ Fetch existing verifications
     const { data: verifications } = await supabase
       .from('document_verifications')
       .select('*')
@@ -42,7 +41,6 @@ export async function getSubmissionDetails(submissionId: string) {
           .from('research-documents')
           .createSignedUrl(doc.file_url, 3600);
 
-        // ✅ Find verification for this document
         const verification = verifications?.find(v => v.document_id === doc.id);
 
         if (urlData?.signedUrl) {
@@ -53,7 +51,6 @@ export async function getSubmissionDetails(submissionId: string) {
             size: doc.file_size,
             url: urlData.signedUrl,
             createdAt: doc.uploaded_at,
-            // ✅ Include verification status
             isVerified: verification ? verification.is_approved : null,
             comment: verification?.feedback_comment || '',
           });

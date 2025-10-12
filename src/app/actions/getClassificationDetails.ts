@@ -12,7 +12,7 @@ export async function getClassificationDetails(submissionId: string) {
       return { success: false, error: 'Not authenticated' };
     }
 
-    // Get submission details
+    // Get submission details with AI classification fields
     const { data: submission, error: submissionError } = await supabase
       .from('research_submissions')
       .select('*')
@@ -57,9 +57,17 @@ export async function getClassificationDetails(submissionId: string) {
         title: submission.title,
         status: submission.status,
         submittedAt: submission.submitted_at,
-        classificationType: submission.classification_type,  // ✅ Add this
-        classifiedAt: submission.classified_at,  // ✅ Add this
-        classifiedBy: submission.classified_by,  // ✅ Add this
+        
+        classificationType: submission.classification_type,
+        classifiedAt: submission.classified_at,
+        classifiedBy: submission.classified_by,
+        
+        aiSuggestedClassification: submission.ai_suggested_classification,
+        aiClassificationConfidence: submission.ai_classification_confidence,
+        aiClassifiedAt: submission.ai_classified_at,
+        aiClassificationMethod: submission.ai_classification_method,
+        aiClassificationMetadata: submission.classification_metadata,
+        
         projectLeader: {
           firstName: submission.project_leader_first_name,
           middleName: submission.project_leader_middle_name,

@@ -21,7 +21,6 @@ export async function getResearcherSubmissions() {
     }
     console.log('Current user email:', user?.email);
     console.log('Current user ID:', user?.id);
-    // Fetch all submissions for this researcher
     const { data: submissions, error: submissionsError } = await supabase
       .from('research_submissions')
       .select('*')

@@ -27,12 +27,10 @@ export async function getUnassignedSubmissions({
     const from = (page - 1) * limit;
     const to = from + limit - 1;
 
-    // Build query: Get classified submissions that haven't been assigned reviewers yet
     let query = supabase
       .from('research_submissions')
       .select('*', { count: 'exact' })
-      .eq('status', 'classified')  // ✅ Classification is complete
-
+      .eq('status', 'classified') 
     // Add search filter
     if (searchQuery && searchQuery.trim() !== '') {
       query = query.or(`title.ilike.%${searchQuery}%,submission_id.ilike.%${searchQuery}%`);

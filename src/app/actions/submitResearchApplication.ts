@@ -8,6 +8,7 @@ import {
   generateResearchProtocolPdf, 
   generateConsentFormPdf 
 } from '@/app/actions/generatePdfFromDatabase';
+import { autoClassifyFromDatabase } from '@/app/actions/autoClassifyFromDatabase';
 
 export async function submitResearchApplication(formData: any, files: { step5?: string; step6?: string; step7?: string }) {
   const supabase = await createClient();
@@ -93,7 +94,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         status: 'new_submission',
         submitted_at: new Date().toISOString(),
         study_site: safeString(formData.step2?.studySiteType),
-
       })
       .select()
       .single();
@@ -101,7 +101,6 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
     if (submissionError) {
       throw submissionError;
     }
-
 
     // 2. Insert application form
     if (formData.step2 && Object.keys(formData.step2).length > 0) {
@@ -146,10 +145,9 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         });
 
       if (appFormError) {
-        console.error('❌ Application form insert error:', appFormError);
+        console.error('Application form insert error:', appFormError);
         throw appFormError;
       }
-
     }
 
     // 3. Insert research protocol
@@ -260,11 +258,11 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       if (docsError) throw docsError;
     }
 
+    // 6. Generate and upload PDFs
     try {
-      // Helper to upload generated PDF
       const uploadGeneratedPdf = async (pdfResult: any, documentType: string, baseFileName: string) => {
         if (!pdfResult.success || !pdfResult.pdfData) {
-          console.warn(`⚠️ Failed to generate ${documentType} PDF`);
+          console.warn(`Failed to generate ${documentType} PDF`);
           return;
         }
 
@@ -307,6 +305,19 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
     } catch (pdfError) {
       console.error('PDF generation error (non-critical):', pdfError);
     }
+
+    
+    autoClassifyFromDatabase(submission.id)
+      .then(result => {
+        if (result.success) {
+          console.log(`Auto-classified as: ${result.classification} (confidence: ${(result.confidence * 100).toFixed(1)}%)`);
+        } else {
+          console.error('Classification failed:', result.error);
+        }
+      })
+      .catch(err => {
+        console.error('Classification error:', err);
+      });
 
     revalidatePath('/researchermodule/submissions');
 

@@ -1,7 +1,7 @@
 // app/researchermodule/submissions/new/step1/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // ✅ Add useEffect and useRef
+import { useState, useEffect, useRef } from 'react'; 
 import { useRouter } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';

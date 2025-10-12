@@ -1,4 +1,4 @@
-// app/staffmodule/submissions/[id]/assign/page.tsx
+// app/staffmodule/submissions/details/assign/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -25,15 +25,17 @@ export default function AssignReviewersPage() {
     'Proposal defense certification/evaluation.pdf',
   ];
 
+  // ✅ FIXED: Changed id from number to string
   const reviewers = [
-    { id: 1, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
-    { id: 2, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
-    { id: 3, name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
-    { id: 4, name: 'Prof. Maria Santos - 202', availability: 'Busy' },
-    { id: 5, name: 'Prof. Antonio Garcia - 203', availability: 'Available' },
+    { id: '1', name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
+    { id: '2', name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
+    { id: '3', name: 'Prof. Juan Dela Cruz - 201', availability: 'Available' },
+    { id: '4', name: 'Prof. Maria Santos - 202', availability: 'Busy' },
+    { id: '5', name: 'Prof. Antonio Garcia - 203', availability: 'Available' },
   ];
 
-  const handleAssign = (selectedReviewers: number[]) => {
+  // ✅ FIXED: Changed parameter type from number[] to string[]
+  const handleAssign = (selectedReviewers: string[]) => {
     console.log('Assigned reviewers:', selectedReviewers);
     // Navigate to next step or show success
   };

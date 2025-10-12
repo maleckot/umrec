@@ -68,18 +68,17 @@ export async function getStaffDashboardData() {
       .select('*')
       .limit(1);
 
-    console.log('🟢 Can read reviewer_assignments?', { 
+    console.log('Can read reviewer_assignments?', { 
       hasData: !!testData, 
       error: testError?.message 
     });
 
-    // Now try the count query for reviews overdue by MORE than 7 days
     const { count: overdueCount, error: countError } = await supabase
       .from('reviewer_assignments')
       .select('*', { count: 'exact', head: true })
-      .lte('due_date', sevenDaysAgo.toISOString())  // ✅ due_date <= 7 days ago
+      .lte('due_date', sevenDaysAgo.toISOString())  
 
-    console.log('🔴 Overdue (>7 days) query result:', { 
+    console.log('Overdue (>7 days) query result:', { 
       count: overdueCount, 
       sevenDaysAgo: sevenDaysAgo.toISOString(),
       error: countError?.message 

@@ -42,7 +42,6 @@ export async function getSubmissionActivity(submissionId: string) {
       .eq('submission_id', submissionId)
       .order('uploaded_at', { ascending: true });
 
-    // ✅ Get verifications for this submission
     const { data: verifications } = await supabase
       .from('document_verifications')
       .select('*')
@@ -52,7 +51,6 @@ export async function getSubmissionActivity(submissionId: string) {
     
     if (allDocuments && allDocuments.length > 0) {
       for (const doc of allDocuments) {
-        // ✅ Find verification for THIS document
         const verification = verifications?.find(v => v.document_id === doc.id);
 
         const { data: urlData } = await supabase.storage
@@ -67,7 +65,6 @@ export async function getSubmissionActivity(submissionId: string) {
             fileUrl: urlData.signedUrl,
             fileSize: doc.file_size,
             uploadedAt: doc.uploaded_at,
-            // ✅ Add verification info
             isApproved: verification?.is_approved ?? null,
             needsRevision: verification?.is_approved === false,
             revisionComment: verification?.feedback_comment || null,
@@ -76,11 +73,9 @@ export async function getSubmissionActivity(submissionId: string) {
       }
     }
 
-    // ✅ Count rejected documents (where is_approved = false)
     const rejectedDocs = verifications?.filter(v => v.is_approved === false) || [];
     const revisionCount = rejectedDocs.length;
 
-    // ✅ Get the rejected document's feedback
     const rejectedVerification = rejectedDocs[0];
     const revisionMessage = rejectedVerification?.feedback_comment || submission.verification_feedback || '';
 
@@ -97,7 +92,7 @@ export async function getSubmissionActivity(submissionId: string) {
       revisionInfo: {
         needsRevision: submission.status === 'needs_revision',
         revisionCount: revisionCount,
-        message: revisionMessage, // ✅ Get from feedback_comment
+        message: revisionMessage, 
       }
     };
 

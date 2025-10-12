@@ -29,7 +29,6 @@ export async function getSubmissionForReview(submissionId: string) {
 
     const submission = (assignment as any).research_submissions;
 
-    // ✅ Fetch the consolidated PDF document from uploaded_documents table
     const { data: consolidatedDoc, error: docError } = await supabase
       .from('uploaded_documents')
       .select('*')
@@ -42,7 +41,6 @@ export async function getSubmissionForReview(submissionId: string) {
     let pdfUrl = null;
     let pdfFilename = 'Research Document.pdf';
 
-    // ✅ If consolidated document exists, get signed URL from storage
     if (consolidatedDoc && !docError) {
       const { data: urlData } = await supabase.storage
         .from('research-documents')
@@ -54,7 +52,6 @@ export async function getSubmissionForReview(submissionId: string) {
       }
     }
 
-    // ✅ Fallback: If no consolidated doc, try to get original submission PDF
     if (!pdfUrl && submission.pdf_url) {
       // If pdf_url is a storage path, create signed URL
       if (submission.pdf_url.includes('research-documents/')) {
@@ -81,7 +78,6 @@ export async function getSubmissionForReview(submissionId: string) {
       classification_type: submission.classification_type,
       research_description: submission.research_description,
       
-      // ✅ Use consolidated PDF URL with signed URL
       pdf_url: pdfUrl,
       pdf_filename: pdfFilename,
       

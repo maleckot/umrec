@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({ 
         text: cleanedText, 
         model_name,
-        use_chunking: true  // ✅ Enable automatic chunking for long texts
+        use_chunking: true 
       }),
     });
     

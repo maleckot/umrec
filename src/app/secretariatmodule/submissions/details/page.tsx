@@ -99,21 +99,21 @@ export default function SecretariatSubmissionDetailsPage() {
 
       console.log('Classification saved:', category);
       
-    if (result.success) {
-          // Navigate based on category
-          if (category === 'Exempted') {
-            router.push(`/secretariatmodule/submissions/exempted?id=${submissionId}`);
-          } else {
-            router.push(`/secretariatmodule/submissions/classified?id=${submissionId}&category=${category}`);
-          }
+      if (result.success) {
+        // Navigate based on category
+        if (category === 'Exempted') {
+          router.push(`/secretariatmodule/submissions/exempted?id=${submissionId}`);
         } else {
-          alert(`Failed to save classification: ${result.error}`);
+          router.push(`/secretariatmodule/submissions/classified?id=${submissionId}&category=${category}`);
         }
-      } catch (error) {
-        console.error('Error saving classification:', error);
-        alert('Failed to save classification');
+      } else {
+        alert(`Failed to save classification: ${result.error}`);
       }
-    };
+    } catch (error) {
+      console.error('Error saving classification:', error);
+      alert('Failed to save classification');
+    }
+  };
 
   if (loading) {
     return (
@@ -189,7 +189,10 @@ export default function SecretariatSubmissionDetailsPage() {
               )}
 
               <ClassificationPanel
-                systemSuggestedCategory="Expedited"
+                systemSuggestedCategory={data.submission.aiSuggestedClassification || "Expedited"}
+                aiConfidence={data.submission.aiClassificationConfidence}
+                aiClassifiedAt={data.submission.aiClassifiedAt}
+                aiMethod={data.submission.aiClassificationMethod}
                 onSave={handleClassificationSave}
               />
             </>
@@ -206,7 +209,6 @@ export default function SecretariatSubmissionDetailsPage() {
           {activeTab === 'history' && <HistoryTab events={historyEvents} />}
         </div>
 
-        {/* Sidebar - Only in overview */}
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar

@@ -17,7 +17,6 @@ export type PdfGenerationResult =
       error: string;
     };
 
-// ✅ EXPORT THIS FUNCTION - Used by both database fetching AND form submission
 export async function generateConsolidatedPdf(
   submissionData: any,
   uploadedFiles: { step5?: string; step6?: string; step7?: string }
@@ -149,7 +148,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
         technicalReview: applicationForm?.technical_review,
         submittedToOther: applicationForm?.submitted_to_other,
         documentChecklist: applicationForm?.document_checklist,
-        // ✅ ADD THESE FOR FORM DATA
+        // ADD THESE FOR FORM DATA
         telNo: applicationForm?.contact_info?.telNo,
         mobileNo: applicationForm?.contact_info?.mobileNo,
         email: applicationForm?.contact_info?.email,
@@ -916,7 +915,6 @@ async function generateConsolidatedPdfContent(
   };
 }
 
-// Add these functions at the end of the file, after generateConsolidatedPdfContent
 
 // ============= GENERATE APPLICATION FOR ETHICS REVIEW (Step 2) =============
 export async function generateApplicationFormPdf(

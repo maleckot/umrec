@@ -31,7 +31,7 @@ export async function getNewSubmissions({
     let query = supabase
       .from('research_submissions')
       .select('*', { count: 'exact' })
-      .eq('status', 'new_submission')  // ✅ Filter by status
+      .eq('status', 'new_submission')
       .order('submitted_at', { ascending: false });
 
     // Add search filter if provided

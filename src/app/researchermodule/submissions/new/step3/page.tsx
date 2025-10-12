@@ -135,7 +135,7 @@ export default function Step3ResearchProtocol() {
         researchers: researchers.map(r => ({ id: r.id, name: r.name, signature: null }))
       };
       localStorage.setItem('step3Data', JSON.stringify(dataToSave));
-      console.log('✅ Data saved to localStorage');
+      console.log('Data saved to localStorage');
     }, 1000);
 
     return () => {

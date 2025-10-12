@@ -31,7 +31,6 @@ export async function verifySubmissionDocuments(
       return { success: false, error: 'Unauthorized' };
     }
 
-    // 1. ✅ Save document verifications
     for (const doc of documentVerifications) {
       const { error: upsertError } = await supabase.from('document_verifications').upsert({
         document_id: doc.documentId,
@@ -45,7 +44,7 @@ export async function verifySubmissionDocuments(
       });
 
       if (upsertError) {
-        console.error('❌ Upsert error:', upsertError);
+        console.error('Upsert error:', upsertError);
       }
     }
 
@@ -79,7 +78,6 @@ export async function verifySubmissionDocuments(
       willUpdate: hasRejected || overallFeedback !== undefined
     });
 
-    // 3. ✅ ALWAYS update submission when hasRejected OR when overallFeedback is provided
     if (hasRejected || overallFeedback !== undefined) {
       console.log('📝 Attempting to update research_submissions...');
       
@@ -95,13 +93,13 @@ export async function verifySubmissionDocuments(
         .eq('id', submissionId);
 
       if (updateError) {
-        console.error('❌ Error updating submission:', updateError);
+        console.error('Error updating submission:', updateError);
         return { success: false, error: 'Failed to update submission status' };
       } else {
-        console.log('✅ Submission updated successfully!');
+        console.log('Submission updated successfully!');
       }
     } else {
-      console.log('⏭️ Skipping submission update (not needed)');
+      console.log('⏭Skipping submission update (not needed)');
     }
 
     revalidatePath('/staffmodule/submissions');
@@ -114,7 +112,7 @@ export async function verifySubmissionDocuments(
     };
 
   } catch (error) {
-    console.error('❌ Verification error:', error);
+    console.error('Verification error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to verify documents'

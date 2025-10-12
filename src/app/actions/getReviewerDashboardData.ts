@@ -13,7 +13,7 @@ export async function getReviewerDashboardData() {
       return { success: false, error: 'Not authenticated' };
     }
 
-    console.log('Reviewer user ID:', user.id);  // ✅ Debug log
+    console.log('Reviewer user ID:', user.id); 
 
     // Get reviewer assignments (submissions assigned to this reviewer)
     const { data: assignments, error: assignmentsError } = await supabase
@@ -33,14 +33,14 @@ export async function getReviewerDashboardData() {
       .eq('reviewer_id', user.id)
       .order('assigned_at', { ascending: false });
 
-    console.log('Assignments query result:', { assignments, error: assignmentsError });  // ✅ Debug log
+    console.log('Assignments query result:', { assignments, error: assignmentsError });  
 
     if (assignmentsError) {
       console.error('Error fetching assignments:', assignmentsError);
       return { success: false, error: 'Failed to fetch assignments' };
     }
 
-    console.log('Raw assignments:', assignments);  // ✅ Debug log
+    console.log('Raw assignments:', assignments);  
 
     // Separate into new and overdue
     const now = new Date();
@@ -48,7 +48,7 @@ export async function getReviewerDashboardData() {
       .filter(a => {
         const submission = Array.isArray(a.submission) ? a.submission[0] : a.submission;
         const isValid = submission && a.status === 'pending' && new Date(a.due_date) >= now;
-        console.log('Assignment filter:', { a, submission, isValid });  // ✅ Debug log
+        console.log('Assignment filter:', { a, submission, isValid }); 
         return isValid;
       })
       .map(a => {
@@ -71,8 +71,7 @@ export async function getReviewerDashboardData() {
         };
       });
 
-    console.log('Formatted new assignments:', newAssignments);  // ✅ Debug log
-
+    console.log('Formatted new assignments:', newAssignments);  
     const overdueReviews = (assignments || [])
       .filter(a => {
         const submission = Array.isArray(a.submission) ? a.submission[0] : a.submission;

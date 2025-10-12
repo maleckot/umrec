@@ -23,7 +23,6 @@ export default function SubmissionSuccess() {
   }, [router]);
 
   const handleBackToDashboard = () => {
-    // ✅ Clear ALL submission-related data
     
     // Clear last submission
     localStorage.removeItem('lastSubmission');
