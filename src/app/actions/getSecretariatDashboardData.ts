@@ -120,11 +120,15 @@ export async function getSecretariatDashboardData() {
 function formatStatus(status: string): string {
   const statusMap: { [key: string]: string } = {
     'new_submission': 'New Submission',
+    'pending_review': 'Review Pending',
     'awaiting_classification': 'Under Classification',
     'under_review': 'Under Review',
+    'classified': 'Classified',
     'review_complete': 'Review Complete',
     'approved': 'Approved',
     'rejected': 'Rejected',
+    'needs_revision': 'Needs Revision',
+    'revision_requested': 'Revision Requested',
   };
   return statusMap[status] || status;
 }
@@ -132,11 +136,15 @@ function formatStatus(status: string): string {
 function getStatusColor(status: string): string {
   const colorMap: { [key: string]: string } = {
     'new_submission': 'bg-blue-50 text-blue-600',
+    'pending_review': 'bg-blue-50 text-blue-600',
     'awaiting_classification': 'bg-amber-50 text-amber-600',
     'under_review': 'bg-purple-50 text-purple-600',
+    'classified': 'bg-amber-50 text-amber-600',
     'review_complete': 'bg-green-50 text-green-600',
     'approved': 'bg-green-50 text-green-600',
     'rejected': 'bg-red-50 text-red-600',
+    'needs_revision': 'bg-red-50 text-red-600',
+    'revision_requested': 'bg-orange-50 text-orange-600',
   };
   return colorMap[status] || 'bg-gray-100 text-gray-600';
 }

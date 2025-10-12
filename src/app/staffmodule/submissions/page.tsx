@@ -199,6 +199,7 @@ export default function SubmissionsPage() {
               <option value="All Statuses">All Statuses</option>
               <option value="new_submission">New Submission</option>
               <option value="awaiting_classification">Under Classification</option>
+              <option value="classified">Classified</option>
               <option value="under_review">Under Review</option>
               <option value="review_complete">Review Complete</option>
               <option value="approved">Approved</option>

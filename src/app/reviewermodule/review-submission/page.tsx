@@ -272,7 +272,6 @@ export default function ReviewSubmissionPage() {
         submissionTitle={submissionData.title}
         isRevisionRequested={isRevisionRequested}
       />
-
       <Footer />
     </div>
   );
