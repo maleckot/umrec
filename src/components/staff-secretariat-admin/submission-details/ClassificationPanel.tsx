@@ -42,7 +42,7 @@ export default function ClassificationPanel({
       title: 'Full Review',
       description: 'For submissions that require complete committee review',
       color: 'red',
-      reviewers: 5,
+      reviewers: 10,
     },
   ];
 
@@ -77,7 +77,7 @@ export default function ClassificationPanel({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Header */}
         <div className="bg-[#101C50] p-4 lg:p-6">
           <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>

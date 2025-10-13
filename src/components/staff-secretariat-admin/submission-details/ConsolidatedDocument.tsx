@@ -25,7 +25,7 @@ export default function ConsolidatedDocument({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {/* Header */}
         <div className="bg-[#101C50] p-3 sm:p-4 lg:p-6">
           <h3 className="text-sm sm:text-base lg:text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>

@@ -5,7 +5,8 @@ import { createClient } from '@/utils/supabase/server';
 
 export async function saveClassification(
   submissionId: string,
-  category: 'Exempted' | 'Expedited' | 'Full Review'
+  category: 'Exempted' | 'Expedited' | 'Full Review',
+  revisionComments?: string  // ✅ Added optional third parameter
 ) {
   try {
     const supabase = await createClient();
@@ -30,6 +31,7 @@ export async function saveClassification(
         status: 'classified',
         classified_at: new Date().toISOString(),
         classified_by: user.id,
+        revision_comments: revisionComments || null,  // ✅ Save revision comments
       })
       .eq('id', submissionId);
 
@@ -49,6 +51,7 @@ export async function saveClassification(
         details: {
           classification: category,
           reviewers_required: reviewersRequired,
+          revision_comments: revisionComments || null,  // ✅ Include in history
         },
         created_at: new Date().toISOString(),
       });
