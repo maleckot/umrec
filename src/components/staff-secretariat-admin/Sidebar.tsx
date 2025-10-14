@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -33,7 +33,9 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Define menu items based on role
   const getMenuItems = (): MenuItem[] => {
@@ -82,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
         },
         {
           label: 'Reports',
-          href: '/adminmodule/reports',
+          href: '/secretariatmodule/reports',
           icon: <BarChart3 size={24} />,
           key: 'reports',
         },
@@ -128,6 +130,24 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
 
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
+  };
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    // Clear any authentication tokens/session data here
+    // Example: localStorage.removeItem('authToken');
+    
+    // Redirect to login page
+    router.push('/login');
+    setShowLogoutModal(false);
+    closeMobileMenu();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutModal(false);
   };
 
   return (
@@ -216,10 +236,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
         {/* Logout Button */}
         <div className="border-t border-[#FFD700]/10 flex-shrink-0">
           <button
-            onClick={() => {
-              closeMobileMenu();
-              console.log('Logout clicked');
-            }}
+            onClick={handleLogoutClick}
             className="flex items-center gap-4 px-8 py-4 text-gray-300 hover:bg-[#0A1435] hover:text-white transition-all duration-200 w-full cursor-pointer rounded-lg"
           >
             <LogOut size={24} />
@@ -229,6 +246,39 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
           </button>
         </div>
       </aside>
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Confirm Logout
+              </h3>
+              <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Are you sure you want to log out? You will need to sign in again to access your account.
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={handleLogoutCancel}
+                className="flex-1 px-4 py-2.5 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 transition-colors text-sm"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogoutConfirm}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                Log Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
