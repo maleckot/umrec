@@ -8,7 +8,7 @@ import ReviewSectionCard from '@/components/researcher/submission/ReviewSectionC
 import ReviewField from '@/components/researcher/submission/ReviewField';
 import DocumentListItem from '@/components/researcher/submission/DocumentListItem';
 import { CheckCircle } from 'lucide-react';
-import { submitResearchApplication } from '@/app/actions/submitResearchApplication';
+import { submitResearchApplication } from '@/app/actions/researcher/submitResearchApplication';
 
 export default function Step8ReviewSubmit() {
   const router = useRouter();

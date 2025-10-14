@@ -11,7 +11,7 @@ import RevisionCard from '@/components/researcher/RevisionCard';
 import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getSubmissionActivity } from '@/app/actions/getSubmissionActivity';
+import { getSubmissionActivity } from '@/app/actions/researcher/getSubmissionActivity';
 
 interface Document {
   id: number;

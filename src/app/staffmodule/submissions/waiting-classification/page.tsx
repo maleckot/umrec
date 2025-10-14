@@ -9,7 +9,7 @@ import TabNavigation from '@/components/staff-secretariat-admin/submission-detai
 import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
+import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { generatePdfFromDatabase } from '@/app/actions/generatePdfFromDatabase';
 import { createClient } from '@/utils/supabase/client';
 

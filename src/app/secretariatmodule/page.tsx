@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import StatCard from '@/components/staff-secretariat-admin/StatCard';
 import AttentionCard from '@/components/staff-secretariat-admin/AttentionCard';
 import { useRouter } from 'next/navigation';
-import { getSecretariatDashboardData } from '@/app/actions/getSecretariatDashboardData';
+import { getSecretariatDashboardData } from '@/app/actions/secretariat-staff/secretariat/getSecretariatDashboardData';
 
 export default function SecretariatDashboard() {
   const router = useRouter();
@@ -34,8 +34,18 @@ export default function SecretariatDashboard() {
   };
 
   const handleSubmissionClick = (submission: any) => {
-    // Route to details page for all submissions
-    router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
+      if (submission.status === 'Under Classification') {
+        router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
+      } 
+      else if (submission.status === 'Classified') {
+        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+      } 
+      else if (submission.status === 'Under Review') {
+        router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
+      } 
+      else {
+        router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
+      }
   };
 
   const stats = [

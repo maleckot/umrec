@@ -7,7 +7,7 @@ import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getUnassignedSubmissions } from '@/app/actions/getUnassignedSubmissions';
+import { getUnassignedSubmissions } from '@/app/actions/secretariat-staff/staff/getUnassignedSubmissions';
 
 export default function AssignSubmissionsPage() {
   const router = useRouter();

@@ -5,7 +5,7 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getResearcherSubmissions } from '@/app/actions/getResearcherSubmissions';
+import { getResearcherSubmissions } from '@/app/actions/researcher/getResearcherSubmissions';
 
 interface Document {
   id: number;

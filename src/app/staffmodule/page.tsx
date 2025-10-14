@@ -6,7 +6,7 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import StatCard from '@/components/staff-secretariat-admin/StatCard';
 import AttentionCard from '@/components/staff-secretariat-admin/AttentionCard';
 import { useRouter } from 'next/navigation';
-import { getStaffDashboardData } from '@/app/actions/getStaffDashboardData';
+import { getStaffDashboardData } from '@/app/actions/secretariat-staff/staff/getStaffDashboardData';
 
 export default function StaffDashboard() {
   const router = useRouter();

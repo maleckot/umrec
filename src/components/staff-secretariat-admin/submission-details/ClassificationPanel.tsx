@@ -87,14 +87,13 @@ export default function ClassificationPanel({
 
         {/* Content */}
         <div className="p-4 lg:p-6">
-          {/* AI Classification Suggestion */}
           {systemSuggestedCategory && aiConfidence ? (
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-500 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
                 <Sparkles size={24} className="text-blue-700 flex-shrink-0 mt-1" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-blue-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    AI-Suggested Category
+                    System Suggested Category
                   </p>
                   <p className="text-2xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {systemSuggestedCategory}
@@ -111,7 +110,7 @@ export default function ClassificationPanel({
                     </span>
                   </div>
                   <p className="text-xs text-blue-800 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    AI has automatically analyzed this submission using {aiMethod || 'advanced classification'}
+                    System has automatically analyzed this submission using {aiMethod || 'advanced classification'}
                   </p>
                   {aiClassifiedAt && (
                     <p className="text-xs text-blue-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -133,13 +132,13 @@ export default function ClassificationPanel({
                 <Info size={24} className="text-blue-700 flex-shrink-0 mt-1" />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-yellow-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    System-Selected Category: <b>AI classification pending...</b>
+                    System-Selected Category: <b>System classification pending...</b>
                   </p>
                   <p className="text-2xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {systemSuggestedCategory}
                   </p>
                   <p className="text-xs text-blue-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    The AI classification is being processed. Please select a category manually.
+                    The System classification is being processed. Please select a category manually.
                   </p>
                 </div>
               </div>
@@ -174,7 +173,7 @@ export default function ClassificationPanel({
                       </h4>
                       {systemSuggestedCategory === category.value && aiConfidence && (
                         <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-                          AI Recommended
+                          System Recommended
                         </span>
                       )}
                     </div>

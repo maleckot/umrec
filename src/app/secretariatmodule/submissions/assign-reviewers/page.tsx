@@ -11,9 +11,9 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import ReviewerAssignment from '@/components/staff-secretariat-admin/submission-details/ReviewerAssignment';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
-import { getReviewers } from '@/app/actions/getReviewers';
-import { assignReviewers } from '@/app/actions/assignReviewers';
+import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
+import { getReviewers } from '@/app/actions/secretariat-staff/secretariat/getReviewers';
+import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/assignReviewers';
 
 export default function AssignReviewersPage() {
   const router = useRouter();

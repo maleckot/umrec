@@ -6,7 +6,7 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getReviewerDashboardData } from '@/app/actions/getReviewerDashboardData';
+import { getReviewerDashboardData } from '@/app/actions/reviewer/getReviewerDashboardData';
 
 export default function ReviewerDashboard() {
   const router = useRouter();

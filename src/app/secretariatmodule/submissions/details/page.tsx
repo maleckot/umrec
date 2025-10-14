@@ -11,8 +11,8 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import ClassificationPanel from '@/components/staff-secretariat-admin/submission-details/ClassificationPanel';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-import { getClassificationDetails } from '@/app/actions/getClassificationDetails';
-import { saveClassification } from '@/app/actions/saveClassification';
+import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
+import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
 
 export default function SecretariatSubmissionDetailsPage() {
   const router = useRouter();

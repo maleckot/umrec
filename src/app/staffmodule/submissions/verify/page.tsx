@@ -7,7 +7,7 @@ import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getNewSubmissions } from '@/app/actions/getNewSubmissions';
+import { getNewSubmissions } from '@/app/actions/secretariat-staff/staff/getNewSubmissions';
 
 export default function VerifySubmissionsPage() {
   const router = useRouter();

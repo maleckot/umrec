@@ -8,7 +8,7 @@ import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Calendar } from 'lucide-react';
-import { getAllSubmissions } from '@/app/actions/getAllSubmissions';
+import { getAllSubmissions } from '@/app/actions/secretariat-staff/getAllSubmissions';
 
 export default function SubmissionsPage() {
   const router = useRouter();

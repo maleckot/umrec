@@ -11,8 +11,8 @@ import DocumentVerificationList from '@/components/staff-secretariat-admin/submi
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-import { getSubmissionDetails } from '@/app/actions/getSubmissionDetails';
-import { verifySubmissionDocuments } from '@/app/actions/verifySubmissionDocuments';
+import { getSubmissionDetails } from '@/app/actions/secretariat-staff/staff/getSubmissionDetails';
+import { verifySubmissionDocuments } from '@/app/actions/secretariat-staff/staff/verifySubmissionDocuments';
 import { completeVerification } from '@/app/actions/completeVerification';
 
 interface DocumentWithVerification {

@@ -1,7 +1,7 @@
 // src/app/actions/completeVerification.ts
 'use server';
 
-import { verifySubmissionDocuments } from './verifySubmissionDocuments';
+import { verifySubmissionDocuments } from './secretariat-staff/staff/verifySubmissionDocuments';
 
 type VerificationResult = 
   | { success: true }
