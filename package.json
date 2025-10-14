@@ -18,7 +18,8 @@
     "pdf-lib": "^1.17.1",
     "pdf-parse": "^2.1.10",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
