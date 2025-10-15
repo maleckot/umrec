@@ -326,7 +326,7 @@ export default function HelpCenterLayout({
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-6 space-y-4" style={{ backgroundColor: '#DAE0E7' }}>
+            <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-6 space-y-4" style={{ backgroundColor: '#E8EEF3' }}>
               {messages.map((message) => (
                 <div
                   key={message.id}

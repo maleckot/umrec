@@ -7,12 +7,14 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import { Bell, X } from 'lucide-react';
 
 interface DashboardLayoutProps {
-  role: 'staff' | 'admin' | 'secretariat';
+  role: 'staff' | 'secretariat' | 'admin';
   roleTitle: string;
   pageTitle: string;
-  children: ReactNode;
-  activeNav?: 'dashboard' | 'submissions' | 'reviewers' | 'settings' | 'reports';
+  children: React.ReactNode;
+  activeNav?: 'dashboard' | 'submissions' | 'reviewers' | 'researchers' | 'settings' | 'reports';  
 }
+
+
 
 interface Notification {
   id: number;
@@ -126,7 +128,7 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
   // Prevent hydration mismatch
   if (!isMounted) {
     return (
-      <div className="flex" style={{ backgroundColor: '#DAE0E7', minHeight: '100vh' }}>
+      <div className="flex" style={{ backgroundColor: '#E8EEF3', minHeight: '100vh' }}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
@@ -137,7 +139,7 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
   }
 
   return (
-    <div className="flex" style={{ backgroundColor: '#DAE0E7', minHeight: '100vh' }}>
+    <div className="flex" style={{ backgroundColor: '#E8EEF3', minHeight: '100vh' }}>
       <Sidebar role={role} roleTitle={roleTitle} activeNav={activeNav} />
 
       <div className="flex-1 lg:ml-80 flex flex-col" style={{ minHeight: '100vh' }}>

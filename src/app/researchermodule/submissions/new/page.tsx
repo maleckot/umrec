@@ -45,15 +45,15 @@ export default function NewSubmissionPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#DAE0E7] flex flex-col">
+    <div className="min-h-screen bg-[#E8EEF3]">
       <NavbarRoles role="researcher" />
       
-      <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
-        <div className="max-w-7xl mx-auto">
+      <div className="pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
+        <div className="max-w-[1600px] mx-auto">
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-md p-4 sm:p-6 md:p-8 lg:p-12">
             {/* Header */}
             <div className="text-center mb-6 sm:mb-8 md:mb-10">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Submit Request For Ethics Review
               </h1>
               <p className="text-base sm:text-lg text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -67,7 +67,7 @@ export default function NewSubmissionPage() {
                 Thank you for your interest in researching with us at the University of Makati. To ensure that your research is within the bounds of the Ethics of Research, the following are the requirements for Ethics Review.
               </p>
 
-              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Required Documents and Information for Ethics Review:
               </h2>
 

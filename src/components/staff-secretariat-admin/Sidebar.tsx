@@ -28,7 +28,7 @@ interface MenuItem {
 interface SidebarProps {
   role: 'staff' | 'secretariat' | 'admin';
   roleTitle: string;
-  activeNav?: 'dashboard' | 'submissions' | 'reviewers' | 'settings' | 'reports' | 'researcher-management' | 'reviewer-management';
+  activeNav?: string;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
@@ -98,15 +98,15 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
       admin: [
         {
           label: 'Researcher Management',
-          href: '/adminmodule/researcher-management',
+          href: '/adminmodule/researchers',
           icon: <GraduationCap size={24} />,
-          key: 'researcher-management',
+          key: 'researchers',
         },
         {
           label: 'Reviewer Management',
-          href: '/adminmodule/reviewer-management',
+          href: '/adminmodule/reviewers',
           icon: <UserCog size={24} />,
-          key: 'reviewer-management',
+          key: 'reviewers',
         },
         {
           label: 'Reports',
@@ -249,7 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
 
       {/* Logout Confirmation Modal */}
       {showLogoutModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 flex items-center justify-center z-[60] p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
           <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div className="mb-4">
               <h3 className="text-lg font-bold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
