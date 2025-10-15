@@ -1,12 +1,13 @@
 // app/staffmodule/reviewers/page.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import ReviewersTable from '@/components/staff-secretariat-admin/reviewers/ReviewersTable';
 import ReviewersFilters from '@/components/staff-secretariat-admin/reviewers/ReviewersFilters';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
+import { getReviewers } from '@/app/actions/secretariat-staff/getReviewers';
 
 export default function ReviewersPage() {
   const router = useRouter();
@@ -15,89 +16,30 @@ export default function ReviewersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [activeReviewsFilter, setActiveReviewsFilter] = useState('Any');
   const [currentPage, setCurrentPage] = useState(1);
+  const [reviewers, setReviewers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const itemsPerPage = 10;
 
-  // Sample reviewers data
-  const allReviewersData = [
-    {
-      id: 1,
-      code: '201',
-      name: 'Prof. Juan Dela Cruz',
-      email: 'email123@umak.edu.ph',
-      phone: '09994455353',
-      college: 'College of Computing and Information Sciences',
-      availability: 'Available',
-      reviewStatus: 'On Track',
-      activeReviews: 5,
-      overdueReviews: 0,
-    },
-    {
-      id: 2,
-      code: '201',
-      name: 'Prof. Maria Therese Delos Reyes',
-      email: 'maria.reyes@umak.edu.ph',
-      phone: '09171234567',
-      college: 'College of Science',
-      availability: 'Busy',
-      reviewStatus: 'On Track',
-      activeReviews: 15,
-      overdueReviews: 0,
-    },
-    {
-      id: 3,
-      code: '201',
-      name: 'Prof. Antonio John Garcia',
-      email: 'antonio.garcia@umak.edu.ph',
-      phone: '09181234567',
-      college: 'College of Engineering',
-      availability: 'Busy',
-      reviewStatus: 'On Track',
-      activeReviews: 10,
-      overdueReviews: 4,
-    },
-    {
-      id: 4,
-      code: '201',
-      name: 'Prof. Juan Dela Cruz',
-      email: 'juan2@umak.edu.ph',
-      phone: '09191234567',
-      college: 'College of Business Administration',
-      availability: 'Available',
-      reviewStatus: 'Idle',
-      activeReviews: 0,
-      overdueReviews: 0,
-    },
-    {
-      id: 5,
-      code: '201',
-      name: 'Prof. Maria Therese Delos Reyes',
-      email: 'maria2@umak.edu.ph',
-      phone: '09201234567',
-      college: 'College of Education',
-      availability: 'Unavailable',
-      reviewStatus: 'Unavailable',
-      activeReviews: 0,
-      overdueReviews: 0,
-    },
-    // Add more sample data for pagination
-    ...Array.from({ length: 45 }, (_, i) => ({
-      id: i + 6,
-      code: '201',
-      name: `Prof. Reviewer ${i + 6}`,
-      email: `reviewer${i + 6}@umak.edu.ph`,
-      phone: `0920123${String(i + 6).padStart(4, '0')}`,
-      college: ['College of Computing and Information Sciences', 'College of Science', 'College of Engineering', 'College of Business Administration'][i % 4],
-      availability: ['Available', 'Busy', 'Unavailable'][i % 3],
-      reviewStatus: ['On Track', 'Idle', 'Unavailable'][i % 3],
-      activeReviews: i % 10,
-      overdueReviews: i % 5,
-    })),
-  ];
+  // Load reviewers from database
+  useEffect(() => {
+    loadReviewers();
+  }, []);
+
+  const loadReviewers = async () => {
+    setLoading(true);
+    const result = await getReviewers();
+    if (result.success) {
+      setReviewers(result.reviewers || []);
+    } else {
+      console.error('Failed to load reviewers:', result.error);
+    }
+    setLoading(false);
+  };
 
   // Filter and sort data
   const filteredData = useMemo(() => {
-    let filtered = [...allReviewersData];
+    let filtered = [...reviewers];
 
     // Search filter
     if (searchQuery) {
@@ -132,7 +74,7 @@ export default function ReviewersPage() {
     }
 
     return filtered;
-  }, [searchQuery, availabilityFilter, statusFilter, activeReviewsFilter]);
+  }, [reviewers, searchQuery, availabilityFilter, statusFilter, activeReviewsFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -145,44 +87,60 @@ export default function ReviewersPage() {
     setCurrentPage(1);
   }, [searchQuery, availabilityFilter, statusFilter, activeReviewsFilter]);
 
-const handleRowClick = (reviewer: any) => {
-  router.push(`/staffmodule/reviewers/details?id=${reviewer.id}`);
-};
+  const handleRowClick = (reviewer: any) => {
+    router.push(`/staffmodule/reviewers/details?id=${reviewer.id}`);
+  };
+
   const resultsText = `Showing ${currentPageData.length} results`;
+
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Reviewers" activeNav="reviewers">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading reviewers...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Reviewers" activeNav="reviewers">
-  <div className="bg-white rounded-xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100">
-    <ReviewersFilters
-      searchQuery={searchQuery}
-      onSearchChange={setSearchQuery}
-      availabilityFilter={availabilityFilter}
-      onAvailabilityChange={setAvailabilityFilter}
-      statusFilter={statusFilter}
-      onStatusChange={setStatusFilter}
-      activeReviewsFilter={activeReviewsFilter}
-      onActiveReviewsChange={setActiveReviewsFilter}
-    />
-
-    <ReviewersTable
-      reviewers={currentPageData}
-      onRowClick={handleRowClick}
-    />
-
-    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-      <p className="text-sm text-gray-600 order-2 sm:order-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        {resultsText}
-      </p>
-      <div className="order-1 sm:order-2">
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          resultsText=""
+      <div className="bg-white rounded-xl p-3 sm:p-4 lg:p-6 shadow-sm border border-gray-100">
+        <ReviewersFilters
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          availabilityFilter={availabilityFilter}
+          onAvailabilityChange={setAvailabilityFilter}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          activeReviewsFilter={activeReviewsFilter}
+          onActiveReviewsChange={setActiveReviewsFilter}
         />
+
+        <ReviewersTable
+          reviewers={currentPageData}
+          onRowClick={handleRowClick}
+        />
+
+        <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-gray-600 order-2 sm:order-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {resultsText}
+          </p>
+          <div className="order-1 sm:order-2">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              resultsText=""
+            />
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</DashboardLayout>
+    </DashboardLayout>
   );
 }

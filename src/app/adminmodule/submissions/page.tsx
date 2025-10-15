@@ -5,9 +5,10 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import SearchBar from '@/components/staff-secretariat-admin/SearchBar';
 import DataTable from '@/components/staff-secretariat-admin/DataTable';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getAdminSubmissions } from '@/app/actions/admin/getAdminSubmissions';
 
 export default function AdminSubmissionsPage() {
   const router = useRouter();
@@ -17,120 +18,94 @@ export default function AdminSubmissionsPage() {
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const itemsPerPage = 10;
 
-  // Expanded sample data (50 items)
-  const allSubmissionsData = [
-    {
-      id: 'SUB-2025-001',
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      date: '07-24-2025',
-      status: 'Under Verification',
-    },
-    {
-      id: 'SUB-2025-002',
-      title: 'Effectiveness of Online Learning Platforms in Higher Education',
-      date: '08-03-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 'SUB-2025-003',
-      title: 'Impact of Social Media on Student Mental Health and Academic Performance',
-      date: '08-15-2025',
-      status: 'Waiting for Reviewers',
-    },
-    {
-      id: 'SUB-2025-004',
-      title: 'Analysis of Cybersecurity Threats in Cloud Computing Environments',
-      date: '08-20-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 'SUB-2025-005',
-      title: 'Machine Learning Approaches for Early Disease Detection in Medical Imaging',
-      date: '09-01-2025',
-      status: 'Under Revision',
-    },
-    {
-      id: 'SUB-2025-006',
-      title: 'Sustainable Urban Planning: Green Infrastructure Implementation Strategies',
-      date: '09-05-2025',
-      status: 'Review Complete',
-    },
-    {
-      id: 'SUB-2025-007',
-      title: 'Blockchain Technology Applications in Supply Chain Management',
-      date: '09-10-2025',
-      status: 'Under Verification',
-    },
-    {
-      id: 'SUB-2025-008',
-      title: 'The Role of Artificial Intelligence in Personalized Education',
-      date: '09-12-2025',
-      status: 'Under Classification',
-    },
-    {
-      id: 'SUB-2025-009',
-      title: 'Climate Change Adaptation Strategies for Coastal Communities',
-      date: '09-15-2025',
-      status: 'Under Review',
-    },
-    {
-      id: 'SUB-2025-010',
-      title: 'Investigating the Effects of Remote Work on Employee Productivity',
-      date: '09-18-2025',
-      status: 'Waiting for Reviewers',
-    },
-    // Add more dummy data
-    ...Array.from({ length: 40 }, (_, i) => ({
-      id: `SUB-2025-${String(i + 11).padStart(3, '0')}`,
-      title: `Research Study ${i + 11}: Various Topics in Science and Technology`,
-      date: `09-${String(Math.floor(i / 3) + 20).padStart(2, '0')}-2025`,
-      status: ['Under Verification', 'Under Classification', 'Waiting for Reviewers', 'Under Review', 'Under Revision', 'Review Complete'][i % 6],
-    })),
-  ];
+  // Load submissions from database
+  useEffect(() => {
+    loadSubmissions();
+  }, []);
+
+  const loadSubmissions = async () => {
+    setLoading(true);
+    const result = await getAdminSubmissions();
+    if (result.success) {
+      setSubmissions(result.submissions || []);
+    } else {
+      console.error('Failed to load submissions:', result.error);
+    }
+    setLoading(false);
+  };
+
+  function formatStatus(status: string): string {
+    const statusMap: { [key: string]: string } = {
+      'new_submission': 'New Submission',
+      'pending_review': 'Review Pending',
+      'awaiting_classification': 'Under Classification',
+      'under_review': 'Under Review',
+      'classified': 'Classified',
+      'review_complete': 'Review Complete',
+      'reviewed': 'Reviewed',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'needs_revision': 'Needs Revision',
+      'revision_requested': 'Revision Requested',
+      'pending_verification': 'Pending Verification',
+      'completed': 'Completed',
+    };
+    return statusMap[status] || status;
+  }
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Under Verification':
-        return 'text-blue-600 bg-blue-50';
-      case 'Under Classification':
-        return 'text-amber-600 bg-amber-50';
-      case 'Waiting for Reviewers':
-        return 'text-orange-600 bg-orange-50';
-      case 'Under Review':
-        return 'text-purple-600 bg-purple-50';
-      case 'Under Revision':
-        return 'text-pink-600 bg-pink-50';
-      case 'Review Complete':
-        return 'text-green-600 bg-green-50';
-      default:
-        return 'text-gray-600 bg-gray-100';
-    }
+    const colorMap: { [key: string]: string } = {
+      'new_submission': 'text-blue-600 bg-blue-50',
+      'pending_review': 'text-blue-600 bg-blue-50',
+      'awaiting_classification': 'text-amber-600 bg-amber-50',
+      'under_review': 'text-purple-600 bg-purple-50',
+      'classified': 'text-amber-600 bg-amber-50',
+      'review_complete': 'text-green-600 bg-green-50',
+      'reviewed': 'text-green-600 bg-green-50',
+      'approved': 'text-green-600 bg-green-50',
+      'rejected': 'text-red-600 bg-red-50',
+      'needs_revision': 'text-red-600 bg-red-50',
+      'revision_requested': 'text-orange-600 bg-orange-50',
+      'pending_verification': 'text-indigo-600 bg-indigo-50',
+      'completed': 'text-emerald-600 bg-emerald-50',
+    };
+    return colorMap[status] || 'text-gray-600 bg-gray-100';
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric'
+    });
   };
 
   // Filter and sort data
   const filteredAndSortedData = useMemo(() => {
-    let filtered = [...allSubmissionsData];
+    let filtered = [...submissions];
 
     // Apply search filter
     if (searchQuery) {
       filtered = filtered.filter(item =>
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.id.toLowerCase().includes(searchQuery.toLowerCase())
+        item.submission_id.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     // Apply status filter
     if (statusFilter !== 'All Statuses') {
-      filtered = filtered.filter(item => item.status === statusFilter);
+      filtered = filtered.filter(item => formatStatus(item.status) === statusFilter);
     }
 
     // Apply date range filter
     if (startDate || endDate) {
       filtered = filtered.filter(item => {
-        const itemDate = new Date(item.date);
+        const itemDate = new Date(item.submitted_at);
         const start = startDate ? new Date(startDate) : null;
         const end = endDate ? new Date(endDate) : null;
         
@@ -149,9 +124,9 @@ export default function AdminSubmissionsPage() {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'Newest':
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
         case 'Oldest':
-          return new Date(a.date).getTime() - new Date(b.date).getTime();
+          return new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime();
         case 'A-Z':
           return a.title.localeCompare(b.title);
         case 'Z-A':
@@ -162,7 +137,7 @@ export default function AdminSubmissionsPage() {
     });
 
     return filtered;
-  }, [searchQuery, statusFilter, sortBy, startDate, endDate]);
+  }, [submissions, searchQuery, statusFilter, sortBy, startDate, endDate]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredAndSortedData.length / itemsPerPage);
@@ -180,14 +155,19 @@ export default function AdminSubmissionsPage() {
       key: 'title',
       label: 'TITLE',
       align: 'left' as const,
+      render: (value: string) => (
+        <span className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          {value}
+        </span>
+      ),
     },
     {
-      key: 'date',
+      key: 'submitted_at',
       label: 'DATE',
       align: 'center' as const,
       render: (value: string) => (
         <span className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {value}
+          {formatDate(value)}
         </span>
       ),
     },
@@ -197,16 +177,34 @@ export default function AdminSubmissionsPage() {
       align: 'center' as const,
       render: (value: string) => (
         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(value)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {value}
+          {formatStatus(value)}
         </span>
       ),
     },
   ];
 
-const handleRowClick = (row: any) => {
-  router.push(`/adminmodule/submissions/details?id=${row.id}&status=${encodeURIComponent(row.status)}`);
-};
+  const handleRowClick = (row: any) => {
+
+    router.push(`/adminmodule/submissions/details?id=${row.id}`);
+
+  };
+
   const resultsText = `Showing ${startIndex + 1}-${Math.min(endIndex, filteredAndSortedData.length)} of ${filteredAndSortedData.length} results`;
+
+  if (loading) {
+    return (
+      <DashboardLayout role="admin" roleTitle="Admin" pageTitle="Submissions" activeNav="submissions">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading submissions...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout role="admin" roleTitle="Admin" pageTitle="Submissions" activeNav="submissions">
@@ -250,12 +248,16 @@ const handleRowClick = (row: any) => {
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               <option value="All Statuses">All Statuses</option>
-              <option value="Under Verification">Under Verification</option>
+              <option value="New Submission">New Submission</option>
+              <option value="Pending Verification">Pending Verification</option>
               <option value="Under Classification">Under Classification</option>
-              <option value="Waiting for Reviewers">Waiting for Reviewers</option>
+              <option value="Classified">Classified</option>
               <option value="Under Review">Under Review</option>
-              <option value="Under Revision">Under Revision</option>
+              <option value="Reviewed">Reviewed</option>
+              <option value="Needs Revision">Needs Revision</option>
               <option value="Review Complete">Review Complete</option>
+              <option value="Approved">Approved</option>
+              <option value="Completed">Completed</option>
             </select>
           </div>
 
