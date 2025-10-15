@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer>
          {/* Light Gray Bottom Bar */}
-      <div className="w-full h-60" style={{ backgroundColor: '#DAE0E7' }}></div>
+      <div className="w-full h-50" style={{ backgroundColor: '#E8EEF3' }}></div>
       {/* Yellow Line Separator */}
       <div className="w-full h-1 bg-[#D3CC50]"></div>
 

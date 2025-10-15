@@ -40,19 +40,19 @@ const NAV_LINKS = {
     ] as NavLinkProps[],
     iconLinks: [
       { href: '/researchermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },
-      { href: '/researchermodule/acccount', icon: 'user', ariaLabel: 'Account' },
+      { href: '/researchermodule/profile', icon: 'user', ariaLabel: 'Account' },
     ] as IconLinkProps[],
   },
 
   reviewer: {
     mainLinks: [
       { href: '/reviewermodule', text: 'Dashboard' },
-      { href: '/reviewer/reviews', text: 'Reviews' },
+      { href: '/reviewermodule/reviews', text: 'Reviews' },
       { href: '/reviewer/help', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
       { href: '/reviewer/notifications', icon: 'bell', ariaLabel: 'Notifications' },
-      { href: '/reviewer/account', icon: 'user', ariaLabel: 'Account' },
+      { href: '/reviewermodule/account', icon: 'user', ariaLabel: 'Account' },
     ] as IconLinkProps[],
   },
 };
@@ -123,14 +123,59 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   );
 };
 
-// Account dropdown component
-const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+// Account dropdown component with availability status for reviewer
+const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: keyof typeof NAV_LINKS }> = ({ isOpen, onClose, role }) => {
+  const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
+  
   if (!isOpen) return null;
   
+  const isReviewer = role === 'reviewer';
+  const isAvailable = availability === 'available';
+  
+  const toggleAvailability = () => {
+    const newStatus = availability === 'available' ? 'unavailable' : 'available';
+    setAvailability(newStatus);
+    // TODO: Save to backend
+    console.log('Availability changed to:', newStatus);
+  };
+  
   return (
-    <div className="absolute right-0 top-full mt-2 w-48 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
+    <div className="absolute right-0 top-full mt-2 w-56 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
+      {/* Availability Status - Only for Reviewer */}
+      {isReviewer && (
+        <>
+          <div className="p-4">
+            <p className="text-gray-400 text-xs mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Availability Status
+            </p>
+            <div className="flex items-center justify-between">
+              <span className="text-white text-sm font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {isAvailable ? 'Available' : 'Unavailable'}
+              </span>
+              
+              {/* Facebook-style Toggle Switch */}
+              <button
+                onClick={toggleAvailability}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                  isAvailable ? 'bg-green-500' : 'bg-gray-600'
+                }`}
+                role="switch"
+                aria-checked={isAvailable}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                    isAvailable ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+          <div className="h-px bg-gray-700" />
+        </>
+      )}
+      
       <Link 
-        href="/researcher/profile" 
+        href={role === 'reviewer' ? '/reviewermodule/profile' : '/researchermodule/profile'}
         className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors"
         onClick={onClose}
       >
@@ -152,6 +197,7 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
     </div>
   );
 };
+
 
 // Interface for the component's props
 interface NavbarProps {
@@ -270,7 +316,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
                     <User size={20} />
                   </button>
                   
-                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} />
+                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} role={role} />
                 </div>
               </div>
             </>
@@ -328,7 +374,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
                     <User size={20} />
                   </button>
                   
-                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} />
+                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} role={role} />
                 </div>
               </>
             )}

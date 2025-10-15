@@ -28,11 +28,11 @@ const SubmissionStepLayout: React.FC<SubmissionStepLayoutProps> = ({
   totalSteps = 8
 }) => {
   return (
-    <div className="min-h-screen bg-[#DAE0E7] flex flex-col">
+    <div className="min-h-screen bg-[#E8EEF3]">
       <NavbarRoles role="researcher" />
       
-      <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
-        <div className="max-w-7xl mx-auto">
+      <div className="pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
+        <div className="max-w-[1600px] mx-auto">
           {/* Back Button, Step Number, and Title */}
           <div className="mb-8">
             <div className="flex items-center gap-4 mb-6">

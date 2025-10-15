@@ -16,7 +16,6 @@ export default function ReviewerDashboard() {
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
 
   useEffect(() => {
-
     loadDashboardData();
   }, []);
 
@@ -60,9 +59,9 @@ export default function ReviewerDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+      <div className="min-h-screen bg-[#E8EEF3]">
         <NavbarRoles role="reviewer" />
-        <div className="flex-grow flex items-center justify-center mt-20">
+        <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -76,11 +75,11 @@ export default function ReviewerDashboard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+    <div className="min-h-screen bg-[#E8EEF3]">
       <NavbarRoles role="reviewer" />
 
-      <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
-        <div className="max-w-7xl mx-auto">
+      <div className="pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
+        <div className="max-w-[1600px] mx-auto">
           {/* Page Title - Responsive */}
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-6 sm:mb-8" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
             Reviewer Dashboard
