@@ -7,12 +7,12 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import ResearchersTable from '@/components/admin/researchers/ResearchersTable';
 import ResearchersFilters from '@/components/admin/researchers/ResearchersFilters';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
+import { getResearchers } from '@/app/actions/admin/getAdminResearchersTab';
 
 export default function ResearchersPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [organizationFilter, setOrganizationFilter] = useState('All organization');
-  const [progressFilter, setProgressFilter] = useState('All Progress');
   const [collegeFilter, setCollegeFilter] = useState('Any');
   const [currentPage, setCurrentPage] = useState(1);
   const [researchers, setResearchers] = useState<any[]>([]);
@@ -20,53 +20,20 @@ export default function ResearchersPage() {
 
   const itemsPerPage = 10;
 
-  // Mock data - replace with API call
   useEffect(() => {
     loadResearchers();
   }, []);
 
   const loadResearchers = async () => {
     setLoading(true);
-    // TODO: Replace with actual API call
-    const mockData = [
-      {
-        id: '1',
-        name: 'Jeon Wonwoo',
-        organization: 'External',
-        progress: 'New Submission',
-        college: 'CCIS'
-      },
-      {
-        id: '2',
-        name: 'Choi Seungcheol',
-        organization: 'Internal',
-        progress: 'Under Review',
-        college: 'CTHM'
-      },
-      {
-        id: '3',
-        name: 'Lee Seokmin',
-        organization: 'External',
-        progress: 'Revision',
-        college: 'CAD'
-      },
-      {
-        id: '4',
-        name: 'Jennie Kim',
-        organization: 'External',
-        progress: 'Completed',
-        college: 'CCIS'
-      },
-      {
-        id: '5',
-        name: 'Joshua Hong',
-        organization: 'Internal',
-        progress: 'Completed',
-        college: 'CTHM'
-      },
-    ];
+    const result = await getResearchers();
     
-    setResearchers(mockData);
+    if (result.success) {
+      setResearchers(result.researchers);
+    } else {
+      console.error('Failed to load researchers:', result.error);
+    }
+    
     setLoading(false);
   };
 
@@ -78,6 +45,7 @@ export default function ResearchersPage() {
     if (searchQuery) {
       filtered = filtered.filter(researcher =>
         researcher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        researcher.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         researcher.college.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
@@ -87,18 +55,13 @@ export default function ResearchersPage() {
       filtered = filtered.filter(researcher => researcher.organization === organizationFilter);
     }
 
-    // Progress filter - Updated to include "All Progress"
-    if (progressFilter !== 'All Progress') {
-      filtered = filtered.filter(researcher => researcher.progress === progressFilter);
-    }
-
     // College filter
     if (collegeFilter !== 'Any') {
       filtered = filtered.filter(researcher => researcher.college === collegeFilter);
     }
 
     return filtered;
-  }, [researchers, searchQuery, organizationFilter, progressFilter, collegeFilter]);
+  }, [researchers, searchQuery, organizationFilter, collegeFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -109,13 +72,13 @@ export default function ResearchersPage() {
   // Reset to page 1 when filters change
   useMemo(() => {
     setCurrentPage(1);
-  }, [searchQuery, organizationFilter, progressFilter, collegeFilter]);
+  }, [searchQuery, organizationFilter, collegeFilter]);
 
   const handleRowClick = (researcher: any) => {
     router.push(`/adminmodule/researchers/details?id=${researcher.id}`);
   };
 
-  const resultsText = `Showing ${currentPageData.length} results`;
+  const resultsText = `Showing ${currentPageData.length} of ${filteredData.length} researchers`;
 
   if (loading) {
     return (
@@ -140,8 +103,6 @@ export default function ResearchersPage() {
           onSearchChange={setSearchQuery}
           organizationFilter={organizationFilter}
           onOrganizationChange={setOrganizationFilter}
-          progressFilter={progressFilter}
-          onProgressChange={setProgressFilter}
           collegeFilter={collegeFilter}
           onCollegeChange={setCollegeFilter}
         />

@@ -36,26 +36,37 @@ export default function AccountDetailsTab({
     setPasswords({ ...passwords, [field]: value });
   };
 
-  const handleSaveAll = () => {
-    // Validate password change if fields are filled
-    if (passwords.newPassword || passwords.confirmPassword) {
-      if (passwords.newPassword !== passwords.confirmPassword) {
-        alert('New passwords do not match!');
-        return;
-      }
-      if (passwords.newPassword.length < 8) {
-        alert('Password must be at least 8 characters!');
-        return;
-      }
-      // TODO: Implement password change logic with backend
+ // Update the handleSaveAll function in AccountDetailsTab.tsx
+
+const handleSaveAll = async () => {
+  // Validate password change if fields are filled
+  if (passwords.newPassword || passwords.confirmPassword) {
+    if (passwords.newPassword !== passwords.confirmPassword) {
+      alert('New passwords do not match!');
+      return;
+    }
+    if (passwords.newPassword.length < 8) {
+      alert('Password must be at least 8 characters!');
+      return;
     }
     
-    // Save all changes
-    onSaveChanges();
+    // Update password
+    const { updateUserPassword } = await import('@/app/actions/researcher/updatePassword');
+    const passwordResult = await updateUserPassword(passwords.newPassword);
     
-    // Reset password fields
-    setPasswords({ newPassword: '', confirmPassword: '' });
-  };
+    if (!passwordResult.success) {
+      alert('Failed to update password: ' + passwordResult.error);
+      return;
+    }
+  }
+  
+  // Save all changes
+  onSaveChanges();
+  
+  // Reset password fields
+  setPasswords({ newPassword: '', confirmPassword: '' });
+};
+
 
   const handleCancel = () => {
     onCancelEdit();

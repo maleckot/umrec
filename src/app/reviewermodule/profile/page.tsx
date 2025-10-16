@@ -1,30 +1,74 @@
 // app/reviewermodule/profile/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import PersonalInformationCard from '@/components/reviewer/profile/PersonalInformationCard';
 import SecuritySettingsCard from '@/components/reviewer/profile/SecuritySettingsCard';
 import ExpertiseAreasCard from '@/components/reviewer/profile/ExpertiseAreasCard';
 import ReviewStatisticsCard from '@/components/reviewer/profile/ReviewStatisticsCard';
+import { getReviewerProfile } from '@/app/actions/reviewer/getReviewerProfile';
 
 export default function ReviewerProfilePage() {
-  // Mock data - replace with API call
-  const profileData = {
-    fullName: 'Prof. Juan Dela Cruz',
-    email: 'email1234@gmail.com',
-    department: 'College of Computing and Information Sciences',
-    title: 'Associate Professor',
-    lastPasswordChange: '3 months ago',
-    expertiseAreas: ['Science', 'Technology', 'Engineering', 'Mathematics'],
-    statistics: {
-      totalReviewed: 1256,
-      expedited: 450,
-      fullReview: 750,
-      overdue: 56,
-    },
+  const [loading, setLoading] = useState(true);
+  const [profileData, setProfileData] = useState<any>(null);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    setLoading(true);
+    const result = await getReviewerProfile();
+
+    if (result.success && result.profile) {
+      setProfileData({
+        fullName: result.profile.fullName,
+        email: result.profile.email,
+        department: result.profile.department,
+        title: result.profile.title,
+        expertiseAreas: result.profile.expertiseAreas,
+        lastPasswordChange: result.profile.lastPasswordChange,
+        statistics: result.statistics,
+      });
+    } else {
+      alert('Failed to load profile: ' + (result.error || 'Unknown error'));
+    }
+
+    setLoading(false);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#E8EEF3]">
+        <NavbarRoles role="reviewer" />
+        <div className="pt-24 md:pt-28 lg:pt-32 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50] mx-auto mb-4"></div>
+            <p className="text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading profile...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <div className="min-h-screen bg-[#E8EEF3]">
+        <NavbarRoles role="reviewer" />
+        <div className="pt-24 md:pt-28 lg:pt-32 flex items-center justify-center min-h-[400px]">
+          <p className="text-red-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Failed to load profile data
+          </p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#E8EEF3]">
@@ -38,7 +82,15 @@ export default function ReviewerProfilePage() {
           </h1>
 
           {/* Personal Information */}
-          <PersonalInformationCard profileData={profileData} />
+          <PersonalInformationCard 
+            profileData={{
+              fullName: profileData.fullName,
+              email: profileData.email,
+              department: profileData.department,
+              title: profileData.title,
+            }}
+            onUpdate={loadProfile}
+          />
 
           {/* Security Settings */}
           <SecuritySettingsCard lastPasswordChange={profileData.lastPasswordChange} />

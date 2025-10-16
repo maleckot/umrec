@@ -7,12 +7,13 @@ import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayou
 import ReviewersTable from '@/components/admin/reviewers/ReviewersTable';
 import ReviewersFilters from '@/components/admin/reviewers/ReviewersFilters';
 import Pagination from '@/components/staff-secretariat-admin/Pagination';
+import { getReviewers } from '@/app/actions/admin/reviewer/getAdminReviewers';
 
 export default function ReviewersPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [availabilityFilter, setAvailabilityFilter] = useState('All availability');
-  const [statusFilter, setStatusFilter] = useState('All Status'); // Changed default
+  const [statusFilter, setStatusFilter] = useState('All Status');
   const [activeReviewsFilter, setActiveReviewsFilter] = useState('Any');
   const [currentPage, setCurrentPage] = useState(1);
   const [reviewers, setReviewers] = useState<any[]>([]);
@@ -20,53 +21,22 @@ export default function ReviewersPage() {
 
   const itemsPerPage = 10;
 
-  // Mock data - replace with API call
   useEffect(() => {
     loadReviewers();
   }, []);
 
   const loadReviewers = async () => {
     setLoading(true);
-    // TODO: Replace with actual API call
-    const mockData = [
-      {
-        id: '1',
-        name: 'Prof. Juan Dela Cruz',
-        availability: 'Available',
-        reviewStatus: 'On Track',
-        activeReviews: 5
-      },
-      {
-        id: '2',
-        name: 'Prof. Maria Therese Delos Reyes',
-        availability: 'Busy',
-        reviewStatus: 'On Track',
-        activeReviews: 15
-      },
-      {
-        id: '3',
-        name: 'Prof. Antonio John Garcia',
-        availability: 'Busy',
-        reviewStatus: 'On Track',
-        activeReviews: '10 (4 overdue)'
-      },
-      {
-        id: '4',
-        name: 'Prof. Juan Dela Cruz',
-        availability: 'Available',
-        reviewStatus: 'Idle',
-        activeReviews: 0
-      },
-      {
-        id: '5',
-        name: 'Prof. Maria Therese Delos Reyes',
-        availability: 'Unavailable',
-        reviewStatus: 'Unavailable',
-        activeReviews: 0
-      },
-    ];
     
-    setReviewers(mockData);
+    const result = await getReviewers();
+    
+    if (result.success) {
+      setReviewers(result.reviewers);
+    } else {
+      console.error('Failed to load reviewers:', result.error);
+      setReviewers([]);
+    }
+    
     setLoading(false);
   };
 
@@ -77,7 +47,8 @@ export default function ReviewersPage() {
     // Search filter
     if (searchQuery) {
       filtered = filtered.filter(reviewer =>
-        reviewer.name.toLowerCase().includes(searchQuery.toLowerCase())
+        reviewer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        reviewer.email.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -86,7 +57,7 @@ export default function ReviewersPage() {
       filtered = filtered.filter(reviewer => reviewer.availability === availabilityFilter);
     }
 
-    // Status filter - Updated to include "All Status"
+    // Status filter
     if (statusFilter !== 'All Status') {
       filtered = filtered.filter(reviewer => reviewer.reviewStatus === statusFilter);
     }
@@ -117,7 +88,7 @@ export default function ReviewersPage() {
     router.push(`/adminmodule/reviewers/details?id=${reviewer.id}`);
   };
 
-  const resultsText = `Showing ${currentPageData.length} results`;
+  const resultsText = `Showing ${currentPageData.length} of ${filteredData.length} reviewers`;
 
   if (loading) {
     return (

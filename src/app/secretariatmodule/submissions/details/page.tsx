@@ -105,7 +105,7 @@ export default function SecretariatSubmissionDetailsPage() {
         if (category === 'Exempted') {
           router.push(`/secretariatmodule/submissions/exempted?id=${submissionId}`);
         } else {
-          router.push(`/secretariatmodule/submissions/classified?id=${submissionId}&category=${category}`);
+          router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submissionId}&category=${category}`);
         }
       } else {
         alert(`Failed to save classification: ${result.error}`);

@@ -1,7 +1,8 @@
 // app/researchermodule/profile/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import ProfileTabs from '@/components/researcher/profile/ProfileTabs';
@@ -9,30 +10,73 @@ import PersonalInformationTab from '@/components/researcher/profile/PersonalInfo
 import AccountDetailsTab from '@/components/researcher/profile/AccountDetailsTab';
 import MySubmissionTab from '@/components/researcher/profile/MySubmissionTab';
 import PasswordVerificationModal from '@/components/researcher/profile/PasswordVerificationModal';
+import { getResearcherProfile } from '@/app/actions/researcher/getResearcherProfile';
+import { updateResearcherProfile } from '@/app/actions/researcher/updateResearcherProfile';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'personal' | 'account' | 'submission'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-
-  // Mock user data - replace with actual data from backend
+  const [loading, setLoading] = useState(true);
+  const [originalData, setOriginalData] = useState<any>(null);
+  
   const [userData, setUserData] = useState({
-    firstName: 'Juan',
-    middleName: 'Alfonso',
-    lastName: 'Dela Cruz',
-    dateOfBirth: '1999-05-15',
-    contactNumber: '09993232945',
-    gender: 'Male',
-    school: 'University of Makati',
-    college: 'College of Computing and Information Sciences',
-    program: 'Bachelor of Science in Computer Science',
-    yearLevel: '4th Year',
-    section: 'IV-BCSAD',
-    studentNo: 'K12920931',
-    username: 'username123',
-    email: 'email12345@umak.edu.ph',
-    organization: 'Internal (UMAK)'
+    firstName: '',
+    middleName: '',
+    lastName: '',
+    dateOfBirth: '',
+    contactNumber: '',
+    gender: '',
+    school: '',
+    college: '',
+    program: '',
+    yearLevel: '',
+    section: '',
+    studentNo: '',
+    email: '',
+    organization: '',
+    username: '',
   });
+
+  const [submissions, setSubmissions] = useState<any[]>([]);
+
+  useEffect(() => {
+    loadProfileData();
+  }, []);
+
+  const loadProfileData = async () => {
+    setLoading(true);
+    const result = await getResearcherProfile();
+
+    if (result.success && result.profile) {
+      const profileData = {
+        firstName: result.profile.firstName || '',
+        middleName: result.profile.middleName || '',
+        lastName: result.profile.lastName || '',
+        dateOfBirth: result.profile.dateOfBirth || '',
+        contactNumber: result.profile.contactNumber || '',
+        gender: result.profile.gender || '',
+        school: result.profile.school || '',
+        college: result.profile.college || '',
+        program: result.profile.program || '',
+        yearLevel: result.profile.yearLevel || '',
+        section: result.profile.section || '',
+        studentNo: result.profile.studentNo || '',
+        email: result.profile.email || '',
+        organization: result.profile.organization || '',
+        username: result.profile.username || ''
+      };
+      
+      setUserData(profileData);
+      setOriginalData(profileData);
+      setSubmissions(result.submissions || []);
+    } else {
+      alert('Failed to load profile data');
+    }
+    
+    setLoading(false);
+  };
 
   const handleEditClick = () => {
     setShowPasswordModal(true);
@@ -43,28 +87,52 @@ export default function ProfilePage() {
     setIsEditing(true);
   };
 
-  const handleSaveChanges = () => {
-    // TODO: Save changes to backend
-    setIsEditing(false);
-    alert('Changes saved successfully!');
+  const handleSaveChanges = async () => {
+    setLoading(true);
+    const result = await updateResearcherProfile(userData);
+
+    if (result.success) {
+      setIsEditing(false);
+      setOriginalData(userData);
+      alert('Changes saved successfully!');
+    } else {
+      alert('Failed to save changes: ' + result.error);
+    }
+    
+    setLoading(false);
   };
 
   const handleCancelEdit = () => {
+    setUserData(originalData);
     setIsEditing(false);
-    // TODO: Reset form data to original values
   };
+
+  if (loading) {
+    return (
+      <>
+        <NavbarRoles role="researcher" />
+        <div className="min-h-screen bg-[#E8EEF3] pt-24 md:pt-28 lg:pt-32 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003366] mx-auto mb-4"></div>
+            <p className="text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading profile...
+            </p>
+          </div>
+        </div>
+        <Footer />
+      </>
+    );
+  }
 
   return (
     <>
       <NavbarRoles role="researcher" />
-      {/* Add proper top padding and reduce side margins */}
       <div className="min-h-screen bg-[#E8EEF3] pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
         <div className="max-w-[1600px] mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             {/* Left Sidebar - Profile Card */}
             <div className="lg:col-span-4 xl:col-span-3">
               <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
-                {/* Profile Picture */}
                 <div className="flex justify-center mb-4 sm:mb-6">
                   <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#003366] flex items-center justify-center">
                     <svg className="w-12 h-12 sm:w-16 sm:h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -73,19 +141,17 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Name */}
                 <h2 className="text-lg sm:text-xl font-bold text-[#003366] text-center mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {userData.firstName} {userData.middleName && userData.middleName[0]}. {userData.lastName}
                 </h2>
 
-                {/* Quick Info */}
                 <div className="space-y-3 sm:space-y-4">
                   <div>
                     <p className="text-xs font-semibold text-[#003366] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Organization:
                     </p>
                     <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {userData.organization}
+                      {userData.organization || 'N/A'}
                     </p>
                   </div>
 
@@ -94,7 +160,7 @@ export default function ProfilePage() {
                       School:
                     </p>
                     <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {userData.school}
+                      {userData.school || 'N/A'}
                     </p>
                   </div>
 
@@ -103,7 +169,7 @@ export default function ProfilePage() {
                       College:
                     </p>
                     <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {userData.college}
+                      {userData.college || 'N/A'}
                     </p>
                   </div>
 
@@ -147,7 +213,7 @@ export default function ProfilePage() {
                     />
                   )}
 
-                  {activeTab === 'submission' && <MySubmissionTab />}
+                  {activeTab === 'submission' && <MySubmissionTab submissions={submissions} />}
                 </div>
               </div>
             </div>
@@ -156,7 +222,6 @@ export default function ProfilePage() {
       </div>
       <Footer />
 
-      {/* Password Verification Modal */}
       {showPasswordModal && (
         <PasswordVerificationModal
           onVerified={handlePasswordVerified}

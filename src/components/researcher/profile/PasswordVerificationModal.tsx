@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Eye, EyeOff, X } from 'lucide-react';
+import { verifyCurrentPassword } from '@/app/actions/researcher/updatePassword';
 
 interface PasswordVerificationModalProps {
   onVerified: () => void;
@@ -20,14 +21,12 @@ export default function PasswordVerificationModal({ onVerified, onClose }: Passw
     setError('');
     setLoading(true);
 
-    // TODO: Verify password with backend
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await verifyCurrentPassword(password);
     
-    // Simulate verification
-    if (password === 'password123') {
+    if (result.success) {
       onVerified();
     } else {
-      setError('Incorrect password. Please try again.');
+      setError(result.error || 'Incorrect password. Please try again.');
     }
     
     setLoading(false);
@@ -66,7 +65,7 @@ export default function PasswordVerificationModal({ onVerified, onClose }: Passw
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform translate-y-[2px] text-gray-500 hover:text-gray-700"
+              className="absolute right-3 top-[42px] text-gray-500 hover:text-gray-700"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>

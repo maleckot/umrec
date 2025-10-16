@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { marcellus, metropolis } from '@/app/fonts';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { updateReviewerAvailability, getReviewerAvailability } from '@/app/actions/reviewer/updateAvailability';
 
 // Interface for a single text link object
 interface NavLinkProps {
@@ -123,20 +124,55 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   );
 };
 
-// Account dropdown component with availability status for reviewer
 const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: keyof typeof NAV_LINKS }> = ({ isOpen, onClose, role }) => {
   const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
+  const [loading, setLoading] = useState(false);
+  
+  // Load availability status when dropdown opens (only for reviewers)
+  useEffect(() => {
+    if (isOpen && role === 'reviewer') {
+      loadAvailability();
+    }
+  }, [isOpen, role]);
+
+const loadAvailability = async () => {
+  const result = await getReviewerAvailability();
+  if (result.success && result.availability) {
+    // Validate the value before setting
+    const status = result.availability;
+    if (status === 'available' || status === 'unavailable') {
+      setAvailability(status);
+    }
+  }
+};
+
   
   if (!isOpen) return null;
   
   const isReviewer = role === 'reviewer';
   const isAvailable = availability === 'available';
   
-  const toggleAvailability = () => {
+  const toggleAvailability = async () => {
+    if (loading) return; // Prevent double-clicks
+    
     const newStatus = availability === 'available' ? 'unavailable' : 'available';
+    setLoading(true);
+    
+    // Optimistically update UI
     setAvailability(newStatus);
-    // TODO: Save to backend
-    console.log('Availability changed to:', newStatus);
+    
+    const result = await updateReviewerAvailability(newStatus);
+    
+    if (result.success) {
+      console.log('✅ Availability changed to:', newStatus);
+    } else {
+      // Revert on error
+      setAvailability(availability);
+      console.error('❌ Failed to update availability:', result.error);
+      alert('Failed to update availability. Please try again.');
+    }
+    
+    setLoading(false);
   };
   
   return (
@@ -156,14 +192,15 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
               {/* Facebook-style Toggle Switch */}
               <button
                 onClick={toggleAvailability}
+                disabled={loading}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
                   isAvailable ? 'bg-green-500' : 'bg-gray-600'
-                }`}
+                } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                 role="switch"
                 aria-checked={isAvailable}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-md ${
                     isAvailable ? 'translate-x-6' : 'translate-x-1'
                   }`}
                 />

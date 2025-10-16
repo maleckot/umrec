@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Eye, EyeOff, Calendar } from 'lucide-react';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
+import { registerResearcher } from '@/app/actions/auth/registerResearcher';
 
 interface RegistrationFormProps {
   onSuccess: () => void;
@@ -33,6 +34,8 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isUmakStudent, setIsUmakStudent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const schoolLower = formData.school.toLowerCase();
@@ -46,16 +49,66 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setError(''); // Clear error when user types
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData);
-    onSuccess();
+    setError('');
+
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address');
+      return;
+    }
+
+    // Phone validation (PH format)
+    const phoneRegex = /^09\d{9}$/;
+    if (!phoneRegex.test(formData.contactNumber)) {
+      setError('Contact number must be in format: 09XXXXXXXXX');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await registerResearcher(formData);
+
+      if (result.success) {
+        onSuccess(); // Show success modal
+      } else {
+        setError(result.error || 'Registration failed. Please try again.');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-red-700 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {error}
+          </p>
+        </div>
+      )}
+
       {/* Personal Information */}
       <div>
         <h2 
@@ -251,10 +304,11 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
       {/* Submit Button */}
       <button
         type="submit"
-        className="w-full py-2.5 sm:py-3 bg-[#212A4E] text-white rounded-lg font-bold text-sm sm:text-base hover:opacity-90 transition-opacity mt-3 sm:mt-4"
+        disabled={loading}
+        className="w-full py-2.5 sm:py-3 bg-[#212A4E] text-white rounded-lg font-bold text-sm sm:text-base hover:opacity-90 transition-opacity mt-3 sm:mt-4 disabled:opacity-50"
         style={{ fontFamily: 'Metropolis, sans-serif' }}
       >
-        Register
+        {loading ? 'Registering...' : 'Register'}
       </button>
     </form>
   );

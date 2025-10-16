@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { verifyReviewerPassword } from '@/app/actions/reviewer/verifyPassword';
 
 interface PasswordVerificationModalProps {
   isOpen: boolean;
@@ -14,22 +15,25 @@ interface PasswordVerificationModalProps {
 export default function PasswordVerificationModal({ isOpen, onClose, onVerify, title }: PasswordVerificationModalProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // TODO: Verify password with backend
-    if (password.length < 8) {
-      setError('Invalid password');
-      return;
-    }
-
-    // If password is correct
     setError('');
-    onVerify();
-    setPassword('');
+    setLoading(true);
+    
+    const result = await verifyReviewerPassword(password);
+
+    if (result.success) {
+      onVerify();
+      setPassword('');
+    } else {
+      setError(result.error || 'Invalid password');
+    }
+    
+    setLoading(false);
   };
 
   const handleClose = () => {
@@ -49,6 +53,7 @@ export default function PasswordVerificationModal({ isOpen, onClose, onVerify, t
           <button
             onClick={handleClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={loading}
           >
             <X size={24} />
           </button>
@@ -71,6 +76,7 @@ export default function PasswordVerificationModal({ isOpen, onClose, onVerify, t
               className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none text-[#101C50]"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
               autoFocus
+              disabled={loading}
             />
             {error && (
               <p className="text-red-600 text-sm mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -84,17 +90,19 @@ export default function PasswordVerificationModal({ isOpen, onClose, onVerify, t
             <button
               type="button"
               onClick={handleClose}
-              className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold disabled:opacity-50"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 px-6 py-3 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold"
+              disabled={loading}
+              className="flex-1 px-6 py-3 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold disabled:opacity-50"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
-              Verify
+              {loading ? 'Verifying...' : 'Verify'}
             </button>
           </div>
         </form>

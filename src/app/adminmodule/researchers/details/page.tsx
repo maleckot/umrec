@@ -7,6 +7,8 @@ import { ArrowLeft, User, Phone, Mail, Building2, GraduationCap, Calendar, BookO
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import ResearcherStatsCards from '@/components/admin/researchers/ResearcherStatsCards';
 import ResearcherSubmissionsTable from '@/components/admin/researchers/ResearcherSubmissionsTable';
+import { getResearcherDetails } from '@/app/actions/admin/getAdminResearcherDetails';
+import { deleteResearcher } from '@/app/actions/admin/deleteResearcher';
 
 export default function ResearcherDetailsPage() {
   const router = useRouter();
@@ -16,6 +18,7 @@ export default function ResearcherDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [researcherData, setResearcherData] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (researcherId) {
@@ -24,36 +27,20 @@ export default function ResearcherDetailsPage() {
   }, [researcherId]);
 
   const loadResearcherDetails = async () => {
-    setLoading(true);
-    // TODO: Replace with actual API call
-    const mockData = {
-      researcher: {
-        id: researcherId,
-        name: 'Jeon Wonwoo',
-        phone: '09994455353',
-        email: 'email123@umak.edu.ph',
-        gender: 'Male',
-        studentNumber: '2021-1234567',
-        yearLevel: '4th Year',
-        section: 'CS-4A',
-        university: 'University of Makati',
-        degree: 'Bachelor of Science in Computer Science',
-        coAuthors: 'Kim Mingyu, Junhui Wen, Minghao Xu',
-        organization: 'External',
-        progress: 'New Submission',
-        college: 'CCIS'
-      },
-      submissions: [
-        {
-          id: '1',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          submittedDate: '2 hours ago',
-          status: 'New Submission'
-        }
-      ]
-    };
+    if (!researcherId) return;
     
-    setResearcherData(mockData);
+    setLoading(true);
+    const result = await getResearcherDetails(researcherId);
+    
+    if (result.success) {
+      setResearcherData({
+        researcher: result.researcher,
+        submissions: result.submissions,
+      });
+    } else {
+      console.error('Failed to load researcher:', result.error);
+    }
+    
     setLoading(false);
   };
 
@@ -65,11 +52,21 @@ export default function ResearcherDetailsPage() {
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = () => {
-    // TODO: API call to delete researcher
-    console.log('Deleting researcher:', researcherId);
+  const handleDeleteConfirm = async () => {
+    if (!researcherId) return;
+    
+    setDeleting(true);
+    const result = await deleteResearcher(researcherId);
+
+    if (result.success) {
+      alert('Researcher deleted successfully');
+      router.push('/adminmodule/researchers');
+    } else {
+      alert('Failed to delete researcher: ' + result.error);
+    }
+    
+    setDeleting(false);
     setShowDeleteModal(false);
-    router.push('/adminmodule/researchers');
   };
 
   const handleDeleteCancel = () => {
@@ -104,6 +101,11 @@ export default function ResearcherDetailsPage() {
   }
 
   const { researcher, submissions } = researcherData;
+
+  // Extract co-authors from first submission if available
+  const coAuthors = submissions.length > 0 && submissions[0].coAuthors 
+    ? submissions[0].coAuthors 
+    : 'N/A';
 
   return (
     <>
@@ -169,8 +171,8 @@ export default function ResearcherDetailsPage() {
         {/* Stats Cards */}
         <ResearcherStatsCards
           organization={researcher.organization}
-          progress={researcher.progress}
           college={researcher.college}
+          totalSubmissions={submissions.length}
         />
 
         {/* University & Degree Info */}
@@ -204,21 +206,11 @@ export default function ResearcherDetailsPage() {
           </div>
         </div>
 
-        {/* Co-Authors */}
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-          <p className="text-xs text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Co-Authors
-          </p>
-          <p className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {researcher.coAuthors}
-          </p>
-        </div>
-
         {/* Submission Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
           <div className="p-4 sm:p-6 border-b border-gray-200">
             <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Submission Details
+              Submission History ({submissions.length})
             </h2>
           </div>
 
@@ -266,17 +258,19 @@ export default function ResearcherDetailsPage() {
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleDeleteCancel}
-                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                disabled={deleting}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleDeleteConfirm}
-                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors"
+                disabled={deleting}
+                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
-                Delete
+                {deleting ? 'Deleting...' : 'Delete'}
               </button>
             </div>
           </div>

@@ -31,7 +31,7 @@ export async function saveClassification(
         status: 'classified',
         classified_at: new Date().toISOString(),
         classified_by: user.id,
-        revision_comments: revisionComments || null,  // ✅ Save revision comments
+        // revision_comments: revisionComments || null,  // ✅ Save revision comments
       })
       .eq('id', submissionId);
 
@@ -51,7 +51,7 @@ export async function saveClassification(
         details: {
           classification: category,
           reviewers_required: reviewersRequired,
-          revision_comments: revisionComments || null,  // ✅ Include in history
+          // revision_comments: revisionComments || null,  // ✅ Include in history
         },
         created_at: new Date().toISOString(),
       });

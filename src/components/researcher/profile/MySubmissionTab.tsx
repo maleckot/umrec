@@ -5,41 +5,53 @@ import { Eye, Download } from 'lucide-react';
 import { useState } from 'react';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 
-export default function MySubmissionTab() {
+interface MySubmissionTabProps {
+  submissions: any[];
+}
+
+export default function MySubmissionTab({ submissions }: MySubmissionTabProps) {
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
 
-  // Mock submission data
-  const submissions = [
-    { 
-      id: 1, 
-      fileName: 'Research Protocol.pdf', 
-      date: '7/16/25', 
-      status: 'Approved',
-      fileUrl: '/documents/research-protocol.pdf' // TODO: Replace with actual file URL
-    },
-    { 
-      id: 2, 
-      fileName: 'Research Protocol.pdf', 
-      date: '7/16/25', 
-      status: 'Needs Revision',
-      fileUrl: '/documents/research-protocol-2.pdf'
-    },
-    { 
-      id: 3, 
-      fileName: 'Research Protocol.pdf', 
-      date: '7/16/25', 
-      status: 'Pending',
-      fileUrl: '/documents/research-protocol-3.pdf'
-    }
-  ];
+  // Flatten submissions to documents and filter out consolidated files
+  const documents = submissions.flatMap(submission =>
+    submission.documents?.filter((doc: any) =>
+      !doc.file_name?.toLowerCase().includes('consolidated') &&
+      !doc.is_consolidated // if you have a flag in your backend
+    ).map((doc: any) => ({
+      id: doc.id,
+      fileName: doc.file_name,
+      date: submission.date,
+      status: submission.status,
+      fileUrl: doc.signedUrl
+    })) || []
+  );
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Approved': return 'text-green-600';
-      case 'Needs Revision': return 'text-red-600';
-      case 'Pending': return 'text-gray-600';
-      default: return 'text-gray-600';
-    }
+    const statusMap: Record<string, string> = {
+      'pending': 'text-gray-600',
+      'verified': 'text-blue-600',
+      'classified': 'text-purple-600',
+      'under_review': 'text-orange-600',
+      'review_complete': 'text-green-600',
+      'revision': 'text-red-600',
+      'approved': 'text-green-600',
+      'rejected': 'text-red-600',
+    };
+    return statusMap[status] || 'text-gray-600';
+  };
+
+  const getStatusLabel = (status: string) => {
+    const statusLabels: Record<string, string> = {
+      'pending': 'Pending',
+      'verified': 'Verified',
+      'classified': 'Classified',
+      'under_review': 'Under Review',
+      'review_complete': 'Reviewed',
+      'revision': 'Needs Revision',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+    };
+    return statusLabels[status] || status;
   };
 
   const handleViewDocument = (fileName: string, fileUrl: string) => {
@@ -47,14 +59,24 @@ export default function MySubmissionTab() {
   };
 
   const handleDownload = (fileName: string, fileUrl: string) => {
-    // TODO: Implement actual download logic
     const link = document.createElement('a');
     link.href = fileUrl;
     link.download = fileName;
+    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
+
+  if (documents.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          No documents yet
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -79,29 +101,29 @@ export default function MySubmissionTab() {
               </tr>
             </thead>
             <tbody>
-              {submissions.map((submission, index) => (
-                <tr key={submission.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+              {documents.map((document, index) => (
+                <tr key={document.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-4 py-3 text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.fileName}
+                    {document.fileName}
                   </td>
                   <td className="px-4 py-3 text-center text-sm text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.date}
+                    {document.date}
                   </td>
-                  <td className={`px-4 py-3 text-center text-sm font-semibold ${getStatusColor(submission.status)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.status}
+                  <td className={`px-4 py-3 text-center text-sm font-semibold ${getStatusColor(document.status)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {getStatusLabel(document.status)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-2">
-                      <button 
-                        onClick={() => handleViewDocument(submission.fileName, submission.fileUrl)}
-                        className="p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors" 
+                      <button
+                        onClick={() => handleViewDocument(document.fileName, document.fileUrl)}
+                        className="p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors"
                         title="View"
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button 
-                        onClick={() => handleDownload(submission.fileName, submission.fileUrl)}
-                        className="p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors" 
+                      <button
+                        onClick={() => handleDownload(document.fileName, document.fileUrl)}
+                        className="p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors"
                         title="Download"
                       >
                         <Download className="w-4 h-4" />
@@ -116,32 +138,32 @@ export default function MySubmissionTab() {
 
         {/* Mobile Cards */}
         <div className="md:hidden space-y-3">
-          {submissions.map((submission) => (
-            <div key={submission.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
+          {documents.map((document) => (
+            <div key={document.id} className="bg-white border-2 border-gray-200 rounded-lg p-4">
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-[#003366] text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.fileName}
+                    {document.fileName}
                   </p>
                   <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submission.date}
+                    {document.date}
                   </p>
                 </div>
-                <span className={`text-xs font-semibold ${getStatusColor(submission.status)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {submission.status}
+                <span className={`text-xs font-semibold ${getStatusColor(document.status)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {getStatusLabel(document.status)}
                 </span>
               </div>
               <div className="flex gap-2">
-                <button 
-                  onClick={() => handleViewDocument(submission.fileName, submission.fileUrl)}
+                <button
+                  onClick={() => handleViewDocument(document.fileName, document.fileUrl)}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#003366] text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <Eye className="w-3.5 h-3.5" />
                   View
                 </button>
-                <button 
-                  onClick={() => handleDownload(submission.fileName, submission.fileUrl)}
+                <button
+                  onClick={() => handleDownload(document.fileName, document.fileUrl)}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#003366] text-white rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
@@ -154,7 +176,6 @@ export default function MySubmissionTab() {
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
       {selectedDocument && (
         <DocumentViewerModal
           isOpen={true}

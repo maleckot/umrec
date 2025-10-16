@@ -7,6 +7,8 @@ import { ArrowLeft, User, Phone, Mail, Award, Building2 } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import ReviewerStatsCards from '@/components/admin/reviewers/ReviewerStatsCards';
 import ReviewerReviewsTable from '@/components/admin/reviewers/ReviewerReviewsTable';
+import { getReviewerDetails } from '@/app/actions/admin/reviewer/getAdminReviewerDetails';
+import { deleteReviewer } from '@/app/actions/admin/reviewer/deleteReviewer';
 
 export default function ReviewerDetailsPage() {
   const router = useRouter();
@@ -25,79 +27,38 @@ export default function ReviewerDetailsPage() {
   }, [reviewerId]);
 
   const loadReviewerDetails = async () => {
-    setLoading(true);
-    // TODO: Replace with actual API call
-    const mockData = {
-      reviewer: {
-        id: reviewerId,
-        name: 'Prof. Juan Dela Cruz',
-        phone: '09994455353',
-        email: 'email123@umak.edu.ph',
-        areasOfExpertise: 'Computer Science, Artificial Intelligence, Machine Learning',
-        college: 'College of Computing and Information Sciences (CCIS)',
-        availability: 'Available',
-        status: 'On Track',
-        activeReviews: 5
-      },
-      currentReviews: [
-        {
-          id: '1',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          dueDate: '07-24-2025',
-          status: 'Under Review'
-        },
-        {
-          id: '2',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          dueDate: '07-24-2025',
-          status: 'Overdue'
-        },
-        {
-          id: '3',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          dueDate: '07-24-2025',
-          status: 'Under Review'
-        },
-      ],
-      reviewHistory: [
-        {
-          id: '4',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          completedDate: '08-14-2025',
-          status: 'Review Complete'
-        },
-        {
-          id: '5',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          completedDate: '08-14-2025',
-          status: 'Review Complete'
-        },
-        {
-          id: '6',
-          title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-          completedDate: '08-14-2025',
-          status: 'Review Complete'
-        },
-      ]
-    };
+    if (!reviewerId) return;
     
-    setReviewerData(mockData);
+    setLoading(true);
+    const result = await getReviewerDetails(reviewerId);
+    
+    if (result.success && result.reviewer) {
+      setReviewerData(result);
+    } else {
+      console.error('Failed to load reviewer:', result.error);
+    }
     setLoading(false);
   };
 
-  const handleReviewClick = (id: string) => {
-    router.push(`/adminmodule/submissions/details?id=${id}`);
+  const handleReviewClick = (submissionId: string) => {
+    router.push(`/adminmodule/submissions/details?id=${submissionId}`);
   };
 
   const handleDeleteClick = () => {
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = () => {
-    // TODO: API call to delete reviewer
-    console.log('Deleting reviewer:', reviewerId);
-    setShowDeleteModal(false);
-    router.push('/adminmodule/reviewers');
+  const handleDeleteConfirm = async () => {
+    if (!reviewerId) return;
+
+    const result = await deleteReviewer(reviewerId);
+    
+    if (result.success) {
+      router.push('/adminmodule/reviewers');
+    } else {
+      alert('Failed to delete reviewer: ' + result.error);
+      setShowDeleteModal(false);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -149,54 +110,54 @@ export default function ReviewerDetailsPage() {
         </div>
 
         {/* Reviewer Header */}
-<div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
-  <div className="flex flex-col sm:flex-row items-start gap-4">
-    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
-      <User size={32} className="text-white sm:w-10 sm:h-10" />
-    </div>
-    <div className="flex-1 min-w-0 w-full">
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        {reviewer.name}
-      </h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
-        {/* Phone */}
-        <div className="flex items-center gap-2">
-          <Phone size={16} className="flex-shrink-0" />
-          <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.phone}</span>
-        </div>
-        
-        {/* Email */}
-        <div className="flex items-center gap-2">
-          <Mail size={16} className="flex-shrink-0" />
-          <span className="break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.email}</span>
-        </div>
-        
-        {/* Areas of Expertise */}
-        <div className="flex items-start gap-2">
-          <Award size={16} className="flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>Areas of Expertise: </span>
-            <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.areasOfExpertise}</span>
+        <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
+              <User size={32} className="text-white sm:w-10 sm:h-10" />
+            </div>
+            <div className="flex-1 min-w-0 w-full">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {reviewer.name}
+              </h1>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+                {/* Phone */}
+                <div className="flex items-center gap-2">
+                  <Phone size={16} className="flex-shrink-0" />
+                  <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.phone}</span>
+                </div>
+                
+                {/* Email */}
+                <div className="flex items-center gap-2">
+                  <Mail size={16} className="flex-shrink-0" />
+                  <span className="break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.email}</span>
+                </div>
+                
+                {/* Areas of Expertise */}
+                <div className="flex items-start gap-2">
+                  <Award size={16} className="flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>Areas of Expertise: </span>
+                    <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.areasOfExpertise}</span>
+                  </div>
+                </div>
+                
+                {/* College */}
+                <div className="flex items-start gap-2">
+                  <Building2 size={16} className="flex-shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>College: </span>
+                    <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.college}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        
-        {/* College */}
-        <div className="flex items-start gap-2">
-          <Building2 size={16} className="flex-shrink-0 mt-0.5" />
-          <div>
-            <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>College: </span>
-            <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.college}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
         {/* Stats Cards */}
         <ReviewerStatsCards
           availability={reviewer.availability}
-          status={reviewer.status}
+          status={reviewer.reviewStatus}
           activeReviews={reviewer.activeReviews}
         />
 

@@ -5,8 +5,8 @@ interface Researcher {
   id: string;
   name: string;
   organization: string;
-  progress: string;
   college: string;
+  totalSubmissions: number;
 }
 
 interface ResearchersTableProps {
@@ -15,19 +15,10 @@ interface ResearchersTableProps {
 }
 
 export default function ResearchersTable({ researchers, onRowClick }: ResearchersTableProps) {
-  const getProgressColor = (progress: string) => {
-    switch (progress) {
-      case 'New Submission':
-        return 'bg-blue-100 text-blue-800';
-      case 'Under Review':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Revision':
-        return 'bg-orange-100 text-orange-800';
-      case 'Completed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getOrganizationColor = (organization: string) => {
+    return organization === 'Internal (UMAK)'
+      ? 'text-blue-700'
+      : 'text-purple-700';
   };
 
   if (researchers.length === 0) {
@@ -54,10 +45,10 @@ export default function ResearchersTable({ researchers, onRowClick }: Researcher
                 Organization
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Progress
+                College
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                College
+                Total Submissions
               </th>
             </tr>
           </thead>
@@ -74,18 +65,18 @@ export default function ResearchersTable({ researchers, onRowClick }: Researcher
                   </span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-center">
-                  <span className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <span className={`text-sm font-medium ${getOrganizationColor(researcher.organization)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {researcher.organization}
-                  </span>
-                </td>
-                <td className="px-4 py-4 whitespace-nowrap text-center">
-                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getProgressColor(researcher.progress)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {researcher.progress}
                   </span>
                 </td>
                 <td className="px-4 py-4 whitespace-nowrap text-center">
                   <span className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {researcher.college}
+                  </span>
+                </td>
+                <td className="px-4 py-4 whitespace-nowrap text-center">
+                  <span className="text-sm font-semibold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {researcher.totalSubmissions}
                   </span>
                 </td>
               </tr>
@@ -106,19 +97,19 @@ export default function ResearchersTable({ researchers, onRowClick }: Researcher
               <h3 className="text-sm font-semibold text-gray-900 flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 {researcher.name}
               </h3>
-              <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${getProgressColor(researcher.progress)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {researcher.progress}
+              <span className={`ml-2 text-xs font-semibold ${getOrganizationColor(researcher.organization)}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {researcher.organization}
               </span>
             </div>
             
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>Organization:</span>
-                <span className="font-medium text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>{researcher.organization}</span>
-              </div>
-              <div className="flex justify-between">
                 <span className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>College:</span>
                 <span className="font-medium text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>{researcher.college}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>Total Submissions:</span>
+                <span className="font-semibold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>{researcher.totalSubmissions}</span>
               </div>
             </div>
           </div>

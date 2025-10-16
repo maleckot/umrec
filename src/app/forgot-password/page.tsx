@@ -1,10 +1,11 @@
 // app/forgot-password/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { sendPasswordResetOTP, verifyPasswordResetOTP, resetPasswordWithOTP} from '@/app/actions/auth/forgotPassword';
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState<'email' | 'code' | 'password'>('email');
@@ -16,14 +17,20 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    // TODO: Send verification code to email
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await sendPasswordResetOTP(email);
+
+    if (!result.success) {
+      setError(result.error || 'Failed to send verification code');
+      setLoading(false);
+      return;
+    }
     
     setLoading(false);
     setStep('code');
@@ -33,13 +40,17 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-
-    // TODO: Verify code
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
     
     if (code.length !== 6) {
       setError('Please enter a valid 6-digit code');
+      setLoading(false);
+      return;
+    }
+
+    const result = await verifyPasswordResetOTP(email, code);
+
+    if (!result.success) {
+      setError(result.error || 'Invalid verification code');
       setLoading(false);
       return;
     }
@@ -64,12 +75,16 @@ export default function ForgotPasswordPage() {
 
     setLoading(true);
 
-    // TODO: Update password
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const result = await resetPasswordWithOTP(email, newPassword);
+
+    if (!result.success) {
+      setError(result.error || 'Failed to reset password');
+      setLoading(false);
+      return;
+    }
     
     setLoading(false);
-    router.push('/login');
+    router.push('/login?reset=success');
   };
 
   return (
@@ -219,7 +234,11 @@ export default function ForgotPasswordPage() {
                   <div className="text-center">
                     <button
                       type="button"
-                      onClick={() => handleEmailSubmit(new Event('submit') as any)}
+                      onClick={() => {
+                        setCode('');
+                        setError('');
+                        handleEmailSubmit(new Event('submit') as any);
+                      }}
                       className="text-[#F0E847] hover:underline text-xs sm:text-sm"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     >
