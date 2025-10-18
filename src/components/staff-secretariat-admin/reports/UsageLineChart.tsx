@@ -3,16 +3,11 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
-const data = [
-  { date: 'Jan', users: 400 },
-  { date: 'Feb', users: 300 },
-  { date: 'Mar', users: 600 },
-  { date: 'Apr', users: 800 },
-  { date: 'May', users: 700 },
-  { date: 'Jun', users: 900 },
-];
+interface UsageLineChartProps {
+  data: Array<{ date: string; users: number }>;
+}
 
-export default function UsageLineChart() {
+export default function UsageLineChart({ data }: UsageLineChartProps) {
   return (
     <div className="bg-white rounded-xl p-4 sm:p-6 border-2 border-gray-200">
       <h3 

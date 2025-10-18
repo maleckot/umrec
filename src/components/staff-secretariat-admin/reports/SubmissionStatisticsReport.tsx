@@ -6,148 +6,140 @@ import StatCard from '@/components/staff-secretariat-admin/reports/StatCard';
 import AnimatedPieChart from '@/components/staff-secretariat-admin/reports/AnimatedPieChart';
 import ReviewerPerformanceTable from '@/components/staff-secretariat-admin/reports/ReviewerPerformanceTable';
 import ReviewerHighlightCards from '@/components/staff-secretariat-admin/reports/ReviewerHighlightCards';
+import { getReportsData } from '@/app/actions/getReportsData';
 
 interface SubmissionStatisticsReportProps {
   dateRange: string;
 }
 
 export default function SubmissionStatisticsReport({ dateRange }: SubmissionStatisticsReportProps) {
-  // Sample data - replace with API calls
-  const stats = {
-    total: 1876,
-    approved: 1245,
-    underRevision: 342,
-    inReview: 289
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    loadReportsData();
+  }, [dateRange]);
+
+  const loadReportsData = async () => {
+    setLoading(true);
+    const result = await getReportsData(dateRange);
+    
+    if (result.success) {
+      setData(result);
+    } else {
+      console.error('Failed to load reports:', result.error);
+    }
+    setLoading(false);
   };
 
-  const disciplineData = [
-    { name: 'Science, Tech & Engineering', value: 450, color: '#003366' },
-    { name: 'Social Development & Business', value: 380, color: '#87CEEB' },
-    { name: 'Health Sciences', value: 290, color: '#F7D117' }
-  ];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Loading reports...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
-  const collegeData = [
-    { name: 'CCIS', value: 245, color: '#003366' },
-    { name: 'CLAS', value: 198, color: '#87CEEB' },
-    { name: 'CBFS', value: 167, color: '#F7D117' },
-    { name: 'CHK', value: 145, color: '#E0C8A0' },
-    { name: 'CGPP', value: 132, color: '#B8860B' },
-    { name: 'Others', value: 989, color: '#C9E4F5' }
-  ];
+  if (!data) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          No data available
+        </p>
+      </div>
+    );
+  }
 
-  const reviewerPerformance = [
-    {
-      id: '1',
-      name: 'Dr. Maria Santos',
-      code: 'REC-021',
-      activeReviews: 12,
-      completedReviews: 56,
-      overdue: 0,
-      avgReviewTime: '4.2 days',
-      status: 'active' as const
-    },
-    {
-      id: '2',
-      name: 'Prof. John Cruz',
-      code: 'REC-022',
-      activeReviews: 8,
-      completedReviews: 38,
-      overdue: 0,
-      avgReviewTime: '4.8 days',
-      status: 'active' as const
-    },
-    {
-      id: '3',
-      name: 'Dr. Ana Reyes',
-      code: 'REC-023',
-      activeReviews: 15,
-      completedReviews: 52,
-      overdue: 4,
-      avgReviewTime: '6.1 days',
-      status: 'overdue' as const
-    },
-    {
-      id: '4',
-      name: 'Prof. Robert Tan',
-      code: 'REC-024',
-      activeReviews: 10,
-      completedReviews: 41,
-      overdue: 1,
-      avgReviewTime: '5.5 days',
-      status: 'active' as const
-    },
-    {
-      id: '5',
-      name: 'Dr. Lisa Garcia',
-      code: 'REC-025',
-      activeReviews: 14,
-      completedReviews: 45,
-      overdue: 0,
-      avgReviewTime: '3.8 days',
-      status: 'active' as const
-    },
-    {
-      id: '6',
-      name: 'Prof. Michael Wong',
-      code: 'REC-026',
-      activeReviews: 6,
-      completedReviews: 28,
-      overdue: 5,
-      avgReviewTime: '8.2 days',
-      status: 'overdue' as const
-    }
-  ];
+  const { submissionStats, classificationData, collegeData, reviewerPerformance } = data;
 
- return (
-  <div className="space-y-6">
-    {/* Stats Cards with Color Palette */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard
-        label="Total Submissions"
-        value={stats.total}
-        bgColor="bg-[#C9E4F5]"
-        textColor="text-[#003366]"
-      />
-      <StatCard
-        label="Approved"
-        value={stats.approved}
-        bgColor="bg-[#87CEEB]"
-        textColor="text-[#003366]"
-      />
-      <StatCard
-        label="Under Revision"
-        value={stats.underRevision}
-        bgColor="bg-[#F7D117]"
-        textColor="text-[#003366]"
-      />
-      <StatCard
-        label="In Review"
-        value={stats.inReview}
-        bgColor="bg-[#E0C8A0]"
-        textColor="text-[#003366]"
-      />
-    </div>
+  // Map classification data with colors
+  const classificationChartData = classificationData.map((item: any, index: number) => {
+    const colors = ['#003366', '#87CEEB', '#F7D117', '#E0C8A0', '#B8860B'];
+    return {
+      ...item,
+      color: colors[index % colors.length],
+    };
+  });
 
+  // Map college data with colors
+  const collegeChartData = collegeData.slice(0, 5).map((item: any, index: number) => {
+    const colors = ['#003366', '#87CEEB', '#F7D117', '#E0C8A0', '#B8860B'];
+    return {
+      ...item,
+      color: colors[index % colors.length],
+    };
+  });
 
-      {/* Pie Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AnimatedPieChart
-          title="Submissions by Category"
-          description="Distribution of submissions across major research areas"
-          data={disciplineData}
+  // Add "Others" if there are more than 5 colleges
+  if (collegeData.length > 5) {
+    const othersCount = collegeData.slice(5).reduce((sum: number, item: any) => sum + item.value, 0);
+    collegeChartData.push({
+      name: 'Others',
+      value: othersCount,
+      color: '#C9E4F5',
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          label="Total Submissions"
+          value={submissionStats.total}
+          bgColor="bg-[#C9E4F5]"
+          textColor="text-[#003366]"
         />
-        <AnimatedPieChart
-          title="Submissions by College"
-          description="Top colleges submitting research proposals"
-          data={collegeData}
+        <StatCard
+          label="Approved"
+          value={submissionStats.approved}
+          bgColor="bg-[#87CEEB]"
+          textColor="text-[#003366]"
+        />
+        <StatCard
+          label="Under Revision"
+          value={submissionStats.underRevision}
+          bgColor="bg-[#F7D117]"
+          textColor="text-[#003366]"
+        />
+        <StatCard
+          label="In Review"
+          value={submissionStats.inReview}
+          bgColor="bg-[#E0C8A0]"
+          textColor="text-[#003366]"
         />
       </div>
 
-      {/* Reviewer Highlight Cards */}
-      <ReviewerHighlightCards reviewers={reviewerPerformance} />
+      {/* Pie Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {classificationChartData.length > 0 && (
+          <AnimatedPieChart
+            title="Submissions by Classification"
+            description="Distribution of submissions across research classifications"
+            data={classificationChartData}
+          />
+        )}
+        {collegeChartData.length > 0 && (
+          <AnimatedPieChart
+            title="Submissions by College"
+            description="Top colleges submitting research proposals"
+            data={collegeChartData}
+          />
+        )}
+      </div>
 
-      {/* Reviewer Performance Table */}
-      <ReviewerPerformanceTable reviewers={reviewerPerformance} />
+      {/* Reviewer Highlights & Performance */}
+      {reviewerPerformance.length > 0 && (
+        <>
+          <ReviewerHighlightCards reviewers={reviewerPerformance} />
+          <ReviewerPerformanceTable reviewers={reviewerPerformance} />
+        </>
+      )}
     </div>
   );
 }

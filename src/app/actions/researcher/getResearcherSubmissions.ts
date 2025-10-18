@@ -11,8 +11,8 @@ export async function getResearcherSubmissions() {
     console.log('Auth user:', user?.id);
     console.log('Auth error:', userError);
     if (userError || !user) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'User not authenticated',
         submissions: [],
         stats: { active: 0, pending: 0, needsRevision: 0 },
@@ -26,12 +26,12 @@ export async function getResearcherSubmissions() {
       .select('*')
       .eq('user_id', user.id)
       .order('submitted_at', { ascending: false });
-      console.log('Submissions count:', submissions?.length);
-      console.log('Submissions error:', submissionsError);
-      console.log('Raw submissions:', submissions);
+    console.log('Submissions count:', submissions?.length);
+    console.log('Submissions error:', submissionsError);
+    console.log('Raw submissions:', submissions);
     if (submissionsError) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Failed to fetch submissions',
         submissions: [],
         stats: { active: 0, pending: 0, needsRevision: 0 },
@@ -81,15 +81,15 @@ export async function getResearcherSubmissions() {
         };
       })
     );
-
+   
     const stats = {
-      active: submissionList.filter(s => 
-        ['new_submission', 'awaiting_classification', 'under_review', 'submitted', 'pending_review', 'classified'].includes(s.status)
+      active: submissionList.filter(s =>
+        ['new_submission', 'awaiting_classification', 'under_review', 'pending', 'classified'].includes(s.status)
       ).length,
-      pending: submissionList.filter(s => 
-        ['under_review', 'pending_review','classified'].includes(s.status)
+      pending: submissionList.filter(s =>
+        ['under_review', 'pending', 'classified'].includes(s.status)
       ).length,
-      needsRevision: submissionList.filter(s => 
+      needsRevision: submissionList.filter(s =>
         s.status === 'needs_revision'
       ).length,
     };
