@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -23,6 +23,7 @@ export default function SecretariatSubmissionDetailsPage() {
   const [data, setData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [revisionComments, setRevisionComments] = useState('');
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   useEffect(() => {
     if (submissionId) {
@@ -91,6 +92,35 @@ export default function SecretariatSubmissionDetailsPage() {
       description: 'Waiting for secretariat to classify the submission',
     },
   ] : [];
+
+  const handleSubmitComment = async () => {
+    if (!revisionComments.trim()) {
+      alert('Please enter a comment before submitting.');
+      return;
+    }
+
+    if (!submissionId) return;
+
+    setIsSubmittingComment(true);
+    try {
+      // Add your API call here to save the revision comment
+      // Example: await saveRevisionComment(submissionId, revisionComments);
+      
+      console.log('Submitting revision comment:', revisionComments);
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      alert('Revision comment submitted successfully!');
+      // Optionally reload data or update UI
+      // setRevisionComments(''); // Clear after submission if needed
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      alert('Failed to submit revision comment');
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  };
 
   const handleClassificationSave = async (category: 'Exempted' | 'Expedited' | 'Full Review') => {
     if (!submissionId) return;
@@ -204,21 +234,43 @@ export default function SecretariatSubmissionDetailsPage() {
                   className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
                   style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '120px' }}
                   maxLength={1000}
+                  disabled={isSubmittingComment}
                 />
 
-                <div className="flex justify-between items-center mt-2">
+                <div className="flex justify-between items-center mt-3">
                   <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {revisionComments.length} / 1000 characters
                   </p>
-                  {revisionComments.length > 0 && (
+                  <div className="flex gap-2">
+                    {revisionComments.length > 0 && (
+                      <button
+                        onClick={() => setRevisionComments('')}
+                        className="text-sm text-gray-600 hover:text-gray-800 font-medium px-3 py-1 rounded-lg hover:bg-gray-100 transition-colors"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        disabled={isSubmittingComment}
+                      >
+                        Clear
+                      </button>
+                    )}
                     <button
-                      onClick={() => setRevisionComments('')}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                      onClick={handleSubmitComment}
+                      disabled={!revisionComments.trim() || isSubmittingComment}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold text-sm"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     >
-                      Clear
+                      {isSubmittingComment ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={16} />
+                          Send Comment
+                        </>
+                      )}
                     </button>
-                  )}
+                  </div>
                 </div>
               </div>
 

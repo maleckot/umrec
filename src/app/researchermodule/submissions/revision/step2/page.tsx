@@ -1,0 +1,848 @@
+// app/researchermodule/submissions/revision/step2/page.tsx
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import RevisionStepLayout from '@/components/researcher/revision/RevisionStepLayout';
+import FormField from '@/components/researcher/revision/FormField';
+import RevisionCommentBox from '@/components/researcher/revision/RevisionCommentBox';
+import { TextInput, TextArea, Select, CheckboxGroup, RadioGroup, FileUpload } from '@/components/researcher/submission/FormComponents';
+
+export default function RevisionStep2() {
+  const router = useRouter();
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  const [formData, setFormData] = useState({
+    title: '',
+    studySiteType: '',
+    studySite: '',
+    researcherFirstName: '',
+    researcherMiddleName: '',
+    researcherLastName: '',
+    telNo: '',
+    mobileNo: '',
+    email: '',
+    faxNo: 'N/A',
+    coResearcher: '',
+    college: '',
+    institution: 'University of Makati',
+    institutionAddress: '',
+    typeOfStudy: [] as string[],
+    typeOfStudyOthers: '',
+    sourceOfFunding: [] as string[],
+    pharmaceuticalSponsor: '',
+    fundingOthers: '',
+    startDate: '',
+    endDate: '',
+    numParticipants: '',
+    technicalReview: '',
+    technicalReviewFile: null as File | null,
+    submittedToOther: '',
+    hasApplicationForm: true,
+    hasResearchProtocol: false,
+    hasInformedConsentEnglish: false,
+    hasInformedConsentFilipino: false,
+    hasInformedConsentOthers: false,
+    informedConsentOthers: '',
+    hasAssentFormEnglish: false,
+    hasAssentFormFilipino: false,
+    hasAssentFormOthers: false,
+    assentFormOthers: '',
+    hasEndorsementLetter: false,
+    hasQuestionnaire: false,
+    hasDataCollectionForms: false,
+    hasProductBrochure: false,
+    hasFDAAuthorization: false,
+    hasSpecialPopulationPermit: false,
+    specialPopulationPermitDetails: '',
+    hasOtherDocs: false,
+    otherDocsDetails: '',
+  });
+
+  const [revisionComments] = useState(
+    'Please update the study duration dates and ensure all required documents are properly indicated. The methodology section needs clarification regarding participant selection.'
+  );
+
+  // Load data on mount
+  useEffect(() => {
+    console.log('🔍 Revision Step 2 useEffect triggered');
+    setIsClient(true);
+
+    const saved = localStorage.getItem('revisionStep2Data');
+    const revisionStep1Raw = localStorage.getItem('revisionStep1Data');
+
+    console.log('📦 Raw localStorage revisionStep1Data:', revisionStep1Raw);
+    console.log('📦 Raw localStorage revisionStep2Data:', saved);
+
+    if (saved) {
+      try {
+        const parsedData = JSON.parse(saved);
+
+        const isEmpty = !parsedData.title && !parsedData.email && !parsedData.mobileNo;
+
+        if (isEmpty && revisionStep1Raw) {
+          console.log('ℹ️ Revision Step 2 data exists but is empty, pre-filling from Revision Step 1...');
+          const revisionStep1Data = JSON.parse(revisionStep1Raw);
+
+          setFormData({
+            ...parsedData,
+            title: revisionStep1Data.title || parsedData.title,
+            researcherFirstName: revisionStep1Data.projectLeaderFirstName || parsedData.researcherFirstName,
+            researcherMiddleName: revisionStep1Data.projectLeaderMiddleName || parsedData.researcherMiddleName,
+            researcherLastName: revisionStep1Data.projectLeaderLastName || parsedData.researcherLastName,
+            mobileNo: revisionStep1Data.projectLeaderContact || parsedData.mobileNo,
+            email: revisionStep1Data.projectLeaderEmail || parsedData.email,
+            coResearcher: revisionStep1Data.coAuthors || parsedData.coResearcher,
+            institution:
+              revisionStep1Data.organization === 'internal'
+                ? 'University of Makati'
+                : revisionStep1Data.organization || parsedData.institution,
+            technicalReviewFile: null,
+          });
+        } else {
+          setFormData({ ...parsedData, technicalReviewFile: null });
+          console.log('✅ Loaded existing Revision Step 2 data');
+        }
+      } catch (error) {
+        console.error('❌ Error loading revisionStep2 data:', error);
+      }
+    } else {
+      console.log('⚠️ No Revision Step 2 data found, checking Revision Step 1...');
+
+      if (revisionStep1Raw) {
+        try {
+          const revisionStep1Data = JSON.parse(revisionStep1Raw);
+          console.log('📥 Revision Step 1 data parsed:', revisionStep1Data);
+
+          setFormData((prev) => ({
+            ...prev,
+            title: revisionStep1Data.title || '',
+            researcherFirstName: revisionStep1Data.projectLeaderFirstName || '',
+            researcherMiddleName: revisionStep1Data.projectLeaderMiddleName || '',
+            researcherLastName: revisionStep1Data.projectLeaderLastName || '',
+            mobileNo: revisionStep1Data.projectLeaderContact || '',
+            email: revisionStep1Data.projectLeaderEmail || '',
+            coResearcher: revisionStep1Data.coAuthors || '',
+            institution:
+              revisionStep1Data.organization === 'internal'
+                ? 'University of Makati'
+                : revisionStep1Data.organization || 'University of Makati',
+          }));
+          console.log('✅ Pre-filled from Revision Step 1');
+        } catch (error) {
+          console.error('❌ Error loading revisionStep1 data:', error);
+        }
+      } else {
+        console.log('⚠️ No Revision Step 1 data found in localStorage');
+      }
+    }
+
+    isInitialMount.current = false;
+  }, []);
+
+  // Auto-save on data change
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    if (!isClient) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).technicalReviewFile;
+      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+      console.log('💾 Revision Step 2 data auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, isClient]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const dataToSave = { ...formData };
+    delete (dataToSave as any).technicalReviewFile;
+    localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+    router.push('/researchermodule/submissions/revision/step3');
+  };
+
+  const handleBack = () => {
+    router.push('/researchermodule/submissions/revision/step1');
+  };
+
+  const typeOfStudyOptions = [
+    { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
+    { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
+    { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
+    { value: 'social_behavioral', label: 'Social / Behavioral Research' },
+    { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
+    { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
+    { value: 'stem_cell', label: 'Stem Cell Research' },
+    { value: 'genetic', label: 'Genetic Research' },
+    { value: 'others', label: 'Others (please specify)' },
+  ];
+
+  const fundingOptions = [
+    { value: 'self_funded', label: 'Self-funded' },
+    { value: 'government', label: 'Government-Funded' },
+    { value: 'scholarship', label: 'Scholarship/Research Grant' },
+    { value: 'pharmaceutical', label: 'Sponsored by Pharmaceutical Company' },
+    { value: 'institution', label: 'Institution-Funded' },
+    { value: 'others', label: 'Others (please specify)' },
+  ];
+
+  if (!isClient) {
+    return (
+      <RevisionStepLayout
+        stepNumber={2}
+        title="Application for Ethics Review"
+        description="Review and update the requested information based on feedback."
+        onBack={handleBack}
+      >
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading form...
+            </p>
+          </div>
+        </div>
+      </RevisionStepLayout>
+    );
+  }
+
+  return (
+    <RevisionStepLayout
+      stepNumber={2}
+      title="Application for Ethics Review"
+      description="Review and update the requested information based on feedback."
+      onBack={handleBack}
+    >
+      <RevisionCommentBox comments={revisionComments} />
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Section 1: General Information */}
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg mb-6">
+          <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            1. General Information
+          </h4>
+          <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Fields marked with * are required. Review and update information based on reviewer feedback.
+          </p>
+        </div>
+
+        {/* Title of Study */}
+        <FormField label="Title of Study" required>
+          <input
+            type="text"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Study Site */}
+        <FormField label="Study Site" required>
+          <input
+            type="text"
+            value={formData.studySite}
+            onChange={(e) => setFormData({ ...formData, studySite: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Name of Researcher */}
+        <FormField label="Name of Researcher" required helperText="Format: First Name, MI, Last name">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            <input
+              type="text"
+              placeholder="First Name"
+              value={formData.researcherFirstName}
+              onChange={(e) => setFormData({ ...formData, researcherFirstName: e.target.value })}
+              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Middle Initial"
+              value={formData.researcherMiddleName}
+              onChange={(e) => setFormData({ ...formData, researcherMiddleName: e.target.value })}
+              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            />
+            <input
+              type="text"
+              placeholder="Last Name"
+              value={formData.researcherLastName}
+              onChange={(e) => setFormData({ ...formData, researcherLastName: e.target.value })}
+              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </div>
+        </FormField>
+
+        {/* Contact Information */}
+        <div>
+          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Contact Information
+          </label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Tel No
+              </label>
+              <input
+                type="tel"
+                value={formData.telNo}
+                onChange={(e) => setFormData({ ...formData, telNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Mobile No <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="tel"
+                value={formData.mobileNo}
+                onChange={(e) => setFormData({ ...formData, mobileNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Fax No
+              </label>
+              <input
+                type="text"
+                value={formData.faxNo}
+                onChange={(e) => setFormData({ ...formData, faxNo: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+              <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Default: N/A
+              </p>
+            </div>
+            <div>
+              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Email <span className="text-red-600">*</span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Co-researcher */}
+        <FormField label="Co-researcher (if any)" helperText="If there are none, please write N/A">
+          <textarea
+            value={formData.coResearcher}
+            onChange={(e) => setFormData({ ...formData, coResearcher: e.target.value })}
+            placeholder="First Name MI, Last name (if multiple, separate with commas)"
+            rows={2}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none resize-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          />
+        </FormField>
+
+        {/* College/Department */}
+        <FormField label="College/Department" required>
+          <input
+            type="text"
+            value={formData.college}
+            onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Institution */}
+        <FormField label="Institution" required>
+          <input
+            type="text"
+            value={formData.institution}
+            onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Address of Institution */}
+        <FormField label="Address of Institution" required>
+          <input
+            type="text"
+            value={formData.institutionAddress}
+            onChange={(e) => setFormData({ ...formData, institutionAddress: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Type of Study */}
+        <CheckboxGroup
+          label="Type of Study"
+          options={typeOfStudyOptions}
+          selected={formData.typeOfStudy}
+          onChange={(val) => setFormData({ ...formData, typeOfStudy: val })}
+          required
+        />
+
+        {formData.typeOfStudy.includes('others') && (
+          <FormField label="Please specify other type of study" required>
+            <input
+              type="text"
+              value={formData.typeOfStudyOthers}
+              onChange={(e) => setFormData({ ...formData, typeOfStudyOthers: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </FormField>
+        )}
+
+        {/* Study Site Type */}
+        <RadioGroup
+          label="Study Site Type"
+          options={[
+            { value: 'Multicenter (International)', label: 'Multicenter (International)' },
+            { value: 'Multicenter (National)', label: 'Multicenter (National)' },
+            { value: 'Single Site', label: 'Single Site' },
+          ]}
+          selected={formData.studySiteType}
+          onChange={(val) => setFormData({ ...formData, studySiteType: val })}
+          required
+        />
+
+        {/* Source of Funding */}
+        <CheckboxGroup
+          label="Source of Funding"
+          options={fundingOptions}
+          selected={formData.sourceOfFunding}
+          onChange={(val) => setFormData({ ...formData, sourceOfFunding: val })}
+          required
+        />
+
+        {formData.sourceOfFunding.includes('pharmaceutical') && (
+          <FormField label="Specify Pharmaceutical Company" required>
+            <input
+              type="text"
+              value={formData.pharmaceuticalSponsor}
+              onChange={(e) => setFormData({ ...formData, pharmaceuticalSponsor: e.target.value })}
+              placeholder="Company name"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </FormField>
+        )}
+
+        {formData.sourceOfFunding.includes('others') && (
+          <FormField label="Specify Other Funding Source" required>
+            <input
+              type="text"
+              value={formData.fundingOthers}
+              onChange={(e) => setFormData({ ...formData, fundingOthers: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </FormField>
+        )}
+
+        {/* Duration of the Study */}
+        <div>
+          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Duration of the Study <span className="text-red-600">*</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Start date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                  className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                End date
+              </label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={formData.endDate}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                  className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Number of Participants */}
+        <FormField label="No. of study participants" required>
+          <input
+            type="number"
+            value={formData.numParticipants}
+            onChange={(e) => setFormData({ ...formData, numParticipants: e.target.value })}
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+        </FormField>
+
+        {/* Technical Review */}
+        <div>
+          <RadioGroup
+            label="Has the Research undergone a Technical Review?"
+            options={[
+              { value: 'yes', label: 'Yes (please attach technical review results)' },
+              { value: 'no', label: 'No' },
+            ]}
+            selected={formData.technicalReview}
+            onChange={(val) => setFormData({ ...formData, technicalReview: val })}
+            required
+          />
+
+          {formData.technicalReview === 'yes' && (
+            <div className="mt-4 ml-4 sm:ml-8">
+              <FileUpload
+                label="Upload Technical Review Results"
+                value={formData.technicalReviewFile}
+                onChange={(file) => setFormData({ ...formData, technicalReviewFile: file })}
+                accept=".pdf"
+                helperText="PDF files only (max 10MB)"
+                required
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Submitted to Another UMREC */}
+        <RadioGroup
+          label="Has the Research been submitted to another UMREC?"
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'no', label: 'No' },
+          ]}
+          selected={formData.submittedToOther}
+          onChange={(val) => setFormData({ ...formData, submittedToOther: val })}
+          required
+        />
+
+        {/* Section 2: Checklist of Documents */}
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg">
+          <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            2. Checklist of Documents
+          </h4>
+          <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Select all documents that apply to your submission.
+          </p>
+        </div>
+
+        {/* Basic Requirements */}
+        <div className="space-y-3 sm:space-y-4">
+          <h5 className="font-semibold text-sm sm:text-base text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Basic Requirements:
+          </h5>
+
+          <label className="flex items-start cursor-not-allowed opacity-75">
+            <input type="checkbox" checked={true} disabled className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded cursor-not-allowed flex-shrink-0" />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Application for Ethics Review of A New Protocol
+            </span>
+          </label>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasResearchProtocol}
+              onChange={(e) => setFormData({ ...formData, hasResearchProtocol: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Research Protocol
+            </span>
+          </label>
+
+          <div className="ml-6 sm:ml-8 space-y-2">
+            <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasInformedConsentEnglish}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentEnglish: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Informed Consent Form - English version
+              </span>
+            </label>
+            <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasInformedConsentFilipino}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentFilipino: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Informed Consent Form - Filipino version
+              </span>
+            </label>
+            <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasInformedConsentOthers}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Informed Consent Form - Others (please specify)
+              </span>
+            </label>
+            {formData.hasInformedConsentOthers && (
+              <input
+                type="text"
+                placeholder="Specify other language"
+                value={formData.informedConsentOthers}
+                onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
+                className="ml-6 sm:ml-8 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs sm:text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Assent Form (if applicable):
+            </p>
+            <div className="ml-6 sm:ml-8 space-y-2">
+              <label className="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasAssentFormEnglish}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormEnglish: e.target.checked })}
+                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                />
+                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  English version
+                </span>
+              </label>
+              <label className="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasAssentFormFilipino}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormFilipino: e.target.checked })}
+                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                />
+                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Filipino version
+                </span>
+              </label>
+              <label className="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hasAssentFormOthers}
+                  onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
+                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                />
+                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Others: (please specify)
+                </span>
+              </label>
+              {formData.hasAssentFormOthers && (
+                <input
+                  type="text"
+                  placeholder="Specify other language"
+                  value={formData.assentFormOthers}
+                  onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
+                  className="ml-6 sm:ml-8 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                />
+              )}
+            </div>
+          </div>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasEndorsementLetter}
+              onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Endorsement Letter from Research Adviser
+            </span>
+          </label>
+        </div>
+
+        {/* Supplementary Documents */}
+        <div className="space-y-3 sm:space-y-4 mt-6">
+          <h5 className="font-semibold text-sm sm:text-base text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Supplementary Documents:
+          </h5>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasQuestionnaire}
+              onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Questionnaire (if applicable)
+            </span>
+          </label>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasDataCollectionForms}
+              onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Data Collection Forms (if applicable)
+            </span>
+          </label>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasProductBrochure}
+              onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Product Brochure (if applicable)
+            </span>
+          </label>
+
+          <label className="flex items-start cursor-pointer">
+            <input
+              type="checkbox"
+              checked={formData.hasFDAAuthorization}
+              onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
+              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+            />
+            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Philippine FDA Marketing Authorization or Import License (if applicable)
+            </span>
+          </label>
+
+          <div>
+            <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasSpecialPopulationPermit}
+                onChange={(e) => setFormData({ ...formData, hasSpecialPopulationPermit: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Permit/s for special populations (please specify)
+              </span>
+            </label>
+            {formData.hasSpecialPopulationPermit && (
+              <input
+                type="text"
+                placeholder="Specify details"
+                value={formData.specialPopulationPermitDetails}
+                onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
+                className="ml-6 sm:ml-8 mt-2 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+            )}
+          </div>
+
+          <div>
+            <label className="flex items-start cursor-pointer">
+              <input
+                type="checkbox"
+                checked={formData.hasOtherDocs}
+                onChange={(e) => setFormData({ ...formData, hasOtherDocs: e.target.checked })}
+                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+              />
+              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Others (please specify)
+              </span>
+            </label>
+            {formData.hasOtherDocs && (
+              <input
+                type="text"
+                placeholder="Specify other documents"
+                value={formData.otherDocsDetails}
+                onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
+                className="ml-6 sm:ml-8 mt-2 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Buttons */}
+        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 sm:pt-8 mt-6 sm:mt-8 border-t-2 border-gray-200">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold order-2 sm:order-1"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Back
+          </button>
+          <button
+            type="submit"
+            className="w-full sm:w-auto px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold cursor-pointer order-1 sm:order-2"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Next
+          </button>
+        </div>
+      </form>
+    </RevisionStepLayout>
+  );
+}
