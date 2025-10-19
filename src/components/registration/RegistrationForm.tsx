@@ -8,8 +8,34 @@ import FormSelect from './FormSelect';
 import { registerResearcher } from '@/app/actions/auth/registerResearcher';
 
 interface RegistrationFormProps {
-  onSuccess: () => void;
+  onSuccess: (email: string, userId: string) => void;
 }
+
+// UMAK Colleges list
+const UMAK_COLLEGES = [
+  { value: '', label: 'Select College' },
+  { value: 'College of Liberal Arts and Sciences (CLAS)', label: 'College of Liberal Arts and Sciences (CLAS)' },
+  { value: 'College of Human Kinetics (CHK)', label: 'College of Human Kinetics (CHK)' },
+  { value: 'College of Business and Financial Science (CBFS)', label: 'College of Business and Financial Science (CBFS)' },
+  { value: 'College of Computing and Information Sciences (CCIS)', label: 'College of Computing and Information Sciences (CCIS)' },
+  { value: 'College of Construction Sciences and Engineering (CCSE)', label: 'College of Construction Sciences and Engineering (CCSE)' },
+  { value: 'College of Governance and Public Policy (CGPP)', label: 'College of Governance and Public Policy (CGPP)' },
+  { value: 'College of Engineering Technology (CET)', label: 'College of Engineering Technology (CET)' },
+  { value: 'College of Tourism and Hospitality Management (CTHM)', label: 'College of Tourism and Hospitality Management (CTHM)' },
+  { value: 'College of Innovative Teacher Education (CITE)', label: 'College of Innovative Teacher Education (CITE)' },
+  { value: 'College of Continuing, Advanced and Professional Studies (CCAPS)', label: 'College of Continuing, Advanced and Professional Studies (CCAPS)' },
+  { value: 'Institute of Arts and Design (IAD)', label: 'Institute of Arts and Design (IAD)' },
+  { value: 'Institute of Accountancy (IOA)', label: 'Institute of Accountancy (IOA)' },
+  { value: 'Institute of Pharmacy (IOP)', label: 'Institute of Pharmacy (IOP)' },
+  { value: 'Institute of Nursing (ION)', label: 'Institute of Nursing (ION)' },
+  { value: 'Institute of Imaging Health Science (IIHS)', label: 'Institute of Imaging Health Science (IIHS)' },
+  { value: 'Institute of Technical Education and Skills Training (ITEST)', label: 'Institute of Technical Education and Skills Training (ITEST)' },
+  { value: 'Institute for Social Development and Nation Building (ISDNB)', label: 'Institute for Social Development and Nation Building (ISDNB)' },
+  { value: 'Institute of Psychology (IOPsy)', label: 'Institute of Psychology (IOPsy)' },
+  { value: 'Institute of Social Work (ISW)', label: 'Institute of Social Work (ISW)' },
+  { value: 'Institute of Disaster and Emergency Management (IDEM)', label: 'Institute of Disaster and Emergency Management (IDEM)' },
+  { value: 'School of Law (SOL)', label: 'School of Law (SOL)' }
+];
 
 export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const [formData, setFormData] = useState({
@@ -42,8 +68,11 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     const isUmak = schoolLower.includes('university of makati') || schoolLower.includes('umak');
     setIsUmakStudent(isUmak);
     
-    if (!isUmak && formData.studentNo) {
-      setFormData(prev => ({ ...prev, studentNo: '' }));
+    // Clear student number and college if not UMAK
+    if (!isUmak) {
+      if (formData.studentNo || formData.college) {
+        setFormData(prev => ({ ...prev, studentNo: '', college: '' }));
+      }
     }
   }, [formData.school]);
 
@@ -87,7 +116,9 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
       const result = await registerResearcher(formData);
 
       if (result.success) {
-        onSuccess(); // Show success modal
+        // Pass email and userId to show verification modal
+        const userId = result.userId || `temp-${Date.now()}`; // Use temp ID if backend doesn't return one yet
+        onSuccess(formData.email, userId);
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
@@ -183,13 +214,25 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               placeholder="University of Makati"
               required
             />
-            <FormInput
-              label="College"
-              value={formData.college}
-              onChange={(value) => handleChange('college', value)}
-              placeholder="College of Computing and Information Sciences"
-              required
-            />
+            
+            {/* Conditional College field - Dropdown for UMAK, Input for others */}
+            {isUmakStudent ? (
+              <FormSelect
+                label="College"
+                value={formData.college}
+                onChange={(value) => handleChange('college', value)}
+                options={UMAK_COLLEGES}
+                required
+              />
+            ) : (
+              <FormInput
+                label="College"
+                value={formData.college}
+                onChange={(value) => handleChange('college', value)}
+                placeholder="College of Computing and Information Sciences"
+                required
+              />
+            )}
           </div>
 
           <FormInput

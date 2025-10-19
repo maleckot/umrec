@@ -11,7 +11,6 @@ import { CheckCircle } from 'lucide-react';
 import { submitResearchApplication } from '@/app/actions/researcher/submitResearchApplication';
 
 export default function Step8ReviewSubmit() {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allData, setAllData] = useState<any>({});
 
@@ -86,6 +85,8 @@ export default function Step8ReviewSubmit() {
     router.push('/researchermodule/submissions/new/step7');
   };
 
+  const router = useRouter();
+
   const handleEdit = (step: number) => {
     router.push(`/researchermodule/submissions/new/step${step}`);
   };
@@ -124,8 +125,7 @@ export default function Step8ReviewSubmit() {
       isNextDisabled={isSubmitting}
       totalSteps={8}
     >
-
-
+      <div className="space-y-4 sm:space-y-5 md:space-y-6">
         {/* Alert Banner */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg">
           <div className="flex items-start space-x-3">
@@ -327,6 +327,7 @@ export default function Step8ReviewSubmit() {
             I/we understand that any false or misleading information may result in the rejection of this application or withdrawal of ethics approval.
           </p>
         </div>
+      </div>
     </SubmissionStepLayout>
   );
 }

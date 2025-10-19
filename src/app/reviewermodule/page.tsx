@@ -8,12 +8,16 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getReviewerDashboardData } from '@/app/actions/reviewer/getReviewerDashboardData';
 
+type TabType = 'all' | 'expedited' | 'full';
+
 export default function ReviewerDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [overdueActiveTab, setOverdueActiveTab] = useState<TabType>('all');
 
   useEffect(() => {
     loadDashboardData();
@@ -41,8 +45,43 @@ export default function ReviewerDashboard() {
     completedReviews: dashboardData?.stats.completedReviews || 0,
   };
 
-  const newAssignments = dashboardData?.newAssignments || [];
-  const overdueReviews = dashboardData?.overdueReviews || [];
+  const allNewAssignments = dashboardData?.newAssignments || [];
+  const allOverdueReviews = dashboardData?.overdueReviews || [];
+
+  // Filter new assignments based on active tab
+  const getFilteredAssignments = () => {
+    if (activeTab === 'all') {
+      return allNewAssignments;
+    } else if (activeTab === 'expedited') {
+      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited review');
+    } else if (activeTab === 'full') {
+      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review');
+    }
+    return allNewAssignments;
+  };
+
+  // Filter overdue reviews based on active tab
+  const getFilteredOverdueReviews = () => {
+    if (overdueActiveTab === 'all') {
+      return allOverdueReviews;
+    } else if (overdueActiveTab === 'expedited') {
+      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited review');
+    } else if (overdueActiveTab === 'full') {
+      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review');
+    }
+    return allOverdueReviews;
+  };
+
+  const filteredAssignments = getFilteredAssignments();
+  const filteredOverdueReviews = getFilteredOverdueReviews();
+
+  // Count assignments by category
+  const expeditedCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited review').length;
+  const fullReviewCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
+
+  // Count overdue reviews by category
+  const overdueExpeditedCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited review').length;
+  const overdueFullReviewCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
 
   const handleStartReview = (assignment: any) => {
     console.log('Opening modal for:', assignment);
@@ -53,8 +92,13 @@ export default function ReviewerDashboard() {
   const confirmStartReview = () => {
     console.log('Confirmed review for:', selectedSubmission);
     setModalOpen(false);
-    // Navigate to review submission page
     router.push(`/reviewermodule/review-submission?id=${selectedSubmission.submissionId}`);
+  };
+
+  const getTabLabel = (tab: TabType, count: number) => {
+    if (tab === 'all') return `All Submissions (${count})`;
+    if (tab === 'expedited') return `Expedited (${count})`;
+    return `Full Review (${count})`;
   };
 
   if (loading) {
@@ -139,16 +183,70 @@ export default function ReviewerDashboard() {
             </div>
           </div>
 
-          {/* New Assignments Table */}
+          {/* New Assignments Table with Tabs/Dropdown */}
           <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md mb-8">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
               New Assignments
             </h2>
 
-            {newAssignments.length === 0 ? (
+            {/* Desktop Tabs Navigation */}
+            <div className="hidden md:block mb-6 border-b border-gray-200">
+              <div className="flex -mb-px">
+                <button
+                  onClick={() => setActiveTab('all')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === 'all'
+                      ? 'border-b-3 border-[#101C50] text-[#101C50]'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  All Submissions ({allNewAssignments.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('expedited')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === 'expedited'
+                      ? 'border-b-3 border-blue-800 text-blue-800'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  Expedited ({expeditedCount})
+                </button>
+                <button
+                  onClick={() => setActiveTab('full')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    activeTab === 'full'
+                      ? 'border-b-3 border-amber-800 text-amber-800'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  Full Review ({fullReviewCount})
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Dropdown */}
+            <div className="md:hidden mb-6">
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value as TabType)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none text-sm font-semibold bg-white"
+                style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}
+              >
+                <option value="all">{getTabLabel('all', allNewAssignments.length)}</option>
+                <option value="expedited">{getTabLabel('expedited', expeditedCount)}</option>
+                <option value="full">{getTabLabel('full', fullReviewCount)}</option>
+              </select>
+            </div>
+
+            {/* Tab Content */}
+            {filteredAssignments.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  No new assignments
+                  No assignments found in this category
                 </p>
               </div>
             ) : (
@@ -176,7 +274,7 @@ export default function ReviewerDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {newAssignments.map((assignment: any) => (
+                      {filteredAssignments.map((assignment: any) => (
                         <tr key={assignment.id} className="border-b border-gray-200">
                           <td className="py-4 pr-4">
                             <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -184,9 +282,16 @@ export default function ReviewerDashboard() {
                             </p>
                           </td>
                           <td className="py-4 pr-4">
-                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            <span 
+                              className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
+                                assignment.category?.toLowerCase() === 'expedited review'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                              style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            >
                               {assignment.category}
-                            </p>
+                            </span>
                           </td>
                           <td className="py-4 pr-4">
                             <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -215,7 +320,7 @@ export default function ReviewerDashboard() {
 
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
-                  {newAssignments.map((assignment: any) => (
+                  {filteredAssignments.map((assignment: any) => (
                     <div key={assignment.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
                       <div>
                         <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
@@ -226,9 +331,16 @@ export default function ReviewerDashboard() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
-                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <span 
+                            className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
+                              assignment.category?.toLowerCase() === 'expedited review'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
                             {assignment.category}
-                          </p>
+                          </span>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ASSIGNED DATE</p>
@@ -257,16 +369,70 @@ export default function ReviewerDashboard() {
             )}
           </div>
 
-          {/* Overdue Reviews Table */}
+          {/* Overdue Reviews Table with Tabs/Dropdown */}
           <div className="bg-white rounded-2xl p-6 md:p-8 shadow-md">
             <h2 className="text-xl md:text-2xl font-bold mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#7C1100' }}>
               Overdue Reviews
             </h2>
 
-            {overdueReviews.length === 0 ? (
+            {/* Desktop Tabs Navigation */}
+            <div className="hidden md:block mb-6 border-b border-gray-200">
+              <div className="flex -mb-px">
+                <button
+                  onClick={() => setOverdueActiveTab('all')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    overdueActiveTab === 'all'
+                      ? 'border-b-3 border-[#101C50] text-[#101C50]'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  All Submissions ({allOverdueReviews.length})
+                </button>
+                <button
+                  onClick={() => setOverdueActiveTab('expedited')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    overdueActiveTab === 'expedited'
+                      ? 'border-b-3 border-blue-800 text-blue-800'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  Expedited ({overdueExpeditedCount})
+                </button>
+                <button
+                  onClick={() => setOverdueActiveTab('full')}
+                  className={`px-6 py-3 text-base font-semibold transition-colors whitespace-nowrap ${
+                    overdueActiveTab === 'full'
+                      ? 'border-b-3 border-amber-800 text-amber-800'
+                      : 'border-b-3 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif', borderBottomWidth: '3px' }}
+                >
+                  Full Review ({overdueFullReviewCount})
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile Dropdown */}
+            <div className="md:hidden mb-6">
+              <select
+                value={overdueActiveTab}
+                onChange={(e) => setOverdueActiveTab(e.target.value as TabType)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#7C1100] focus:outline-none text-sm font-semibold bg-white"
+                style={{ fontFamily: 'Metropolis, sans-serif', color: '#7C1100' }}
+              >
+                <option value="all">{getTabLabel('all', allOverdueReviews.length)}</option>
+                <option value="expedited">{getTabLabel('expedited', overdueExpeditedCount)}</option>
+                <option value="full">{getTabLabel('full', overdueFullReviewCount)}</option>
+              </select>
+            </div>
+
+            {/* Tab Content */}
+            {filteredOverdueReviews.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  No overdue reviews
+                  No overdue reviews in this category
                 </p>
               </div>
             ) : (
@@ -291,7 +457,7 @@ export default function ReviewerDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {overdueReviews.map((review: any) => (
+                      {filteredOverdueReviews.map((review: any) => (
                         <tr key={review.id} className="border-b border-gray-200">
                           <td className="py-4 pr-4">
                             <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -299,9 +465,16 @@ export default function ReviewerDashboard() {
                             </p>
                           </td>
                           <td className="py-4 pr-4">
-                            <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            <span 
+                              className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
+                                review.category?.toLowerCase() === 'expedited review'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-amber-100 text-amber-800'
+                              }`}
+                              style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            >
                               {review.category}
-                            </p>
+                            </span>
                           </td>
                           <td className="py-4 pr-4">
                             <p className="text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -325,7 +498,7 @@ export default function ReviewerDashboard() {
 
                 {/* Mobile Card View */}
                 <div className="md:hidden space-y-4">
-                  {overdueReviews.map((review: any) => (
+                  {filteredOverdueReviews.map((review: any) => (
                     <div key={review.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
                       <div>
                         <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</p>
@@ -336,9 +509,16 @@ export default function ReviewerDashboard() {
                       <div className="grid grid-cols-2 gap-3">
                         <div>
                           <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>CATEGORY</p>
-                          <p className="text-sm text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <span 
+                            className={`inline-block px-3 py-1.5 rounded-full text-xs font-semibold ${
+                              review.category?.toLowerCase() === 'expedited review'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
                             {review.category}
-                          </p>
+                          </span>
                         </div>
                         <div>
                           <p className="text-xs text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</p>

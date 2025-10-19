@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
-import PasswordVerificationModal from './PasswordVerificationModal';
+import PasswordVerificationModal from './EmailVerificationModal';
 
 interface SecuritySettingsCardProps {
   lastPasswordChange: string;

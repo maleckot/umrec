@@ -27,6 +27,36 @@ export default function Step4InformedConsent() {
     return '';
   });
 
+  const [adultLanguage, setAdultLanguage] = useState<'english' | 'tagalog' | 'both' | ''>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step4Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          return parsedData.adultLanguage || '';
+        } catch (error) {
+          console.error('Error loading adult language:', error);
+        }
+      }
+    }
+    return '';
+  });
+
+  const [minorLanguage, setMinorLanguage] = useState<'english' | 'tagalog' | 'both' | ''>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('step4Data');
+      if (saved) {
+        try {
+          const parsedData = JSON.parse(saved);
+          return parsedData.minorLanguage || '';
+        } catch (error) {
+          console.error('Error loading minor language:', error);
+        }
+      }
+    }
+    return '';
+  });
+
   const [formData, setFormData] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('step4Data');
@@ -46,16 +76,26 @@ export default function Step4InformedConsent() {
             voluntarinessTagalog: '',
             confidentialityEnglish: '',
             confidentialityTagalog: '',
-            introduction: '',
-            purpose: '',
-            choiceOfParticipants: '',
-            voluntariness: '',
-            procedures: '',
-            risks: '',
-            benefits: '',
-            confidentiality: '',
-            sharingFindings: '',
-            certificateAssent: '',
+            introductionEnglish: '',
+            introductionTagalog: '',
+            purposeMinorEnglish: '',
+            purposeMinorTagalog: '',
+            choiceOfParticipantsEnglish: '',
+            choiceOfParticipantsTagalog: '',
+            voluntarinessMinorEnglish: '',
+            voluntarinessMinorTagalog: '',
+            proceduresMinorEnglish: '',
+            proceduresMinorTagalog: '',
+            risksMinorEnglish: '',
+            risksMinorTagalog: '',
+            benefitsMinorEnglish: '',
+            benefitsMinorTagalog: '',
+            confidentialityMinorEnglish: '',
+            confidentialityMinorTagalog: '',
+            sharingFindingsEnglish: '',
+            sharingFindingsTagalog: '',
+            certificateAssentEnglish: '',
+            certificateAssentTagalog: '',
             contactPerson: '',
             contactNumber: ''
           };
@@ -78,16 +118,26 @@ export default function Step4InformedConsent() {
       voluntarinessTagalog: '',
       confidentialityEnglish: '',
       confidentialityTagalog: '',
-      introduction: '',
-      purpose: '',
-      choiceOfParticipants: '',
-      voluntariness: '',
-      procedures: '',
-      risks: '',
-      benefits: '',
-      confidentiality: '',
-      sharingFindings: '',
-      certificateAssent: '',
+      introductionEnglish: '',
+      introductionTagalog: '',
+      purposeMinorEnglish: '',
+      purposeMinorTagalog: '',
+      choiceOfParticipantsEnglish: '',
+      choiceOfParticipantsTagalog: '',
+      voluntarinessMinorEnglish: '',
+      voluntarinessMinorTagalog: '',
+      proceduresMinorEnglish: '',
+      proceduresMinorTagalog: '',
+      risksMinorEnglish: '',
+      risksMinorTagalog: '',
+      benefitsMinorEnglish: '',
+      benefitsMinorTagalog: '',
+      confidentialityMinorEnglish: '',
+      confidentialityMinorTagalog: '',
+      sharingFindingsEnglish: '',
+      sharingFindingsTagalog: '',
+      certificateAssentEnglish: '',
+      certificateAssentTagalog: '',
       contactPerson: '',
       contactNumber: ''
     };
@@ -107,6 +157,8 @@ export default function Step4InformedConsent() {
     saveTimeoutRef.current = setTimeout(() => {
       const dataToSave = {
         consentType,
+        adultLanguage,
+        minorLanguage,
         formData
       };
       localStorage.setItem('step4Data', JSON.stringify(dataToSave));
@@ -117,11 +169,13 @@ export default function Step4InformedConsent() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [consentType, formData]);
+  }, [consentType, adultLanguage, minorLanguage, formData]);
 
   const handleNext = () => {
     const dataToSave = {
       consentType,
+      adultLanguage,
+      minorLanguage,
       formData
     };
     localStorage.setItem('step4Data', JSON.stringify(dataToSave));
@@ -144,7 +198,7 @@ export default function Step4InformedConsent() {
       onNext={handleNext}
       totalSteps={8}
     >
-      <form className="space-y-8">
+      <form className="space-y-6 sm:space-y-8">
         {/* Instructions */}
         <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg">
           <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -165,336 +219,562 @@ export default function Step4InformedConsent() {
               { value: 'both', label: 'Both Adult and Minor Participants' }
             ]}
             selected={consentType}
-            onChange={(val) => setConsentType(val as 'adult' | 'minor' | 'both')}
+            onChange={(val) => {
+              setConsentType(val as 'adult' | 'minor' | 'both');
+              // Reset language selections when consent type changes
+              if (val !== 'adult' && val !== 'both') setAdultLanguage('');
+              if (val !== 'minor' && val !== 'both') setMinorLanguage('');
+            }}
             required
           />
         </div>
 
         {/* Adult Consent Form */}
         {showAdultForm && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg">
               <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Informed Consent Form (Adult Participants)
               </h4>
               <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Please provide content in both <strong>English</strong> and <strong>Tagalog</strong> for each section.
+                Select the language(s) you will provide for adult participants.
               </p>
             </div>
 
-            {/* Purpose of the Study */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                1. Purpose of the Study
-              </h5>
-              
-              <RichTextEditor
-                label="Purpose (English Version)"
-                value={formData.purposeEnglish}
-                onChange={(val) => setFormData({...formData, purposeEnglish: val})}
-                helperText="Explain the purpose and objectives of your research study in English."
-                maxWords={500}
-                required
-              />
-
-              <RichTextEditor
-                label="Layunin (Tagalog Version)"
-                value={formData.purposeTagalog}
-                onChange={(val) => setFormData({...formData, purposeTagalog: val})}
-                helperText="Ipaliwanag ang layunin at mga layunin ng iyong pag-aaral sa Tagalog."
-                maxWords={500}
+            {/* Language Selection for Adults */}
+            <div className="bg-white p-6 rounded-lg border-2 border-gray-300">
+              <RadioGroup
+                label="Select Language for Adult Consent Form"
+                options={[
+                  { value: 'english', label: 'English Only' },
+                  { value: 'tagalog', label: 'Tagalog Only' },
+                  { value: 'both', label: 'Both English and Tagalog' }
+                ]}
+                selected={adultLanguage}
+                onChange={(val) => setAdultLanguage(val as 'english' | 'tagalog' | 'both')}
                 required
               />
             </div>
 
-            {/* Risks and Inconveniences */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                2. Risks and Inconveniences
-              </h5>
-              
-              <RichTextEditor
-                label="Risks (English Version)"
-                value={formData.risksEnglish}
-                onChange={(val) => setFormData({...formData, risksEnglish: val})}
-                helperText="Describe any potential risks or inconveniences to participants."
-                maxWords={400}
-                required
-              />
+            {adultLanguage && (
+              <>
+                {/* Purpose of the Study */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    1. Purpose of the Study
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Purpose (English Version)"
+                      value={formData.purposeEnglish}
+                      onChange={(val) => setFormData({...formData, purposeEnglish: val})}
+                      helperText="Explain the purpose and objectives of your research study in English."
+                      maxWords={500}
+                      required
+                    />
+                  )}
 
-              <RichTextEditor
-                label="Mga Panganib (Tagalog Version)"
-                value={formData.risksTagalog}
-                onChange={(val) => setFormData({...formData, risksTagalog: val})}
-                helperText="Ilarawan ang anumang mga panganib o abala sa mga kalahok."
-                maxWords={400}
-                required
-              />
-            </div>
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Layunin (Tagalog Version)"
+                      value={formData.purposeTagalog}
+                      onChange={(val) => setFormData({...formData, purposeTagalog: val})}
+                      helperText="Ipaliwanag ang layunin at mga layunin ng iyong pag-aaral sa Tagalog."
+                      maxWords={500}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Possible Benefits */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                3. Possible Benefits for the Participants
-              </h5>
-              
-              <RichTextEditor
-                label="Benefits (English Version)"
-                value={formData.benefitsEnglish}
-                onChange={(val) => setFormData({...formData, benefitsEnglish: val})}
-                helperText="Describe the potential benefits participants may receive."
-                maxWords={400}
-                required
-              />
+                {/* Risks and Inconveniences */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    2. Risks and Inconveniences
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Risks (English Version)"
+                      value={formData.risksEnglish}
+                      onChange={(val) => setFormData({...formData, risksEnglish: val})}
+                      helperText="Describe any potential risks or inconveniences to participants."
+                      maxWords={400}
+                      required
+                    />
+                  )}
 
-              <RichTextEditor
-                label="Mga Benepisyo (Tagalog Version)"
-                value={formData.benefitsTagalog}
-                onChange={(val) => setFormData({...formData, benefitsTagalog: val})}
-                helperText="Ilarawan ang mga posibleng benepisyo ng mga kalahok."
-                maxWords={400}
-                required
-              />
-            </div>
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Panganib (Tagalog Version)"
+                      value={formData.risksTagalog}
+                      onChange={(val) => setFormData({...formData, risksTagalog: val})}
+                      helperText="Ilarawan ang anumang mga panganib o abala sa mga kalahok."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* What Participants Will Do */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                4. What You Will Be Asked to Do in the Study
-              </h5>
-              
-              <RichTextEditor
-                label="Procedures (English Version)"
-                value={formData.proceduresEnglish}
-                onChange={(val) => setFormData({...formData, proceduresEnglish: val})}
-                helperText="Explain what participants will be required to do during the study."
-                maxWords={400}
-                required
-              />
+                {/* Possible Benefits */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    3. Possible Benefits for the Participants
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Benefits (English Version)"
+                      value={formData.benefitsEnglish}
+                      onChange={(val) => setFormData({...formData, benefitsEnglish: val})}
+                      helperText="Describe the potential benefits participants may receive."
+                      maxWords={400}
+                      required
+                    />
+                  )}
 
-              <RichTextEditor
-                label="Mga Proseso (Tagalog Version)"
-                value={formData.proceduresTagalog}
-                onChange={(val) => setFormData({...formData, proceduresTagalog: val})}
-                helperText="Ipaliwanag kung ano ang gagawin ng mga kalahok sa pag-aaral."
-                maxWords={400}
-                required
-              />
-            </div>
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Benepisyo (Tagalog Version)"
+                      value={formData.benefitsTagalog}
+                      onChange={(val) => setFormData({...formData, benefitsTagalog: val})}
+                      helperText="Ilarawan ang mga posibleng benepisyo ng mga kalahok."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Voluntariness of Participation */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                5. Voluntariness of Participation
-              </h5>
-              
-              <RichTextEditor
-                label="Voluntariness (English Version)"
-                value={formData.voluntarinessEnglish}
-                onChange={(val) => setFormData({...formData, voluntarinessEnglish: val})}
-                helperText="State clearly that participation is voluntary and participants can withdraw at any time without penalty."
-                maxWords={300}
-                required
-              />
+                {/* What Participants Will Do */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    4. What You Will Be Asked to Do in the Study
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Procedures (English Version)"
+                      value={formData.proceduresEnglish}
+                      onChange={(val) => setFormData({...formData, proceduresEnglish: val})}
+                      helperText="Explain what participants will be required to do during the study."
+                      maxWords={400}
+                      required
+                    />
+                  )}
 
-              <RichTextEditor
-                label="Kusang-loob na Paglahok (Tagalog Version)"
-                value={formData.voluntarinessTagalog}
-                onChange={(val) => setFormData({...formData, voluntarinessTagalog: val})}
-                helperText="Ipahayag nang malinaw na ang paglahok ay kusang-loob at maaaring umurong anumang oras."
-                maxWords={300}
-                required
-              />
-            </div>
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Proseso (Tagalog Version)"
+                      value={formData.proceduresTagalog}
+                      onChange={(val) => setFormData({...formData, proceduresTagalog: val})}
+                      helperText="Ipaliwanag kung ano ang gagawin ng mga kalahok sa pag-aaral."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Confidentiality */}
-            <div className="space-y-4">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                6. Confidentiality
-              </h5>
-              
-              <RichTextEditor
-                label="Confidentiality (English Version)"
-                value={formData.confidentialityEnglish}
-                onChange={(val) => setFormData({...formData, confidentialityEnglish: val})}
-                helperText="Explain how participant information will be kept confidential."
-                maxWords={400}
-                required
-              />
+                {/* Voluntariness of Participation */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    5. Voluntariness of Participation
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Voluntariness (English Version)"
+                      value={formData.voluntarinessEnglish}
+                      onChange={(val) => setFormData({...formData, voluntarinessEnglish: val})}
+                      helperText="State clearly that participation is voluntary and participants can withdraw at any time without penalty."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-              <RichTextEditor
-                label="Pagiging Kumpidensyal (Tagalog Version)"
-                value={formData.confidentialityTagalog}
-                onChange={(val) => setFormData({...formData, confidentialityTagalog: val})}
-                helperText="Ipaliwanag kung paano papanatilihing kumpidensyal ang impormasyon."
-                maxWords={400}
-                required
-              />
-            </div>
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Kusang-loob na Paglahok (Tagalog Version)"
+                      value={formData.voluntarinessTagalog}
+                      onChange={(val) => setFormData({...formData, voluntarinessTagalog: val})}
+                      helperText="Ipahayag nang malinaw na ang paglahok ay kusang-loob at maaaring umurong anumang oras."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
+
+                {/* Confidentiality */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    6. Confidentiality
+                  </h5>
+                  
+                  {(adultLanguage === 'english' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Confidentiality (English Version)"
+                      value={formData.confidentialityEnglish}
+                      onChange={(val) => setFormData({...formData, confidentialityEnglish: val})}
+                      helperText="Explain how participant information will be kept confidential."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+
+                  {(adultLanguage === 'tagalog' || adultLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Pagiging Kumpidensyal (Tagalog Version)"
+                      value={formData.confidentialityTagalog}
+                      onChange={(val) => setFormData({...formData, confidentialityTagalog: val})}
+                      helperText="Ipaliwanag kung paano papanatilihing kumpidensyal ang impormasyon."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Minor Assent Form */}
         {showMinorForm && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg">
               <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Informed Assent Form (For Minors 12-15 years old)
               </h4>
               <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Complete all sections using child-friendly language. Include both English and Tagalog text in each field.
+                Select the language(s) you will provide for minor participants.
               </p>
             </div>
 
-            {/* PART 1: INFORMATION SHEET */}
-            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 rounded-lg">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                PART 1: INFORMATION SHEET
-              </h5>
+            {/* Language Selection for Minors */}
+            <div className="bg-white p-6 rounded-lg border-2 border-gray-300">
+              <RadioGroup
+                label="Select Language for Minor Assent Form"
+                options={[
+                  { value: 'english', label: 'English Only' },
+                  { value: 'tagalog', label: 'Tagalog Only' },
+                  { value: 'both', label: 'Both English and Tagalog' }
+                ]}
+                selected={minorLanguage}
+                onChange={(val) => setMinorLanguage(val as 'english' | 'tagalog' | 'both')}
+                required
+              />
             </div>
 
-            {/* Introduction */}
-            <RichTextEditor
-              label="Introduction"
-              value={formData.introduction}
-              onChange={(val) => setFormData({...formData, introduction: val})}
-              helperText="Provide a brief description of the study, state the procedure, and explain the parental consent requirement. Use simple, child-friendly language."
-              maxWords={400}
-              required
-            />
+            {minorLanguage && (
+              <>
+                {/* PART 1: INFORMATION SHEET */}
+                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 rounded-lg">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    PART 1: INFORMATION SHEET
+                  </h5>
+                </div>
 
-            {/* Purpose of Research */}
-            <RichTextEditor
-              label="Purpose of Research"
-              value={formData.purpose}
-              onChange={(val) => setFormData({...formData, purpose: val})}
-              helperText="Explain the purpose of research in simple terms that children can understand."
-              maxWords={300}
-              required
-            />
+                {/* Introduction */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Introduction
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Introduction (English Version)"
+                      value={formData.introductionEnglish}
+                      onChange={(val) => setFormData({...formData, introductionEnglish: val})}
+                      helperText="Provide a brief description of the study, state the procedure, and explain the parental consent requirement. Use simple, child-friendly language."
+                      maxWords={400}
+                      required
+                    />
+                  )}
 
-            {/* Choice of Participants */}
-            <RichTextEditor
-              label="Choice of Participants"
-              value={formData.choiceOfParticipants}
-              onChange={(val) => setFormData({...formData, choiceOfParticipants: val})}
-              helperText="Explain why the participants of the study were chosen."
-              maxWords={200}
-              required
-            />
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Panimula (Tagalog Version)"
+                      value={formData.introductionTagalog}
+                      onChange={(val) => setFormData({...formData, introductionTagalog: val})}
+                      helperText="Magbigay ng maikling paglalarawan ng pag-aaral. Gumamit ng simple na wika na nauunawaan ng mga bata."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Voluntariness of Participation */}
-            <RichTextEditor
-              label="Voluntariness of Participation"
-              value={formData.voluntariness}
-              onChange={(val) => setFormData({...formData, voluntariness: val})}
-              helperText="State clearly that the choice to participate is voluntary and their decision not to participate might be over-ridden by parental consent."
-              maxWords={300}
-              required
-            />
+                {/* Purpose of Research */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Purpose of Research
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Purpose (English Version)"
+                      value={formData.purposeMinorEnglish}
+                      onChange={(val) => setFormData({...formData, purposeMinorEnglish: val})}
+                      helperText="Explain the purpose of research in simple terms that children can understand."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-            {/* Procedures */}
-            <RichTextEditor
-              label="Procedures"
-              value={formData.procedures}
-              onChange={(val) => setFormData({...formData, procedures: val})}
-              helperText="Explain the procedures in simple terms."
-              maxWords={400}
-              required
-            />
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Layunin (Tagalog Version)"
+                      value={formData.purposeMinorTagalog}
+                      onChange={(val) => setFormData({...formData, purposeMinorTagalog: val})}
+                      helperText="Ipaliwanag ang layunin ng pananaliksik sa simpleng wika."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Risk and Inconveniences */}
-            <RichTextEditor
-              label="Risk and Inconveniences"
-              value={formData.risks}
-              onChange={(val) => setFormData({...formData, risks: val})}
-              helperText="Describe what has been found that causes worry and how you, as a researcher, ensure that it will be prevented from happening."
-              maxWords={300}
-              required
-            />
+                {/* Choice of Participants */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Choice of Participants
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Choice of Participants (English Version)"
+                      value={formData.choiceOfParticipantsEnglish}
+                      onChange={(val) => setFormData({...formData, choiceOfParticipantsEnglish: val})}
+                      helperText="Explain why the participants of the study were chosen."
+                      maxWords={200}
+                      required
+                    />
+                  )}
 
-            {/* Possible Benefits */}
-            <RichTextEditor
-              label="Possible Benefits for the Participants"
-              value={formData.benefits}
-              onChange={(val) => setFormData({...formData, benefits: val})}
-              helperText="Describe any benefits to the child (and to others)."
-              maxWords={300}
-              required
-            />
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Pagpili ng mga Kalahok (Tagalog Version)"
+                      value={formData.choiceOfParticipantsTagalog}
+                      onChange={(val) => setFormData({...formData, choiceOfParticipantsTagalog: val})}
+                      helperText="Ipaliwanag kung bakit napili ang mga kalahok."
+                      maxWords={200}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* Confidentiality */}
-            <RichTextEditor
-              label="Confidentiality"
-              value={formData.confidentiality}
-              onChange={(val) => setFormData({...formData, confidentiality: val})}
-              helperText="State the limits and the scope of confidentiality of this research."
-              maxWords={300}
-              required
-            />
+                {/* Voluntariness of Participation */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Voluntariness of Participation
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Voluntariness (English Version)"
+                      value={formData.voluntarinessMinorEnglish}
+                      onChange={(val) => setFormData({...formData, voluntarinessMinorEnglish: val})}
+                      helperText="State clearly that the choice to participate is voluntary and their decision not to participate might be over-ridden by parental consent."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-            {/* Sharing the Findings */}
-            <RichTextEditor
-              label="Sharing the Findings"
-              value={formData.sharingFindings}
-              onChange={(val) => setFormData({...formData, sharingFindings: val})}
-              helperText="Explain how the research findings will be shared in which confidential information will remain confidential."
-              maxWords={200}
-              required
-            />
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Kusang-loob na Paglahok (Tagalog Version)"
+                      value={formData.voluntarinessMinorTagalog}
+                      onChange={(val) => setFormData({...formData, voluntarinessMinorTagalog: val})}
+                      helperText="Ipahayag na ang paglahok ay kusang-loob."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
 
-            {/* PART 2: CERTIFICATE OF ASSENT */}
-            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 rounded-lg mt-8">
-              <h5 className="font-bold text-[#1E293B] text-sm sm:text-base mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                PART 2: CERTIFICATE OF ASSENT
-              </h5>
-              <p className="text-xs text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Fill in the specific details about your study in the text below. Include information in both English and Tagalog.
-              </p>
-            </div>
+                {/* Procedures */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Procedures
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Procedures (English Version)"
+                      value={formData.proceduresMinorEnglish}
+                      onChange={(val) => setFormData({...formData, proceduresMinorEnglish: val})}
+                      helperText="Explain the procedures in simple terms."
+                      maxWords={400}
+                      required
+                    />
+                  )}
 
-            <RichTextEditor
-              label="Certificate of Assent Statement"
-              value={formData.certificateAssent}
-              onChange={(val) => setFormData({...formData, certificateAssent: val})}
-              helperText="Complete the certificate statement with your study details. Include sections covering: research description, confidentiality assurance, risks, benefits, and participants' rights. Provide text in both English and Tagalog."
-              maxWords={800}
-              placeholder={`I am/we are (name of the researchers)* from the University of Makati, currently working on a study to figure out (why some kids don't do well in school, and how to help those kids better). We are asking you to take part in the research study because (your teacher recommended you for this project.)
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Proseso (Tagalog Version)"
+                      value={formData.proceduresMinorTagalog}
+                      onChange={(val) => setFormData({...formData, proceduresMinorTagalog: val})}
+                      helperText="Ipaliwanag ang mga proseso sa simpleng wika."
+                      maxWords={400}
+                      required
+                    />
+                  )}
+                </div>
 
-Ako/kami po si (pangalan ng mga mananaliksik) mula sa University of Makati ay kasalukuyang gumagawa ng pag-aaral upang malaman (kung bakit ang ilang bata ay may kahinaan sa kanilang pag-aaral at kung paano sila matutulungan).
+                {/* Risk and Inconveniences */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Risk and Inconveniences
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Risks (English Version)"
+                      value={formData.risksMinorEnglish}
+                      onChange={(val) => setFormData({...formData, risksMinorEnglish: val})}
+                      helperText="Describe what has been found that causes worry and how you, as a researcher, ensure that it will be prevented from happening."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-For this research, we will ask you some questions about (how you feel about school, and how you get along with your classmates). We will keep all your answers private and not show them to (your teacher or parent(s)/guardian). Only authorized people from the University working on the study will see them. Information derived from this study will only be used for academic purposes (or for research publication if necessary).
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Panganib (Tagalog Version)"
+                      value={formData.risksMinorTagalog}
+                      onChange={(val) => setFormData({...formData, risksMinorTagalog: val})}
+                      helperText="Ilarawan ang mga panganib at kung paano ito maiiwasan."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
 
-Sa pag-aaral na ito, kami po ay magbibigay ng ilang katanungan tungkol sa (kung ano ang iyong nararanasan sa iyong paaralan, at kung paano ka nakikisalamuha sa iyong mga kamag-aral). Tanging mga otorisadong mga tao mula aming unibersidad na kabahagi ng pagsasaliksik na ito ang tanging makakaalam. Ang mga impormasyon na makukuha sa pagsasaliksik na ito ay gagamitin lamang sa mga layuning pang akademiko (o sa paglalathala kung kinakailangan).
+                {/* Possible Benefits */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Possible Benefits for the Participants
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Benefits (English Version)"
+                      value={formData.benefitsMinorEnglish}
+                      onChange={(val) => setFormData({...formData, benefitsMinorEnglish: val})}
+                      helperText="Describe any benefits to the child (and to others)."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-We don't think that any risks or problems will happen to you as part of this study, but you might feel sad when we ask about certain things (that happen at school. You also might be upset if other kids see your answers, but we will try to keep other kids from seeing what you write).
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Mga Benepisyo (Tagalog Version)"
+                      value={formData.benefitsMinorTagalog}
+                      onChange={(val) => setFormData({...formData, benefitsMinorTagalog: val})}
+                      helperText="Ilarawan ang mga benepisyo para sa bata."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
 
-Ang mga mananaliksik ay naniniwalang walang panganib o problema ang maaaring mangyari sa iyo/inyo kung kayo ay magiging bahagi ng pag-aaral na ito. Subalit, maaari po kayong makaramdam ng (kalungkutan) habang isinasagawa ang pagtatanong.
+                {/* Confidentiality */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Confidentiality
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Confidentiality (English Version)"
+                      value={formData.confidentialityMinorEnglish}
+                      onChange={(val) => setFormData({...formData, confidentialityMinorEnglish: val})}
+                      helperText="State the limits and the scope of confidentiality of this research."
+                      maxWords={300}
+                      required
+                    />
+                  )}
 
-(Describe direct benefits if applicable). You can feel good about helping us to (make things better for other kids who might have problems at their school.)
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Pagiging Kumpidensyal (Tagalog Version)"
+                      value={formData.confidentialityMinorTagalog}
+                      onChange={(val) => setFormData({...formData, confidentialityMinorTagalog: val})}
+                      helperText="Ipahayag ang saklaw ng pagiging kumpidensyal."
+                      maxWords={300}
+                      required
+                    />
+                  )}
+                </div>
 
-Maaari po kang makaramdam ng kasiyahan sa inyong pagtulong sa ginagawang pagsasaliksik (kung makakabuti sa ibang mag-aaral na nakaranas ng suliranin sa kanilang paaralan).
+                {/* Sharing the Findings */}
+                <div className="space-y-4">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Sharing the Findings
+                  </h5>
+                  
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Sharing Findings (English Version)"
+                      value={formData.sharingFindingsEnglish}
+                      onChange={(val) => setFormData({...formData, sharingFindingsEnglish: val})}
+                      helperText="Explain how the research findings will be shared in which confidential information will remain confidential."
+                      maxWords={200}
+                      required
+                    />
+                  )}
 
-You should know that:
-Dapat mong malaman na:
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Pagbabahagi ng mga Natuklasan (Tagalog Version)"
+                      value={formData.sharingFindingsTagalog}
+                      onChange={(val) => setFormData({...formData, sharingFindingsTagalog: val})}
+                      helperText="Ipaliwanag kung paano ibabahagi ang mga natuklasan."
+                      maxWords={200}
+                      required
+                    />
+                  )}
+                </div>
 
-● You do not have to participate in this study if you do not want to. You won't get into any trouble with (the University, your teacher, or the school) if you say no.
-Hindi mo kailangan na lumahok sa pagsasaliksik kung hindi mo kagustuhan. Hindi ka mapapahamak sa (iyong mga guro at paaralan) kung ikaw ay tatangi.
+                {/* PART 2: CERTIFICATE OF ASSENT */}
+                <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 rounded-lg mt-8">
+                  <h5 className="font-bold text-[#1E293B] text-sm sm:text-base mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    PART 2: CERTIFICATE OF ASSENT
+                  </h5>
+                  <p className="text-xs text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Fill in the specific details about your study in the text below.
+                  </p>
+                </div>
 
-● You may stop participating in the study at any time. (If there is a question you don't want to answer, just leave it blank.)
-Maaari mong itigil ang paglahok sa pagsasaliksik anumang oras.
+                <div className="space-y-4">
+                  {(minorLanguage === 'english' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Certificate of Assent Statement (English Version)"
+                      value={formData.certificateAssentEnglish}
+                      onChange={(val) => setFormData({...formData, certificateAssentEnglish: val})}
+                      helperText="Complete the certificate statement with your study details. Include sections covering: research description, confidentiality assurance, risks, benefits, and participants' rights."
+                      maxWords={800}
+                      placeholder="I am/we are (name of the researchers) from the University of Makati, currently working on a study to figure out..."
+                      required
+                    />
+                  )}
 
-● Your parent(s)/guardian(s) were asked if it is OK for you to be in this study. Even if they say it's OK, it is still your choice whether or not to take part.
-Ang iyong mga magulang ay hiningian ng permiso kung nais mong maging bahagi ng pag-aaral. Subalit, kung sila man ay nagbigay ng pahintulot, ang iyong desisiyon na maging bahagi ng pag-aaral ang siya pa rin masusunod.
-
-● You can ask any questions you have, now or later. If you think of a question later, you or your parents can contact me at (provide contact information for researcher(s), and advisor if graduate student).`}
-              required
-            />
+                  {(minorLanguage === 'tagalog' || minorLanguage === 'both') && (
+                    <RichTextEditor
+                      label="Sertipiko ng Pahintulot (Tagalog Version)"
+                      value={formData.certificateAssentTagalog}
+                      onChange={(val) => setFormData({...formData, certificateAssentTagalog: val})}
+                      helperText="Kumpletuhin ang pahayag ng sertipiko kasama ang mga detalye ng iyong pag-aaral."
+                      maxWords={800}
+                      placeholder="Ako/kami po si (pangalan ng mga mananaliksik) mula sa University of Makati ay kasalukuyang gumagawa ng pag-aaral..."
+                      required
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
 
         {/* Contact Information - Only show once outside conditional blocks */}
-        {consentType && (
+        {consentType && (adultLanguage || minorLanguage) && (
           <div className="space-y-4">
             <h5 className="font-bold text-[#1E293B] text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Contact Information
@@ -534,17 +814,17 @@ Ang iyong mga magulang ay hiningian ng permiso kung nais mong maging bahagi ng p
         )}
 
         {/* Important Note */}
-        {consentType && (
+        {consentType && (adultLanguage || minorLanguage) && (
           <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-[#FFD700] p-4 sm:p-6 rounded-lg">
             <h4 className="font-bold text-[#1E293B] mb-2 text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Important Note:
             </h4>
             <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {consentType === 'adult' 
-                ? 'Ensure all sections are provided in both English and Tagalog to accommodate all participants. The consent form must clearly communicate the study details, risks, and benefits.'
-                : consentType === 'minor'
-                ? 'Use simple, child-friendly language appropriate for ages 12-15. Include both English and Tagalog text to ensure understanding. Parents/guardians must also provide consent.'
-                : 'Complete both adult and minor consent forms thoroughly. Ensure all content is provided in both English and Tagalog for maximum accessibility.'}
+              {consentType === 'adult' && adultLanguage === 'both' && 'Ensure all sections are provided in both English and Tagalog to accommodate all participants. The consent form must clearly communicate the study details, risks, and benefits.'}
+              {consentType === 'adult' && adultLanguage !== 'both' && `Complete all sections in ${adultLanguage === 'english' ? 'English' : 'Tagalog'}. The consent form must clearly communicate the study details, risks, and benefits.`}
+              {consentType === 'minor' && minorLanguage === 'both' && 'Use simple, child-friendly language appropriate for ages 12-15. Include both English and Tagalog text to ensure understanding. Parents/guardians must also provide consent.'}
+              {consentType === 'minor' && minorLanguage !== 'both' && `Use simple, child-friendly language appropriate for ages 12-15 in ${minorLanguage === 'english' ? 'English' : 'Tagalog'}. Parents/guardians must also provide consent.`}
+              {consentType === 'both' && 'Complete both adult and minor consent forms thoroughly in your selected languages for maximum accessibility.'}
             </p>
           </div>
         )}
