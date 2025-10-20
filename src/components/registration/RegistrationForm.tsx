@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Calendar } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
 import { registerResearcher } from '@/app/actions/auth/registerResearcher';
@@ -42,7 +42,8 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     lastName: '',
     firstName: '',
     middleName: '',
-    dateOfBirth: '',
+    dateOfBirth: '2000-01-01', // Default value for professionals
+    role: '',
     contactNumber: '',
     gender: '',
     school: '',
@@ -59,22 +60,39 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isUmakStudent, setIsUmakStudent] = useState(false);
+  const [isUmakSchool, setIsUmakSchool] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isStudent = formData.role === 'Student';
+  const isProfessional = formData.role === 'Professional';
 
   useEffect(() => {
     const schoolLower = formData.school.toLowerCase();
     const isUmak = schoolLower.includes('university of makati') || schoolLower.includes('umak');
-    setIsUmakStudent(isUmak);
+    setIsUmakSchool(isUmak);
     
-    // Clear student number and college if not UMAK
-    if (!isUmak) {
-      if (formData.studentNo || formData.college) {
-        setFormData(prev => ({ ...prev, studentNo: '', college: '' }));
+    // Clear student number if not UMAK student
+    if (!isUmak || !isStudent) {
+      if (formData.studentNo) {
+        setFormData(prev => ({ ...prev, studentNo: '' }));
       }
     }
-  }, [formData.school]);
+  }, [formData.school, formData.role, isStudent, formData.studentNo]);
+
+  // Clear student-specific fields when switching to Professional
+  useEffect(() => {
+    if (isProfessional) {
+      setFormData(prev => ({
+        ...prev,
+        yearLevel: '',
+        section: '',
+        studentNo: '',
+        program: '',
+        dateOfBirth: '2000-01-01' // Set default for professionals
+      }));
+    }
+  }, [isProfessional]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -174,16 +192,17 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div className="relative">
-              <FormInput
-                label="Date of Birth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(value) => handleChange('dateOfBirth', value)}
-                required
-              />
-              <Calendar className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-500 pointer-events-none" />
-            </div>
+            <FormSelect
+              label="Role"
+              value={formData.role}
+              onChange={(value) => handleChange('role', value)}
+              options={[
+                { value: '', label: 'Select Role' },
+                { value: 'Student', label: 'Student' },
+                { value: 'Professional', label: 'Professional' }
+              ]}
+              required
+            />
             <FormInput
               label="Contact Number"
               type="tel"
@@ -215,8 +234,8 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               required
             />
             
-            {/* Conditional College field - Dropdown for UMAK, Input for others */}
-            {isUmakStudent ? (
+            {/* Conditional College field - Dropdown for UMAK (both student and professional) */}
+            {isUmakSchool ? (
               <FormSelect
                 label="College"
                 value={formData.college}
@@ -240,38 +259,36 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             value={formData.program}
             onChange={(value) => handleChange('program', value)}
             placeholder="Bachelor of Science in Computer Science"
-            required
+            required={isStudent}
+            disabled={isProfessional}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <FormSelect
+            {/* Year Level - Match FormInput disabled style */}
+            <FormInput
               label="Year Level"
               value={formData.yearLevel}
               onChange={(value) => handleChange('yearLevel', value)}
-              options={[
-                { value: '', label: 'Select Year' },
-                { value: '1st Year', label: '1st Year' },
-                { value: '2nd Year', label: '2nd Year' },
-                { value: '3rd Year', label: '3rd Year' },
-                { value: '4th Year', label: '4th Year' },
-                { value: '5th Year', label: '5th Year' }
-              ]}
-              required
+              placeholder={isProfessional ? "N/A" : "Select Year"}
+              required={isStudent}
+              disabled={isProfessional}
             />
+            
             <FormInput
               label="Section"
               value={formData.section}
               onChange={(value) => handleChange('section', value)}
-              placeholder="IV-BCSAD"
-              required
+              placeholder={isProfessional ? "N/A" : "IV-BCSAD"}
+              required={isStudent}
+              disabled={isProfessional}
             />
             <FormInput
               label="Student No. (UMAK only)"
               value={formData.studentNo}
               onChange={(value) => handleChange('studentNo', value)}
-              placeholder={isUmakStudent ? "K12920931" : "N/A"}
-              required={isUmakStudent}
-              disabled={!isUmakStudent}
+              placeholder={isUmakSchool && isStudent ? "K12920931" : "N/A"}
+              required={isUmakSchool && isStudent}
+              disabled={!isUmakSchool || isProfessional}
             />
           </div>
         </div>

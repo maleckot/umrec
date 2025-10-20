@@ -6,6 +6,7 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getResearcherSubmissions } from '@/app/actions/researcher/getResearcherSubmissions';
+import { Download, FileCheck, Clock } from 'lucide-react';
 
 interface Document {
   id: number;
@@ -25,42 +26,38 @@ interface Submission {
   status: string;
   submitted_at: string;
   documents: Document[];
+  certificateUrl?: string | null;
+  form0011Url?: string | null;
+  form0012Url?: string | null;
+  approvalDate?: string | null;
 }
- // Add this helper function near the top of your component, after the interfaces
-    const getTimelineStage = (status: string) => {
-      // Normalize status to lowercase and handle underscores
-      const normalizedStatus = status?.toLowerCase().replace(/ /g, '_');
 
-      switch (normalizedStatus) {
-        case 'pending':
-          return 1; // Document Verification stage
+const getTimelineStage = (status: string) => {
+  const normalizedStatus = status?.toLowerCase().replace(/ /g, '_');
 
-        case 'under_classification':
-          return 2; // Initial Screening stage
-
-        case 'classified':
-        case 'reviewer_assignment':
-          return 3; // Ethics Review stage (waiting)
-
-        case 'under_review':
-        case 'in_review':
-          return 4; // Ethics Review stage (active)
-
-        case 'under_revision':
-        case 'needs_revision':
-          return 5; // Revisions stage
-
-        case 'review_complete':
-        case 'completed':
-          return 6; // Final Approval stage (pending)
-
-        case 'approved':
-          return 7; // Final Approval stage (complete)
-
-        default:
-          return 1; // Default to first stage
-      }
-    };
+  switch (normalizedStatus) {
+    case 'pending':
+      return 1;
+    case 'under_classification':
+      return 2;
+    case 'classified':
+    case 'reviewer_assignment':
+      return 3;
+    case 'under_review':
+    case 'in_review':
+      return 4;
+    case 'under_revision':
+    case 'needs_revision':
+      return 5;
+    case 'review_complete':
+    case 'completed':
+      return 6;
+    case 'approved':
+      return 7;
+    default:
+      return 1;
+  }
+};
 
 export default function ResearcherDashboard() {
   const [activeTab, setActiveTab] = useState('all');
@@ -68,27 +65,25 @@ export default function ResearcherDashboard() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [stats, setStats] = useState({ active: 0, pending: 0, needsRevision: 0 });
   const [currentSubmission, setCurrentSubmission] = useState<Submission | null>(null);
+  const [selectedSubmissionIndex, setSelectedSubmissionIndex] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     loadSubmissions();
   }, []);
 
-  // Calculate stats whenever submissions change
   useEffect(() => {
     if (submissions.length > 0) {
       const calculatedStats = {
         active: submissions.filter(s =>
           !['Approved', 'Rejected', 'Withdrawn'].includes(s.status)
         ).length,
-
         pending: submissions.filter(s => {
           const hasPendingDocs = s.documents?.some(doc =>
             doc.isApproved === null && doc.needsRevision !== true
           );
           return hasPendingDocs || s.status === 'Under Review';
         }).length,
-
         needsRevision: submissions.filter(s => {
           const hasRejectedDocs = s.documents?.some(doc =>
             doc.needsRevision === true
@@ -96,7 +91,6 @@ export default function ResearcherDashboard() {
           return hasRejectedDocs || s.status === 'Under Revision';
         }).length,
       };
-
       setStats(calculatedStats);
     }
   }, [submissions]);
@@ -105,7 +99,6 @@ export default function ResearcherDashboard() {
     setLoading(true);
     try {
       const result = await getResearcherSubmissions();
-
       if (result.success) {
         setSubmissions(result.submissions || []);
         setCurrentSubmission(result.currentSubmission || null);
@@ -121,22 +114,18 @@ export default function ResearcherDashboard() {
 
   const filteredSubmissions = submissions.filter(submission => {
     if (activeTab === 'all') return true;
-
     if (activeTab === 'revision') {
       const hasRejectedDocs = submission.documents?.some(doc => doc.needsRevision === true);
       return hasRejectedDocs;
     }
-
     if (activeTab === 'pending') {
       const hasPendingDocs = submission.documents?.some(doc => doc.isApproved === null);
       return hasPendingDocs || submission.status === 'under_review';
     }
-
     if (activeTab === 'approved') {
       const allApproved = submission.documents?.every(doc => doc.isApproved === true);
       return allApproved || submission.status === 'approved';
     }
-
     return true;
   });
 
@@ -165,6 +154,10 @@ export default function ResearcherDashboard() {
       year: 'numeric'
     });
   };
+
+  const submissionsAwaitingOrApproved = submissions.filter(
+    s => getTimelineStage(s.status) >= 6
+  );
 
   if (loading) {
     return (
@@ -197,7 +190,6 @@ export default function ResearcherDashboard() {
 
             {/* Stats Overview */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-10 md:mb-12">
-              {/* Active Submissions */}
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl bg-[#101C50] flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +204,6 @@ export default function ResearcherDashboard() {
                 </div>
               </div>
 
-              {/* Pending Review */}
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl bg-[#101C50] flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -227,7 +218,6 @@ export default function ResearcherDashboard() {
                 </div>
               </div>
 
-              {/* Requires Revision */}
               <div className="flex items-center gap-3 sm:gap-4">
                 <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-xl sm:rounded-2xl bg-[#101C50] flex items-center justify-center flex-shrink-0">
                   <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,155 +235,283 @@ export default function ResearcherDashboard() {
 
             <hr className="my-6 sm:my-8 border-gray-300" />
 
+            {/* Certificate & Documents Section - RESPONSIVE */}
+            {submissionsAwaitingOrApproved.length > 0 && (
+              <>
+                <div className="mb-8 sm:mb-12">
+                  <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+                    Certificates & Documents
+                  </h2>
 
-            {/* Current Submission Status */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold mb-8" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+                  <div className="space-y-3 sm:space-y-4">
+                    {submissionsAwaitingOrApproved.map((submission) => {
+                      const stage = getTimelineStage(submission.status);
+                      const certificatesReleased = submission.certificateUrl || submission.form0011Url || submission.form0012Url;
+
+                      return (
+                        <div 
+                          key={submission.id} 
+                          className={`rounded-lg sm:rounded-xl p-4 sm:p-6 border-2 ${
+                            certificatesReleased 
+                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-500' 
+                              : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-500'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              certificatesReleased ? 'bg-blue-600' : 'bg-yellow-500'
+                            }`}>
+                              {certificatesReleased ? (
+                                <FileCheck size={20} className="text-white sm:w-6 sm:h-6" />
+                              ) : (
+                                <Clock size={20} className="text-white sm:w-6 sm:h-6" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className={`text-base sm:text-lg font-bold mb-1 truncate ${
+                                certificatesReleased ? 'text-blue-900' : 'text-yellow-900'
+                              }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {submission.title}
+                              </h3>
+                              <p className={`text-xs sm:text-sm ${
+                                certificatesReleased ? 'text-blue-800' : 'text-yellow-800'
+                              }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {certificatesReleased 
+                                  ? `Approved on ${submission.approvalDate ? formatDate(submission.approvalDate) : formatDate(submission.submitted_at)}`
+                                  : 'Review completed. Awaiting certificate release from secretariat.'
+                                }
+                              </p>
+                            </div>
+                          </div>
+
+                          {certificatesReleased ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+                              {submission.certificateUrl && (
+                                <a
+                                  href={submission.certificateUrl}
+                                  download
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                  style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                                >
+                                  <Download size={16} className="sm:w-5 sm:h-5" />
+                                  <span className="text-xs sm:text-sm">Certificate of Approval</span>
+                                </a>
+                              )}
+                              {submission.form0011Url && (
+                                <a
+                                  href={submission.form0011Url}
+                                  download
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                  style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                                >
+                                  <Download size={16} className="sm:w-5 sm:h-5" />
+                                  <span className="text-xs sm:text-sm">Form 0011</span>
+                                </a>
+                              )}
+                              {submission.form0012Url && (
+                                <a
+                                  href={submission.form0012Url}
+                                  download
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                                  style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+                                >
+                                  <Download size={16} className="sm:w-5 sm:h-5" />
+                                  <span className="text-xs sm:text-sm">Form 0012</span>
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3 sm:p-4">
+                              <p className="text-xs sm:text-sm text-yellow-900 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                <strong>Pending Release:</strong> The secretariat will release your approval documents shortly.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <hr className="my-6 sm:my-8 border-gray-300" />
+              </>
+            )}
+
+            {/* Current Submission Status - RESPONSIVE */}
+            <div className="mb-8 sm:mb-12">
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6 md:mb-8" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
                 Current Submission Status
               </h2>
 
-              {currentSubmission ? (
-                <div className="relative">
-                  {(() => {
-                    const stage = getTimelineStage(currentSubmission.status);
+              {(() => {
+                const activeSubmissions = submissions.filter(s => getTimelineStage(s.status) < 7);
+                
+                if (activeSubmissions.length === 0) {
+                  return (
+                    <div className="text-center py-6 sm:py-8">
+                      <p className="text-sm sm:text-base text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        No active submission
+                      </p>
+                    </div>
+                  );
+                }
 
-                    return (
-                      <div className="space-y-8">
-                        {/* Document Verification */}
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 1 ? 'bg-[#101C50]' : 'border-2 border-gray-300 bg-white'
-                              }`}>
-                              <svg className={`w-6 h-6 ${stage >= 1 ? 'text-white' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                            </div>
-                            <div className="absolute top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gray-300"></div>
+                const renderTimeline = (submission: Submission) => {
+                  const stage = getTimelineStage(submission.status);
+
+                  return (
+                    <div className="space-y-4 sm:space-y-6 md:space-y-8">
+                      {/* Document Verification */}
+                      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+                        <div className="relative">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 1 ? 'bg-[#101C50]' : 'border-2 border-gray-300 bg-white'}`}>
+                            <svg className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stage >= 1 ? 'text-white' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                           </div>
-                          <div className="flex-1 pt-2">
-                            <h3 className={`font-bold text-lg ${stage >= 1 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              Document Verification
-                            </h3>
-                            <p className={`text-base ${stage >= 1 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {stage === 1 ? 'Checking submitted documents' : 'Documents verified'}
-                            </p>
-                            {stage >= 1 && (
-                              <p className="text-sm text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                {formatDate(currentSubmission.submitted_at)}
-                              </p>
-                            )}
-                          </div>
+                          <div className="absolute top-8 sm:top-10 md:top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-10 sm:h-12 md:h-16 bg-gray-300"></div>
                         </div>
-
-                        {/* Initial Screening */}
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 2 ? 'bg-[#101C50]' : stage === 1 ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'
-                              }`}>
-                              <svg className={`w-6 h-6 ${stage >= 2 ? 'text-white' : stage === 1 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                              </svg>
-                            </div>
-                            <div className="absolute top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gray-300"></div>
-                          </div>
-                          <div className="flex-1 pt-2">
-                            <h3 className={`font-bold text-lg ${stage >= 2 ? 'text-[#101C50]' : stage === 1 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              Initial Screening
-                            </h3>
-                            <p className={`text-base ${stage >= 2 ? 'text-gray-600' : stage === 1 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {stage === 2 ? 'Classifying research paper' : stage > 2 ? 'Classification complete' : 'Awaiting verification'}
+                        <div className="flex-1 pt-1 sm:pt-1.5 md:pt-2">
+                          <h3 className={`font-bold text-sm sm:text-base md:text-lg ${stage >= 1 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Document Verification
+                          </h3>
+                          <p className={`text-xs sm:text-sm md:text-base ${stage >= 1 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {stage === 1 ? 'Checking submitted documents' : 'Documents verified'}
+                          </p>
+                          {stage >= 1 && (
+                            <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {formatDate(submission.submitted_at)}
                             </p>
-                          </div>
-                        </div>
-
-                        {/* Ethics Review */}
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 4 ? 'bg-[#101C50]' : [2, 3].includes(stage) ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'
-                              }`}>
-                              <svg className={`w-6 h-6 ${stage >= 4 ? 'text-white' : [2, 3].includes(stage) ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                              </svg>
-                            </div>
-                            <div className="absolute top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gray-300"></div>
-                          </div>
-                          <div className="flex-1 pt-2">
-                            <h3 className={`font-bold text-lg ${stage >= 3 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              Ethics Review
-                            </h3>
-                            <p className={`text-base ${stage >= 3 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {stage === 3 ? 'Waiting for reviewer assignment' : stage === 4 ? 'Under review by ethics committee' : stage > 4 ? 'Review complete' : 'Awaiting classification'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Revisions */}
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 5 ? 'bg-[#101C50]' : stage === 4 ? 'border-2 border-[#101C50] bg-white' : 'border-2 border-gray-300 bg-white'
-                              }`}>
-                              <svg className={`w-6 h-6 ${stage >= 5 ? 'text-white' : stage === 4 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            </div>
-                            <div className="absolute top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-16 bg-gray-300"></div>
-                          </div>
-                          <div className="flex-1 pt-2">
-                            <h3 className={`font-bold text-lg ${stage >= 5 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              Revisions
-                            </h3>
-                            <p className={`text-base ${stage >= 5 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {stage === 5 ? 'Revising submission based on feedback' : stage > 5 ? 'Revisions completed' : 'Awaiting review completion'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Final Approval */}
-                        <div className="flex items-start gap-4">
-                          <div className="relative">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center relative z-10 ${stage === 7 ? 'bg-green-600' : stage === 6 ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'
-                              }`}>
-                              <svg className={`w-6 h-6 ${stage === 7 ? 'text-white' : stage === 6 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="flex-1 pt-2">
-                            <h3 className={`font-bold text-lg ${stage === 7 ? 'text-green-600' : stage === 6 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              Final Approval
-                            </h3>
-                            <p className={`text-base ${stage >= 6 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {stage === 7 ? 'Certificate of approval issued' : stage === 6 ? 'Awaiting final approval' : 'Awaiting review completion'}
-                            </p>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })()}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    No active submission
-                  </p>
-                </div>
-              )}
+
+                      {/* Initial Screening */}
+                      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+                        <div className="relative">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 2 ? 'bg-[#101C50]' : stage === 1 ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'}`}>
+                            <svg className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stage >= 2 ? 'text-white' : stage === 1 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                            </svg>
+                          </div>
+                          <div className="absolute top-8 sm:top-10 md:top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-10 sm:h-12 md:h-16 bg-gray-300"></div>
+                        </div>
+                        <div className="flex-1 pt-1 sm:pt-1.5 md:pt-2">
+                          <h3 className={`font-bold text-sm sm:text-base md:text-lg ${stage >= 2 ? 'text-[#101C50]' : stage === 1 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Initial Screening
+                          </h3>
+                          <p className={`text-xs sm:text-sm md:text-base ${stage >= 2 ? 'text-gray-600' : stage === 1 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {stage === 2 ? 'Classifying research paper' : stage > 2 ? 'Classification complete' : 'Awaiting verification'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Ethics Review */}
+                      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+                        <div className="relative">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 4 ? 'bg-[#101C50]' : [2, 3].includes(stage) ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'}`}>
+                            <svg className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stage >= 4 ? 'text-white' : [2, 3].includes(stage) ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                          </div>
+                          <div className="absolute top-8 sm:top-10 md:top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-10 sm:h-12 md:h-16 bg-gray-300"></div>
+                        </div>
+                        <div className="flex-1 pt-1 sm:pt-1.5 md:pt-2">
+                          <h3 className={`font-bold text-sm sm:text-base md:text-lg ${stage >= 3 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Ethics Review
+                          </h3>
+                          <p className={`text-xs sm:text-sm md:text-base ${stage >= 3 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {stage === 3 ? 'Waiting for reviewer assignment' : stage === 4 ? 'Under review by ethics committee' : stage > 4 ? 'Review complete' : 'Awaiting classification'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Revisions */}
+                      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+                        <div className="relative">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center relative z-10 ${stage >= 5 ? 'bg-[#101C50]' : stage === 4 ? 'border-2 border-[#101C50] bg-white' : 'border-2 border-gray-300 bg-white'}`}>
+                            <svg className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stage >= 5 ? 'text-white' : stage === 4 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          </div>
+                          <div className="absolute top-8 sm:top-10 md:top-12 left-1/2 transform -translate-x-1/2 w-0.5 h-10 sm:h-12 md:h-16 bg-gray-300"></div>
+                        </div>
+                        <div className="flex-1 pt-1 sm:pt-1.5 md:pt-2">
+                          <h3 className={`font-bold text-sm sm:text-base md:text-lg ${stage >= 5 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Revisions
+                          </h3>
+                          <p className={`text-xs sm:text-sm md:text-base ${stage >= 5 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {stage === 5 ? 'Revising submission based on feedback' : stage > 5 ? 'Revisions completed' : 'Awaiting review completion'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Final Approval */}
+                      <div className="flex items-start gap-2 sm:gap-3 md:gap-4">
+                        <div className="relative">
+                          <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full flex items-center justify-center relative z-10 ${stage === 7 ? 'bg-green-600' : stage === 6 ? 'border-2 border-[#101C50] bg-white animate-pulse' : 'border-2 border-gray-300 bg-white'}`}>
+                            <svg className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${stage === 7 ? 'text-white' : stage === 6 ? 'text-[#101C50]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className="flex-1 pt-1 sm:pt-1.5 md:pt-2">
+                          <h3 className={`font-bold text-sm sm:text-base md:text-lg ${stage === 7 ? 'text-green-600' : stage === 6 ? 'text-[#101C50]' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Final Approval
+                          </h3>
+                          <p className={`text-xs sm:text-sm md:text-base ${stage >= 6 ? 'text-gray-600' : 'text-gray-400'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {stage === 7 ? 'Certificate of approval issued' : stage === 6 ? 'Awaiting final approval' : 'Awaiting review completion'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                };
+
+                if (activeSubmissions.length === 1) {
+                  return <div className="relative">{renderTimeline(activeSubmissions[0])}</div>;
+                }
+
+                const selectedSubmission = activeSubmissions[selectedSubmissionIndex];
+
+                return (
+                  <div>
+                    <div className="mb-4 sm:mb-6 overflow-x-auto">
+                      <div className="flex gap-2 min-w-max pb-2">
+                        {activeSubmissions.map((submission, index) => (
+                          <button
+                            key={submission.id}
+                            onClick={() => setSelectedSubmissionIndex(index)}
+                            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-medium rounded-lg transition-colors whitespace-nowrap ${
+                              selectedSubmissionIndex === index
+                                ? 'bg-[#101C50] text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            {submission.title.length > 30 ? `${submission.title.substring(0, 30)}...` : submission.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="relative">{renderTimeline(selectedSubmission)}</div>
+                  </div>
+                );
+              })()}
             </div>
 
-            {/* Recent Activity */}
+            {/* Recent Activity - RESPONSIVE */}
             <div>
-              <h2 className="text-xl sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
                 Recent Activity
               </h2>
 
-              {/* Dropdown for mobile, Tabs for desktop */}
-              <div className="mb-6">
-                {/* Mobile Dropdown */}
+              <div className="mb-4 sm:mb-6">
                 <div className="md:hidden">
                   <select
                     value={activeTab}
                     onChange={(e) => setActiveTab(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 text-[#101C50] font-medium focus:outline-none focus:border-[#101C50]"
+                    className="w-full px-3 py-2 rounded-lg border-2 border-gray-300 text-[#101C50] text-sm font-medium focus:outline-none focus:border-[#101C50]"
                     style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#f9fafb' }}
                   >
                     <option value="all">All Activities</option>
@@ -403,44 +521,31 @@ export default function ResearcherDashboard() {
                   </select>
                 </div>
 
-                {/* Desktop Tabs */}
                 <div className="hidden md:flex gap-4 border-b border-gray-300">
                   <button
                     onClick={() => setActiveTab('all')}
-                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'all'
-                      ? 'border-b-2 border-[#101C50] text-[#101C50]'
-                      : 'text-gray-600 hover:text-[#101C50]'
-                      }`}
+                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'all' ? 'border-b-2 border-[#101C50] text-[#101C50]' : 'text-gray-600 hover:text-[#101C50]'}`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     All Activities
                   </button>
                   <button
                     onClick={() => setActiveTab('revision')}
-                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'revision'
-                      ? 'border-b-2 border-[#101C50] text-[#101C50]'
-                      : 'text-gray-600 hover:text-[#101C50]'
-                      }`}
+                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'revision' ? 'border-b-2 border-[#101C50] text-[#101C50]' : 'text-gray-600 hover:text-[#101C50]'}`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Needs Revision
                   </button>
                   <button
                     onClick={() => setActiveTab('pending')}
-                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'pending'
-                      ? 'border-b-2 border-[#101C50] text-[#101C50]'
-                      : 'text-gray-600 hover:text-[#101C50]'
-                      }`}
+                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'pending' ? 'border-b-2 border-[#101C50] text-[#101C50]' : 'text-gray-600 hover:text-[#101C50]'}`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Pending
                   </button>
                   <button
                     onClick={() => setActiveTab('approved')}
-                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'approved'
-                      ? 'border-b-2 border-[#101C50] text-[#101C50]'
-                      : 'text-gray-600 hover:text-[#101C50]'
-                      }`}
+                    className={`px-4 py-2 text-base font-medium transition-colors whitespace-nowrap ${activeTab === 'approved' ? 'border-b-2 border-[#101C50] text-[#101C50]' : 'text-gray-600 hover:text-[#101C50]'}`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Approved
@@ -448,11 +553,10 @@ export default function ResearcherDashboard() {
                 </div>
               </div>
 
-              {/* Activity List */}
-              <div className="space-y-3 sm:space-y-4">
+              <div className="space-y-2 sm:space-y-3">
                 {filteredSubmissions.length === 0 ? (
-                  <div className="text-center py-8 sm:py-12">
-                    <p className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="text-center py-6 sm:py-8 md:py-12">
+                    <p className="text-gray-500 text-xs sm:text-sm md:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       No submissions found
                     </p>
                   </div>
@@ -462,17 +566,13 @@ export default function ResearcherDashboard() {
                       doc => doc.fileType !== 'consolidated_application'
                     ) || [];
 
-                    if (nonConsolidatedDocs.length === 0) {
-                      return null;
-                    }
+                    if (nonConsolidatedDocs.length === 0) return null;
 
                     const docsToShow = activeTab === 'revision'
                       ? nonConsolidatedDocs.filter(doc => doc.needsRevision === true)
                       : nonConsolidatedDocs;
 
-                    if (docsToShow.length === 0) {
-                      return null;
-                    }
+                    if (docsToShow.length === 0) return null;
 
                     return docsToShow.map((doc) => {
                       const docNeedsRevision = doc.needsRevision === true;
@@ -492,28 +592,28 @@ export default function ResearcherDashboard() {
                       return (
                         <div
                           key={`${submission.id}-${doc.id}`}
-                          className="bg-gray-50 rounded-lg p-4 sm:p-5 md:p-6 hover:bg-gray-100 transition-colors"
+                          className="bg-gray-50 rounded-lg p-3 sm:p-4 md:p-5 hover:bg-gray-100 transition-colors"
                         >
-                          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
-                              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                               </svg>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-base sm:text-lg text-[#101C50] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <h4 className="font-bold text-sm sm:text-base md:text-lg text-[#101C50] mb-0.5 sm:mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {getDocumentTypeLabel(doc.fileType)}
                               </h4>
-                              <p className="text-sm sm:text-base text-gray-600 mb-1 sm:mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-0.5 sm:mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {docStatusInfo.description}
                               </p>
-                              <p className="text-xs sm:text-sm text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 Submitted: {formatDate(submission.submitted_at)} • {formatFileSize(doc.fileSize)}
                               </p>
                             </div>
                             <button
                               onClick={() => router.push(`/researchermodule/activity-details?id=${submission.id}&docId=${doc.id}`)}
-                              className={`w-full sm:w-auto px-6 sm:px-8 py-2 sm:py-2.5 text-white text-sm sm:text-base rounded-full transition-colors cursor-pointer flex-shrink-0 ${docStatusInfo.buttonColor}`}
+                              className={`w-full sm:w-auto px-4 sm:px-6 md:px-8 py-1.5 sm:py-2 text-white text-xs sm:text-sm md:text-base rounded-full transition-colors cursor-pointer flex-shrink-0 ${docStatusInfo.buttonColor}`}
                               style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                             >
                               {docStatusInfo.buttonText}
