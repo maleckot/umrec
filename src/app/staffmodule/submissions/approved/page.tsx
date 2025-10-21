@@ -1,4 +1,4 @@
-// app/secretariatmodule/submissions/approved/page.tsx
+// app/staffmodule/submissions/approved/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -13,7 +13,7 @@ import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 
-export default function SecretariatApprovedPage() {
+export default function StaffApprovedPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
@@ -35,22 +35,22 @@ export default function SecretariatApprovedPage() {
   const approvalDocuments = [
     {
       id: 1,
-      title: 'Certificate of Approval of Ethical Review',
+      title: 'Certificate of Approval',
       description: 'Official certificate confirming ethical approval',
       url: '/sample-certificate.pdf',
       icon: FileText,
     },
     {
       id: 2,
-      title: 'Form 0011 - Approval Notice',
-      description: 'Formal approval notice document',
+      title: 'Form 0011 - Protocol Reviewer Worksheet',
+      description: 'Protocol reviewer worksheet document',
       url: '/sample-form-0011.pdf',
       icon: FileText,
     },
     {
       id: 3,
-      title: 'Form 0012 - Research Ethics Clearance',
-      description: 'Ethics clearance documentation',
+      title: 'Form 0012 - Informed Consent Checklist',
+      description: 'Informed consent checklist document',
       url: '/sample-form-0012.pdf',
       icon: FileText,
     },
@@ -143,15 +143,15 @@ export default function SecretariatApprovedPage() {
     setIsReleasing(false);
     alert('Documents released to researcher successfully!');
     // Redirect to review-complete after release
-    router.push(`/secretariatmodule/submissions/review-complete?id=${submissionId}`);
+    router.push(`/staffmodule/submissions/review-complete?id=${submissionId}`);
   };
 
   return (
-    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+    <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
       {/* Back Button */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/secretariatmodule/submissions')}
+          onClick={() => router.push('/staffmodule/submissions')}
           className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         >

@@ -49,10 +49,10 @@ const NAV_LINKS = {
     mainLinks: [
       { href: '/reviewermodule', text: 'Dashboard' },
       { href: '/reviewermodule/reviews', text: 'Reviews' },
-      { href: '/reviewer/help', text: 'Help Center' },
+      { href: '/reviewermodule/help', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
-      { href: '/reviewer/notifications', icon: 'bell', ariaLabel: 'Notifications' },
+      { href: '/reviewermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },
       { href: '/reviewermodule/account', icon: 'user', ariaLabel: 'Account' },
     ] as IconLinkProps[],
   },
@@ -124,9 +124,94 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   );
 };
 
+// Logout Confirmation Modal - With Login-Style Animated Border
+const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4" style={{ backgroundColor: 'rgba(3, 2, 17, 0.91)' }}>
+        <div className="relative w-full max-w-md mx-4">
+          <div className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden">
+            {/* Animated light beam - 120 degrees */}
+            <div className="absolute inset-0 rounded-2xl animate-spin-slow" style={{
+              background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
+              filter: 'blur(20px)'
+            }}></div>
+            
+            {/* Enhanced glow effect */}
+            <div className="absolute inset-0 rounded-2xl" style={{
+              boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2), 0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3)'
+            }}></div>
+
+            {/* Modal Content */}
+            <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: '#050C2D' }}>
+              {/* Logo Section */}
+              <div className="py-6 flex justify-center">
+                <Image 
+                  src="/img/umreclogonobg.png" 
+                  alt="UMRec Logo" 
+                  width={80} 
+                  height={80}
+                  className="w-16 h-16 sm:w-20 sm:h-20"
+                />
+              </div>
+
+              {/* Content Section */}
+              <div className="px-6 sm:px-8 pb-6 sm:pb-8">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Confirm Logout
+                </h3>
+                <p className="text-gray-300 text-sm sm:text-base mb-6 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Are you sure you want to log out of your account?
+                </p>
+
+                {/* Buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={onClose}
+                    className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors text-sm sm:text-base"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={onConfirm}
+                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm sm:text-base"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        .animate-spin-slow {
+          animation: spin-slow 8s linear infinite;
+        }
+      `}</style>
+    </>
+  );
+};
+
+
 const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: keyof typeof NAV_LINKS }> = ({ isOpen, onClose, role }) => {
   const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
   const [loading, setLoading] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   
   // Load availability status when dropdown opens (only for reviewers)
   useEffect(() => {
@@ -135,17 +220,16 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
     }
   }, [isOpen, role]);
 
-const loadAvailability = async () => {
-  const result = await getReviewerAvailability();
-  if (result.success && result.availability) {
-    // Validate the value before setting
-    const status = result.availability;
-    if (status === 'available' || status === 'unavailable') {
-      setAvailability(status);
+  const loadAvailability = async () => {
+    const result = await getReviewerAvailability();
+    if (result.success && result.availability) {
+      // Validate the value before setting
+      const status = result.availability;
+      if (status === 'available' || status === 'unavailable') {
+        setAvailability(status);
+      }
     }
-  }
-};
-
+  };
   
   if (!isOpen) return null;
   
@@ -174,67 +258,81 @@ const loadAvailability = async () => {
     
     setLoading(false);
   };
+
+  const handleLogoutClick = () => {
+    setShowLogoutModal(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutModal(false);
+    onClose();
+    window.location.href = '/login';
+  };
   
   return (
-    <div className="absolute right-0 top-full mt-2 w-56 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
-      {/* Availability Status - Only for Reviewer */}
-      {isReviewer && (
-        <>
-          <div className="p-4">
-            <p className="text-gray-400 text-xs mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Availability Status
-            </p>
-            <div className="flex items-center justify-between">
-              <span className="text-white text-sm font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {isAvailable ? 'Available' : 'Unavailable'}
-              </span>
-              
-              {/* Facebook-style Toggle Switch */}
-              <button
-                onClick={toggleAvailability}
-                disabled={loading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                  isAvailable ? 'bg-green-500' : 'bg-gray-600'
-                } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                role="switch"
-                aria-checked={isAvailable}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-md ${
-                    isAvailable ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+    <>
+      <div className="absolute right-0 top-full mt-2 w-56 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
+        {/* Availability Status - Only for Reviewer */}
+        {isReviewer && (
+          <>
+            <div className="p-4">
+              <p className="text-gray-400 text-xs mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Availability Status
+              </p>
+              <div className="flex items-center justify-between">
+                <span className="text-white text-sm font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {isAvailable ? 'Available' : 'Unavailable'}
+                </span>
+                
+                {/* Facebook-style Toggle Switch */}
+                <button
+                  onClick={toggleAvailability}
+                  disabled={loading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
+                    isAvailable ? 'bg-green-500' : 'bg-gray-600'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  role="switch"
+                  aria-checked={isAvailable}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-md ${
+                      isAvailable ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="h-px bg-gray-700" />
-        </>
-      )}
-      
-      <Link 
-        href={role === 'reviewer' ? '/reviewermodule/profile' : '/researchermodule/profile'}
-        className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors"
-        onClick={onClose}
-      >
-        <UserCircle size={20} className="text-white" />
-        <span className="text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>Profile</span>
-      </Link>
-      <div className="h-px bg-gray-700" />
-      <button 
-        className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors w-full text-left"
-        onClick={() => {
-          onClose();
-          // Add logout logic here
-          window.location.href = '/login';
-        }}
-      >
-        <LogOut size={20} style={{ color: '#FF3B3B' }} />
-        <span style={{ color: '#FF3B3B', fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
-      </button>
-    </div>
+            <div className="h-px bg-gray-700" />
+          </>
+        )}
+        
+        <Link 
+          href={role === 'reviewer' ? '/reviewermodule/profile' : '/researchermodule/profile'}
+          className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors"
+          onClick={onClose}
+        >
+          <UserCircle size={20} className="text-white" />
+          <span className="text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>Profile</span>
+        </Link>
+        <div className="h-px bg-gray-700" />
+        <button 
+          className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors w-full text-left"
+          onClick={handleLogoutClick}
+        >
+          <LogOut size={20} style={{ color: '#FF3B3B' }} />
+          <span style={{ color: '#FF3B3B', fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
+        </button>
+      </div>
+
+      {/* Logout Confirmation Modal */}
+      <LogoutModal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={handleLogoutConfirm}
+      />
+    </>
   );
 };
-
 
 // Interface for the component's props
 interface NavbarProps {
@@ -257,6 +355,12 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
     if (href.includes('/submissions')) {
       return pathname?.startsWith('/researchermodule/submissions');
     }
+    
+    // Special handling for review pages - match entire /reviews path
+    if (href.includes('/reviews')) {
+      return pathname?.startsWith('/reviewermodule/reviews');
+    }
+    
     // Exact match for other links
     return pathname === href;
   };
