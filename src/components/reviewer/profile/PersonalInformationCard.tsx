@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import PasswordVerificationModal from './PasswordVerificationModal';
+import PasswordVerificationModal from './EmailVerificationModal';
 import { updateReviewerProfile } from '@/app/actions/reviewer/updateReviewerProfile';
 import { verifyReviewerPassword } from '@/app/actions/reviewer/verifyPassword';
 

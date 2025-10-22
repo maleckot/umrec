@@ -42,12 +42,16 @@ export default function ReviewStatisticsCard({ statistics }: ReviewStatisticsCar
     { name: 'Overdue', value: statistics.overdue, color: COLORS.darkBlue },
   ];
 
+  // Filter out zero values to prevent empty slices
+  const filteredPieData = pieData.filter(item => item.value > 0);
+  const hasData = filteredPieData.length > 0;
+  const total = statistics.expedited + statistics.fullReview + statistics.overdue;
+
   const PIE_COLORS = [COLORS.teal, COLORS.yellow, COLORS.darkBlue];
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const total = statistics.expedited + statistics.fullReview + statistics.overdue;
-      const percentage = ((payload[0].value / total) * 100).toFixed(1);
+      const percentage = total > 0 ? ((payload[0].value / total) * 100).toFixed(1) : '0.0';
       
       return (
         <div className="bg-gray-900 text-white p-3 rounded-lg shadow-xl" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -59,30 +63,90 @@ export default function ReviewStatisticsCard({ statistics }: ReviewStatisticsCar
     return null;
   };
 
-  // Mobile label - inside the pie with white text
+  // Mobile label - inside the pie with white text, only show if percent > 5%
   const renderMobileLabel = (entry: any) => {
-    const percent = (entry.percent * 100).toFixed(1);
+    const percent = entry.percent * 100;
+    
+    // Only show label if slice is larger than 5% to prevent overlap
+    if (percent < 5) return null;
+    
+    const RADIAN = Math.PI / 180;
+    const radius = entry.innerRadius + (entry.outerRadius - entry.innerRadius) * 0.5;
+    const x = entry.cx + radius * Math.cos(-entry.midAngle * RADIAN);
+    const y = entry.cy + radius * Math.sin(-entry.midAngle * RADIAN);
+
     return (
       <text
-        x={entry.x}
-        y={entry.y}
+        x={x}
+        y={y}
         fill="white"
         textAnchor="middle"
         dominantBaseline="central"
         style={{ 
           fontFamily: 'Metropolis, sans-serif',
-          fontSize: '16px',
-          fontWeight: 'bold'
+          fontSize: '14px',
+          fontWeight: 'bold',
+          pointerEvents: 'none'
         }}
       >
-        {`${percent}%`}
+        {`${percent.toFixed(1)}%`}
       </text>
     );
   };
 
-  // Desktop label - outside with name and percentage
+  // Desktop label - outside with percentage, only show if percent > 3%
   const renderDesktopLabel = (entry: any) => {
-    return `${entry.name}: ${(entry.percent * 100).toFixed(1)}%`;
+    const percent = entry.percent * 100;
+    
+    // Only show label if slice is larger than 3% to prevent overlap
+    if (percent < 3) return null;
+    
+    const RADIAN = Math.PI / 180;
+    const radius = entry.outerRadius + 30;
+    const x = entry.cx + radius * Math.cos(-entry.midAngle * RADIAN);
+    const y = entry.cy + radius * Math.sin(-entry.midAngle * RADIAN);
+    
+    return (
+      <text 
+        x={x} 
+        y={y} 
+        fill="#1E293B"
+        textAnchor={x > entry.cx ? 'start' : 'end'} 
+        dominantBaseline="central"
+        style={{ 
+          fontFamily: 'Metropolis, sans-serif',
+          fontSize: '13px',
+          fontWeight: '600'
+        }}
+      >
+        {`${entry.name}: ${percent.toFixed(1)}%`}
+      </text>
+    );
+  };
+
+  // Custom legend renderer - receives payload automatically from Recharts
+  const renderCustomLegend = (props: any) => {
+    const { payload } = props;
+    
+    return (
+      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mt-4">
+        {payload.map((entry: any, index: number) => {
+          const percentage = total > 0 ? ((entry.payload.value / total) * 100).toFixed(1) : '0.0';
+          
+          return (
+            <div key={`legend-${index}`} className="flex items-center space-x-2">
+              <div 
+                className="w-3 h-3 rounded-sm flex-shrink-0" 
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {entry.value}: {entry.payload.value} ({percentage}%)
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -162,67 +226,72 @@ export default function ReviewStatisticsCard({ statistics }: ReviewStatisticsCar
           Review Distribution for {selectedMonth}
         </h3>
         
-        {/* Mobile version - Centered with percentages inside */}
-        <div className="sm:hidden w-full flex justify-center">
-          <div className="w-full max-w-sm">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={pieData}
-                  cx="50%"
-                  cy="45%"
-                  labelLine={false}
-                  label={renderMobileLabel}
-                  outerRadius={85}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend 
-                  verticalAlign="bottom" 
-                  height={50}
-                  wrapperStyle={{ 
-                    fontFamily: 'Metropolis, sans-serif',
-                    fontSize: '13px',
-                    paddingTop: '10px'
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {hasData ? (
+          <>
+            {/* Mobile version - Centered with percentages inside */}
+            <div className="sm:hidden w-full flex justify-center">
+              <div className="w-full max-w-sm">
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie
+                      data={filteredPieData}
+                      cx="50%"
+                      cy="42%"
+                      labelLine={false}
+                      label={renderMobileLabel}
+                      outerRadius={85}
+                      innerRadius={45}
+                      fill="#8884d8"
+                      dataKey="value"
+                      paddingAngle={2}
+                    >
+                      {filteredPieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend content={renderCustomLegend} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-        {/* Desktop version - Full width with labels outside */}
-        <div className="hidden sm:block w-full">
-          <ResponsiveContainer width="100%" height={350}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={(entry: any) => renderDesktopLabel(entry)}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                verticalAlign="bottom" 
-                height={36}
-                wrapperStyle={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+            {/* Desktop version - Full width with labels outside */}
+            <div className="hidden sm:block w-full">
+              <ResponsiveContainer width="100%" height={380}>
+                <PieChart>
+                  <Pie
+                    data={filteredPieData}
+                    cx="50%"
+                    cy="45%"
+                    labelLine={{
+                      stroke: '#CBD5E1',
+                      strokeWidth: 1
+                    }}
+                    label={renderDesktopLabel}
+                    outerRadius={100}
+                    innerRadius={55}
+                    fill="#8884d8"
+                    dataKey="value"
+                    paddingAngle={2}
+                  >
+                    {filteredPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend content={renderCustomLegend} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              No review data available for {selectedMonth}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

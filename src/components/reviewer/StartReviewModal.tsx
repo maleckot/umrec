@@ -41,7 +41,7 @@ const StartReviewModal: React.FC<StartReviewModalProps> = ({
         </p>
 
         <p className="text-sm md:text-base text-gray-700 text-center mb-8" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          Once you begin, this submission will be assigned to you. Do you want to continue?
+          This submission must be completed once started. Are you sure you want to review?
         </p>
 
         {/* Buttons */}

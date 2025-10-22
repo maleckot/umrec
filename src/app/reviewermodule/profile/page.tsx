@@ -8,6 +8,7 @@ import PersonalInformationCard from '@/components/reviewer/profile/PersonalInfor
 import SecuritySettingsCard from '@/components/reviewer/profile/SecuritySettingsCard';
 import ExpertiseAreasCard from '@/components/reviewer/profile/ExpertiseAreasCard';
 import ReviewStatisticsCard from '@/components/reviewer/profile/ReviewStatisticsCard';
+import CertificatesCard from '@/components/reviewer/profile/CertificatesCard';
 import { getReviewerProfile } from '@/app/actions/reviewer/getReviewerProfile';
 
 export default function ReviewerProfilePage() {
@@ -31,12 +32,42 @@ export default function ReviewerProfilePage() {
         expertiseAreas: result.profile.expertiseAreas,
         lastPasswordChange: result.profile.lastPasswordChange,
         statistics: result.statistics,
+        certificates: result.profile.certificates || [],
       });
     } else {
       alert('Failed to load profile: ' + (result.error || 'Unknown error'));
     }
 
     setLoading(false);
+  };
+
+  const handleCertificateUpload = async (file: File) => {
+    // TODO: Implement upload logic with your backend
+    console.log('Uploading certificate:', file.name);
+    
+    // Example implementation:
+    // const formData = new FormData();
+    // formData.append('certificate', file);
+    // const response = await fetch('/api/reviewer/upload-certificate', {
+    //   method: 'POST',
+    //   body: formData
+    // });
+    // if (response.ok) {
+    //   await loadProfile(); // Reload profile to show new certificate
+    // }
+  };
+
+  const handleCertificateDelete = async (certificateId: string) => {
+    // TODO: Implement delete logic with your backend
+    console.log('Deleting certificate:', certificateId);
+    
+    // Example implementation:
+    // const response = await fetch(`/api/reviewer/delete-certificate/${certificateId}`, {
+    //   method: 'DELETE'
+    // });
+    // if (response.ok) {
+    //   await loadProfile(); // Reload profile to update list
+    // }
   };
 
   if (loading) {
@@ -97,6 +128,13 @@ export default function ReviewerProfilePage() {
 
           {/* Expertise Areas */}
           <ExpertiseAreasCard expertiseAreas={profileData.expertiseAreas} />
+
+          {/* Certificates */}
+          <CertificatesCard 
+            certificates={profileData.certificates}
+            onUpload={handleCertificateUpload}
+            onDelete={handleCertificateDelete}
+          />
 
           {/* Review Statistics */}
           <ReviewStatisticsCard statistics={profileData.statistics} />

@@ -5,13 +5,32 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import RegistrationForm from '@/components/registration/RegistrationForm';
-import SuccessModal from '@/components/registration/SuccessModal';
+import EmailConfirmationModal from '@/components/registration/EmailConfirmationModal';
 
 export default function RegisterPage() {
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [userId, setUserId] = useState('');
 
-  const handleRegistrationSuccess = () => {
-    setShowSuccessModal(true);
+  const handleRegistrationSuccess = (email: string, id: string) => {
+    setUserEmail(email);
+    setUserId(id);
+    setShowConfirmationModal(true);
+  };
+
+  const handleResendEmail = async () => {
+    // For frontend testing, just log
+    console.log('Resending confirmation email to:', userEmail);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In production, this would call your API:
+    // await fetch('/api/auth/resend-confirmation', {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ email: userEmail, userId }),
+    // });
   };
 
   return (
@@ -115,9 +134,13 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Success Modal */}
-      {showSuccessModal && (
-        <SuccessModal onClose={() => setShowSuccessModal(false)} />
+      {/* Email Confirmation Modal */}
+      {showConfirmationModal && (
+        <EmailConfirmationModal
+          email={userEmail}
+          onResendEmail={handleResendEmail}
+          onClose={() => setShowConfirmationModal(false)}
+        />
       )}
 
       {/* CSS for glow effect */}

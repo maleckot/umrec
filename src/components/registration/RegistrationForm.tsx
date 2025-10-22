@@ -2,21 +2,48 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, EyeOff, Calendar } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import FormInput from './FormInput';
 import FormSelect from './FormSelect';
 import { registerResearcher } from '@/app/actions/auth/registerResearcher';
 
 interface RegistrationFormProps {
-  onSuccess: () => void;
+  onSuccess: (email: string, userId: string) => void;
 }
+
+// UMAK Colleges list
+const UMAK_COLLEGES = [
+  { value: '', label: 'Select College' },
+  { value: 'College of Liberal Arts and Sciences (CLAS)', label: 'College of Liberal Arts and Sciences (CLAS)' },
+  { value: 'College of Human Kinetics (CHK)', label: 'College of Human Kinetics (CHK)' },
+  { value: 'College of Business and Financial Science (CBFS)', label: 'College of Business and Financial Science (CBFS)' },
+  { value: 'College of Computing and Information Sciences (CCIS)', label: 'College of Computing and Information Sciences (CCIS)' },
+  { value: 'College of Construction Sciences and Engineering (CCSE)', label: 'College of Construction Sciences and Engineering (CCSE)' },
+  { value: 'College of Governance and Public Policy (CGPP)', label: 'College of Governance and Public Policy (CGPP)' },
+  { value: 'College of Engineering Technology (CET)', label: 'College of Engineering Technology (CET)' },
+  { value: 'College of Tourism and Hospitality Management (CTHM)', label: 'College of Tourism and Hospitality Management (CTHM)' },
+  { value: 'College of Innovative Teacher Education (CITE)', label: 'College of Innovative Teacher Education (CITE)' },
+  { value: 'College of Continuing, Advanced and Professional Studies (CCAPS)', label: 'College of Continuing, Advanced and Professional Studies (CCAPS)' },
+  { value: 'Institute of Arts and Design (IAD)', label: 'Institute of Arts and Design (IAD)' },
+  { value: 'Institute of Accountancy (IOA)', label: 'Institute of Accountancy (IOA)' },
+  { value: 'Institute of Pharmacy (IOP)', label: 'Institute of Pharmacy (IOP)' },
+  { value: 'Institute of Nursing (ION)', label: 'Institute of Nursing (ION)' },
+  { value: 'Institute of Imaging Health Science (IIHS)', label: 'Institute of Imaging Health Science (IIHS)' },
+  { value: 'Institute of Technical Education and Skills Training (ITEST)', label: 'Institute of Technical Education and Skills Training (ITEST)' },
+  { value: 'Institute for Social Development and Nation Building (ISDNB)', label: 'Institute for Social Development and Nation Building (ISDNB)' },
+  { value: 'Institute of Psychology (IOPsy)', label: 'Institute of Psychology (IOPsy)' },
+  { value: 'Institute of Social Work (ISW)', label: 'Institute of Social Work (ISW)' },
+  { value: 'Institute of Disaster and Emergency Management (IDEM)', label: 'Institute of Disaster and Emergency Management (IDEM)' },
+  { value: 'School of Law (SOL)', label: 'School of Law (SOL)' }
+];
 
 export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const [formData, setFormData] = useState({
     lastName: '',
     firstName: '',
     middleName: '',
-    dateOfBirth: '',
+    dateOfBirth: '2000-01-01', // Default value for professionals
+    role: '',
     contactNumber: '',
     gender: '',
     school: '',
@@ -33,19 +60,39 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isUmakStudent, setIsUmakStudent] = useState(false);
+  const [isUmakSchool, setIsUmakSchool] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const isStudent = formData.role === 'Student';
+  const isProfessional = formData.role === 'Professional';
 
   useEffect(() => {
     const schoolLower = formData.school.toLowerCase();
     const isUmak = schoolLower.includes('university of makati') || schoolLower.includes('umak');
-    setIsUmakStudent(isUmak);
+    setIsUmakSchool(isUmak);
     
-    if (!isUmak && formData.studentNo) {
-      setFormData(prev => ({ ...prev, studentNo: '' }));
+    // Clear student number if not UMAK student
+    if (!isUmak || !isStudent) {
+      if (formData.studentNo) {
+        setFormData(prev => ({ ...prev, studentNo: '' }));
+      }
     }
-  }, [formData.school]);
+  }, [formData.school, formData.role, isStudent, formData.studentNo]);
+
+  // Clear student-specific fields when switching to Professional
+  useEffect(() => {
+    if (isProfessional) {
+      setFormData(prev => ({
+        ...prev,
+        yearLevel: '',
+        section: '',
+        studentNo: '',
+        program: '',
+        dateOfBirth: '2000-01-01' // Set default for professionals
+      }));
+    }
+  }, [isProfessional]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -87,7 +134,9 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
       const result = await registerResearcher(formData);
 
       if (result.success) {
-        onSuccess(); // Show success modal
+        // Pass email and userId to show verification modal
+        const userId = result.userId || `temp-${Date.now()}`; // Use temp ID if backend doesn't return one yet
+        onSuccess(formData.email, userId);
       } else {
         setError(result.error || 'Registration failed. Please try again.');
       }
@@ -143,16 +192,17 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <div className="relative">
-              <FormInput
-                label="Date of Birth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(value) => handleChange('dateOfBirth', value)}
-                required
-              />
-              <Calendar className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] w-3.5 sm:w-4 h-3.5 sm:h-4 text-gray-500 pointer-events-none" />
-            </div>
+            <FormSelect
+              label="Role"
+              value={formData.role}
+              onChange={(value) => handleChange('role', value)}
+              options={[
+                { value: '', label: 'Select Role' },
+                { value: 'Student', label: 'Student' },
+                { value: 'Professional', label: 'Professional' }
+              ]}
+              required
+            />
             <FormInput
               label="Contact Number"
               type="tel"
@@ -183,13 +233,25 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               placeholder="University of Makati"
               required
             />
-            <FormInput
-              label="College"
-              value={formData.college}
-              onChange={(value) => handleChange('college', value)}
-              placeholder="College of Computing and Information Sciences"
-              required
-            />
+            
+            {/* Conditional College field - Dropdown for UMAK (both student and professional) */}
+            {isUmakSchool ? (
+              <FormSelect
+                label="College"
+                value={formData.college}
+                onChange={(value) => handleChange('college', value)}
+                options={UMAK_COLLEGES}
+                required
+              />
+            ) : (
+              <FormInput
+                label="College"
+                value={formData.college}
+                onChange={(value) => handleChange('college', value)}
+                placeholder="College of Computing and Information Sciences"
+                required
+              />
+            )}
           </div>
 
           <FormInput
@@ -197,38 +259,36 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             value={formData.program}
             onChange={(value) => handleChange('program', value)}
             placeholder="Bachelor of Science in Computer Science"
-            required
+            required={isStudent}
+            disabled={isProfessional}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-            <FormSelect
+            {/* Year Level - Match FormInput disabled style */}
+            <FormInput
               label="Year Level"
               value={formData.yearLevel}
               onChange={(value) => handleChange('yearLevel', value)}
-              options={[
-                { value: '', label: 'Select Year' },
-                { value: '1st Year', label: '1st Year' },
-                { value: '2nd Year', label: '2nd Year' },
-                { value: '3rd Year', label: '3rd Year' },
-                { value: '4th Year', label: '4th Year' },
-                { value: '5th Year', label: '5th Year' }
-              ]}
-              required
+              placeholder={isProfessional ? "N/A" : "Select Year"}
+              required={isStudent}
+              disabled={isProfessional}
             />
+            
             <FormInput
               label="Section"
               value={formData.section}
               onChange={(value) => handleChange('section', value)}
-              placeholder="IV-BCSAD"
-              required
+              placeholder={isProfessional ? "N/A" : "IV-BCSAD"}
+              required={isStudent}
+              disabled={isProfessional}
             />
             <FormInput
               label="Student No. (UMAK only)"
               value={formData.studentNo}
               onChange={(value) => handleChange('studentNo', value)}
-              placeholder={isUmakStudent ? "K12920931" : "N/A"}
-              required={isUmakStudent}
-              disabled={!isUmakStudent}
+              placeholder={isUmakSchool && isStudent ? "K12920931" : "N/A"}
+              required={isUmakSchool && isStudent}
+              disabled={!isUmakSchool || isProfessional}
             />
           </div>
         </div>

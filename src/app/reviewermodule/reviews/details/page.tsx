@@ -8,20 +8,45 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
 
+// Add Reply interface
+interface Reply {
+  id: number;
+  reviewerId: number;
+  name: string;
+  code: string;
+  date: string;
+  decision: string;
+  ethicsRecommendation: string;
+  technicalSuggestions: string;
+  replies?: Reply[]; // Nested replies
+}
+
+interface Evaluation {
+  id: number;
+  reviewerId: number;
+  name: string;
+  code: string;
+  date: string;
+  decision: string;
+  ethicsRecommendation: string;
+  technicalSuggestions: string;
+  replies: Reply[];
+}
+
 export default function ReviewDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null); // Changed to string to support nested IDs
   const [replyText, setReplyText] = useState('');
   const [showRepliesFor, setShowRepliesFor] = useState<number[]>([]);
 
   // Current logged-in reviewer ID (mock - replace with actual auth)
   const currentReviewerId = 1;
 
-  // Mock data - replace with API call
+  // Mock data with nested replies
   const submissionData = {
     id: id,
     title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
@@ -37,17 +62,16 @@ export default function ReviewDetailPage() {
     { id: 2, name: 'Revised - Title of the project', time: '2 hours ago', status: 'needs-review' }
   ];
 
-  // Empty evaluations scenario - set to [] to show empty state
-  const reviewerEvaluations = [
+  const reviewerEvaluations: Evaluation[] = [
     {
       id: 1,
-      reviewerId: 1, // Current user's evaluation
+      reviewerId: 1,
       name: 'Prof. Juan Dela Cruz',
       code: '201',
       date: '10 / 2 / 2025',
       decision: 'Approved with no revision',
-      ethicsRecommendation: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      technicalSuggestions: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      ethicsRecommendation: 'Comment 1',
+      technicalSuggestions: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
       replies: []
     },
     {
@@ -57,8 +81,8 @@ export default function ReviewDetailPage() {
       code: '223',
       date: '10 / 2 / 2025',
       decision: 'Approved with no revision',
-      ethicsRecommendation: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      technicalSuggestions: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      ethicsRecommendation: 'Comment 1',
+      technicalSuggestions: 'Reply to Comment 1',
       replies: [
         {
           id: 1,
@@ -67,8 +91,32 @@ export default function ReviewDetailPage() {
           code: '232',
           date: '10 / 2 / 2025',
           decision: 'Approved with no revision',
-          ethicsRecommendation: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-          technicalSuggestions: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.'
+          ethicsRecommendation: 'Reply to Comment 1',
+          technicalSuggestions: 'TestC1 User reply to page comment',
+          replies: [
+            {
+              id: 1,
+              reviewerId: 4,
+              name: 'Prof. Maria Santos',
+              code: '245',
+              date: '10 / 3 / 2025',
+              decision: 'Approved with revision',
+              ethicsRecommendation: 'TestC1 User reply to page comment',
+              technicalSuggestions: 'Reply from the Facebook Interface',
+              replies: []
+            }
+          ]
+        },
+        {
+          id: 2,
+          reviewerId: 1,
+          name: 'Prof. Juan Dela Cruz',
+          code: '201',
+          date: '10 / 3 / 2025',
+          decision: 'Approved with no revision',
+          ethicsRecommendation: 'Reply to reply',
+          technicalSuggestions: 'Additional comments on the nested reply',
+          replies: []
         }
       ]
     }
@@ -87,15 +135,14 @@ export default function ReviewDetailPage() {
     router.push(`/reviewermodule/review-submission?id=${id}`);
   };
 
-  const handleReplyClick = (evaluationId: number) => {
-    setReplyingTo(replyingTo === evaluationId ? null : evaluationId);
+  const handleReplyClick = (replyId: string) => {
+    setReplyingTo(replyingTo === replyId ? null : replyId);
     setReplyText('');
   };
 
   const handlePostReply = () => {
     if (replyText.trim()) {
-      // TODO: Post reply to backend
-      console.log('Posting reply:', replyText);
+      console.log('Posting reply:', replyText, 'to:', replyingTo);
       setReplyText('');
       setReplyingTo(null);
     }
@@ -106,6 +153,130 @@ export default function ReviewDetailPage() {
       prev.includes(evaluationId) 
         ? prev.filter(id => id !== evaluationId)
         : [...prev, evaluationId]
+    );
+  };
+
+  // Recursive component to render nested replies with connecting lines
+  const RenderReply = ({ reply, parentId, depth = 0, isLast = false }: { reply: Reply; parentId: string; depth?: number; isLast?: boolean }) => {
+    const replyId = `${parentId}-${reply.id}`;
+    const hasNestedReplies = reply.replies && reply.replies.length > 0;
+    const isMyReply = reply.reviewerId === currentReviewerId;
+
+    return (
+      <div className="relative">
+        {/* Connecting Line */}
+        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300" style={{ height: isLast && !hasNestedReplies ? '24px' : '100%' }}></div>
+        
+        <div className="ml-8 sm:ml-10 mt-3 relative">
+          {/* Horizontal connecting line */}
+          <div className="absolute left-[-24px] top-4 w-6 h-0.5 bg-gray-300"></div>
+          
+          <div className={`rounded-lg p-3 border ${isMyReply ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
+            <div className="flex gap-2">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isMyReply ? 'bg-blue-600' : 'bg-[#101C50]'}`}>
+                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {reply.name.split(' ')[1]?.[0] || 'R'}
+                </span>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 className="text-xs font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {reply.name} - {reply.code}
+                  </h3>
+                  {isMyReply && (
+                    <span className="px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      You
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {reply.date}
+                </p>
+
+                <div className="space-y-2 mb-2">
+                  <div>
+                    <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Ethics Review Recommendation:
+                    </p>
+                    <p className="text-xs text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {reply.ethicsRecommendation}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Technical Suggestions:
+                    </p>
+                    <p className="text-xs text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {reply.technicalSuggestions}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleReplyClick(replyId)}
+                  className="text-xs font-semibold text-[#101C50] hover:underline"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                >
+                  Reply
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Reply Input Box */}
+          {replyingTo === replyId && (
+            <div className="mt-3 flex gap-2">
+              <div className="w-7 h-7 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  You
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => {
+                    setReplyText(e.target.value);
+                    e.target.style.height = 'auto';
+                    e.target.style.height = e.target.scrollHeight + 'px';
+                  }}
+                  placeholder="Write a reply..."
+                  rows={2}
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none resize-none text-xs text-[#1a1a1a]"
+                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '50px', maxHeight: '150px' }}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={handlePostReply}
+                    className="px-3 py-1 bg-[#101C50] text-white text-xs rounded-lg hover:bg-[#0d1640] font-semibold"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Reply
+                  </button>
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 font-semibold"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Nested Replies */}
+          {hasNestedReplies && reply.replies!.map((nestedReply, index) => (
+            <RenderReply 
+              key={nestedReply.id} 
+              reply={nestedReply} 
+              parentId={replyId}
+              depth={depth + 1}
+              isLast={index === reply.replies!.length - 1}
+            />
+          ))}
+        </div>
+      </div>
     );
   };
 
@@ -149,9 +320,7 @@ export default function ReviewDetailPage() {
             </h2>
 
             <div className="flex flex-col lg:flex-row lg:gap-20">
-              {/* Left Column - Wider */}
               <div className="lg:w-[65%] space-y-6">
-                {/* Title/Description */}
                 <div>
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Description
@@ -161,7 +330,6 @@ export default function ReviewDetailPage() {
                   </p>
                 </div>
 
-                {/* Assigned Date */}
                 <div>
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Assigned Date
@@ -172,9 +340,7 @@ export default function ReviewDetailPage() {
                 </div>
               </div>
 
-              {/* Right Column - Narrower */}
               <div className="lg:w-[35%] space-y-6 mt-6 lg:mt-0">
-                {/* Category */}
                 <div>
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Category
@@ -184,7 +350,6 @@ export default function ReviewDetailPage() {
                   </p>
                 </div>
 
-                {/* Due Date */}
                 <div>
                   <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Due Date
@@ -196,7 +361,6 @@ export default function ReviewDetailPage() {
               </div>
             </div>
 
-            {/* Full Width Description - Separate Section */}
             <div className="mt-6 pt-6 border-t border-gray-200">
               <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Description
@@ -208,43 +372,43 @@ export default function ReviewDetailPage() {
           </div>
 
           {/* Submitted Files */}
-<div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
-  <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    Submitted File
-  </h2>
+          <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
+            <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Submitted File
+            </h2>
 
-  <div className="space-y-3">
-    {submittedFiles.map((file) => (
-      <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <div className="w-10 h-10 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
-            </svg>
+            <div className="space-y-3">
+              {submittedFiles.map((file) => (
+                <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {file.time}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className={`w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+                      file.status === 'viewed' 
+                        ? 'bg-[#101C50] text-white hover:bg-[#0d1640]'
+                        : 'bg-[#7C1100] text-white hover:bg-[#5a0c00]'
+                    }`}
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    {file.status === 'viewed' ? 'View' : 'Review'}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {file.name}
-            </p>
-            <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {file.time}
-            </p>
-          </div>
-        </div>
-        <button
-          className={`w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
-            file.status === 'viewed' 
-              ? 'bg-[#101C50] text-white hover:bg-[#0d1640]'
-              : 'bg-[#7C1100] text-white hover:bg-[#5a0c00]'
-          }`}
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          {file.status === 'viewed' ? 'View' : 'Review'}
-        </button>
-      </div>
-    ))}
-  </div>
-</div>
 
           {/* Reviewer Evaluations */}
           <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
@@ -253,7 +417,6 @@ export default function ReviewDetailPage() {
             </h2>
 
             {reviewerEvaluations.length === 0 ? (
-              /* Empty State */
               <div className="text-center py-12">
                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <MessageCircle className="w-10 h-10 text-gray-400" />
@@ -271,20 +434,19 @@ export default function ReviewDetailPage() {
                   const isMyEvaluation = evaluation.reviewerId === currentReviewerId;
                   const showReplies = showRepliesFor.includes(evaluation.id);
                   const hasReplies = evaluation.replies.length > 0;
+                  const evaluationId = `eval-${evaluation.id}`;
                   
                   return (
                     <div key={evaluation.id}>
-                      {/* Main Evaluation - Facebook Comment Style */}
+                      {/* Main Evaluation */}
                       <div className={`rounded-lg p-4 ${isMyEvaluation ? 'bg-blue-50 border-2 border-blue-200' : 'bg-gray-50'}`}>
                         <div className="flex gap-3">
-                          {/* Avatar/Icon */}
                           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMyEvaluation ? 'bg-blue-600' : 'bg-[#101C50]'}`}>
                             <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                               {evaluation.name.split(' ')[1]?.[0] || 'R'}
                             </span>
                           </div>
 
-                          {/* Comment Content */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <h3 className="text-sm font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -325,10 +487,9 @@ export default function ReviewDetailPage() {
                               </div>
                             </div>
 
-                            {/* Reply Button and View Replies */}
                             <div className="flex items-center gap-4 pt-2">
                               <button
-                                onClick={() => handleReplyClick(evaluation.id)}
+                                onClick={() => handleReplyClick(evaluationId)}
                                 className="text-xs font-semibold text-[#101C50] hover:underline"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
@@ -340,7 +501,7 @@ export default function ReviewDetailPage() {
                                   className="text-xs font-semibold text-[#101C50] hover:underline"
                                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                                 >
-                                  {showReplies ? 'Hide replies' : `View ${evaluation.replies.length} ${evaluation.replies.length === 1 ? 'reply' : 'replies'}`}
+                                  {showReplies ? 'Hide replies' : `View replies`}
                                 </button>
                               )}
                             </div>
@@ -348,8 +509,8 @@ export default function ReviewDetailPage() {
                         </div>
                       </div>
 
-                      {/* Reply Input Box */}
-                      {replyingTo === evaluation.id && (
+                      {/* Reply Input for Main Evaluation */}
+                      {replyingTo === evaluationId && (
                         <div className="ml-8 sm:ml-14 mt-3 flex gap-2">
                           <div className="w-8 h-8 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
                             <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -361,30 +522,25 @@ export default function ReviewDetailPage() {
                               value={replyText}
                               onChange={(e) => {
                                 setReplyText(e.target.value);
-                                // Auto-expand textarea
                                 e.target.style.height = 'auto';
                                 e.target.style.height = e.target.scrollHeight + 'px';
                               }}
                               placeholder="Write a reply..."
                               rows={2}
-                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none resize-none text-sm text-[#1a1a1a] overflow-y-auto"
-                              style={{ 
-                                fontFamily: 'Metropolis, sans-serif',
-                                minHeight: '60px',
-                                maxHeight: '200px'
-                              }}
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none resize-none text-sm text-[#1a1a1a]"
+                              style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '60px', maxHeight: '200px' }}
                             />
                             <div className="flex gap-2 mt-2">
-                                                           <button
+                              <button
                                 onClick={handlePostReply}
-                                className="px-4 py-1.5 bg-[#101C50] text-white text-xs rounded-lg hover:bg-[#0d1640] transition-colors font-semibold"
+                                className="px-4 py-1.5 bg-[#101C50] text-white text-xs rounded-lg hover:bg-[#0d1640] font-semibold"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
                                 Reply
                               </button>
                               <button
                                 onClick={() => setReplyingTo(null)}
-                                className="px-4 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+                                className="px-4 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 font-semibold"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
                                 Cancel
@@ -394,51 +550,14 @@ export default function ReviewDetailPage() {
                         </div>
                       )}
 
-                      {/* Replies - Facebook Style - Show only when toggled */}
-                      {showReplies && evaluation.replies.map((reply) => (
-                        <div key={reply.id} className="ml-8 sm:ml-14 mt-3">
-                          <div className="bg-white rounded-lg p-4 border border-gray-200">
-                            <div className="flex gap-3">
-                              {/* Avatar/Icon */}
-                              <div className="w-8 h-8 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
-                                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                  {reply.name.split(' ')[1]?.[0] || 'R'}
-                                </span>
-                              </div>
-
-                              {/* Reply Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="text-sm font-bold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                    {reply.name} - {reply.code}
-                                  </h3>
-                                </div>
-                                <p className="text-xs text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                  {reply.date}
-                                </p>
-
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                      Ethics Review Recommendation:
-                                    </p>
-                                    <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                      {reply.ethicsRecommendation}
-                                    </p>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                      Technical Suggestions:
-                                    </p>
-                                    <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                      {reply.technicalSuggestions}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                      {/* Render nested replies with connecting lines */}
+                      {showReplies && evaluation.replies.map((reply, index) => (
+                        <RenderReply 
+                          key={reply.id} 
+                          reply={reply} 
+                          parentId={evaluationId}
+                          isLast={index === evaluation.replies.length - 1}
+                        />
                       ))}
                     </div>
                   );
@@ -460,7 +579,6 @@ export default function ReviewDetailPage() {
         </div>
       </div>
 
-      {/* Start Review Modal */}
       <StartReviewModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}

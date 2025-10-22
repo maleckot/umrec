@@ -65,6 +65,18 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
     return acc;
   }, {} as Record<string, Reviewer[]>);
 
+  // Handle Select All
+  const handleSelectAll = () => {
+    if (selectedReviewers.length === filteredReviewers.length) {
+      // Deselect all
+      setSelectedReviewers([]);
+    } else {
+      // Select all (up to maxReviewers)
+      const reviewerIds = filteredReviewers.slice(0, maxReviewers).map(r => r.id);
+      setSelectedReviewers(reviewerIds);
+    }
+  };
+
   // Handle panel selection
   const handlePanelToggle = (panelCode: string) => {
     const panelReviewers = reviewersByPanel[panelCode] || [];
@@ -133,6 +145,9 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
     return reviewers.filter(r => selectedReviewers.includes(r.id));
   };
 
+  const allSelected = selectedReviewers.length === filteredReviewers.length && filteredReviewers.length > 0;
+  const canSelectMore = selectedReviewers.length < maxReviewers;
+
   if (category === 'Exempted') {
     return (
       <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden">
@@ -165,24 +180,44 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             Select reviewers to assign this submission (Maximum: {maxReviewers} reviewers):
           </p>
 
-          {/* Search Bar */}
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search Reviewers"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-sm text-gray-900 bg-white border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+          {/* Search Bar and Select All Button */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Search Reviewers"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-sm text-gray-900 bg-white border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600" size={18} />
+            </div>
+            
+            <button
+              onClick={handleSelectAll}
+              disabled={filteredReviewers.length === 0}
+              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap ${
+                filteredReviewers.length === 0
+                  ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                  : allSelected
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
               style={{ fontFamily: 'Metropolis, sans-serif' }}
-            />
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600" size={18} />
+            >
+              {allSelected 
+                ? 'Deselect All' 
+                : `Select All (${Math.min(filteredReviewers.length, maxReviewers)})`
+              }
+            </button>
           </div>
         </div>
 
         {/* Content */}
         <div className="p-4 lg:p-6">
           {/* Assignment Mode Toggle */}
-          <div className="mb-4 flex gap-3">
+          <div className="mb-4 flex flex-wrap gap-3">
             <button
               onClick={() => setAssignmentMode('individual')}
               className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
@@ -298,11 +333,11 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
           )}
 
           <p className="text-xs text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {selectedReviewers.length} reviewer{selectedReviewers.length !== 1 ? 's' : ''} selected
+            {selectedReviewers.length} reviewer{selectedReviewers.length !== 1 ? 's' : ''} selected (Maximum: {maxReviewers})
           </p>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
               onClick={() => {
                 setSelectedReviewers([]);
@@ -327,7 +362,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
