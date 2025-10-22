@@ -3,7 +3,7 @@
 
 import { createClient } from '@/utils/supabase/server';
 
-export async function submitReview(submissionId: string, answers: any) {
+export async function submitReview(submissionId: string, answers: any, formVersionId: string) {
   try {
     const supabase = await createClient();
 
@@ -53,6 +53,7 @@ export async function submitReview(submissionId: string, answers: any) {
         submission_id: submissionId,
         reviewer_id: user.id,
         assignment_id: assignment.id,
+        form_version_id: formVersionId,
         protocol_answers: protocolAnswers,
         consent_answers: consentAnswers,
         recommendation: answers.recommendation,

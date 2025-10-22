@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -13,17 +13,28 @@ import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-d
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
+import { saveRevisionComment } from '@/app/actions/secretariat-staff/saveRevisionComment';
 
 export default function SecretariatSubmissionDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [revisionComments, setRevisionComments] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  
+  // Add checklist state
+  const [revisionChecklist, setRevisionChecklist] = useState({
+    researchProtocol: false,
+    consentForm: false,
+    researchInstrument: false,
+    endorsementLetter: false,
+    proposalDefense: false,
+    applicationForm: false,
+  });
 
   useEffect(() => {
     if (submissionId) {
@@ -93,9 +104,28 @@ export default function SecretariatSubmissionDetailsPage() {
     },
   ] : [];
 
-  const handleSubmitComment = async () => {
+  // Handler for checkbox changes
+// Handler for checkbox changes - with proper typing
+const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
+  setRevisionChecklist(prev => ({
+    ...prev,
+    [field]: !prev[field]
+  }));
+};
+
+
+  const handleRequestRevision = async () => {
+    const selectedItems = Object.entries(revisionChecklist)
+      .filter(([_, checked]) => checked)
+      .map(([key, _]) => key);
+
+    if (selectedItems.length === 0) {
+      alert('Please select at least one document that needs revision');
+      return;
+    }
+
     if (!revisionComments.trim()) {
-      alert('Please enter a comment before submitting.');
+      alert('Please provide specific feedback about what needs to be revised');
       return;
     }
 
@@ -103,20 +133,17 @@ export default function SecretariatSubmissionDetailsPage() {
 
     setIsSubmittingComment(true);
     try {
-      // Add your API call here to save the revision comment
-      // Example: await saveRevisionComment(submissionId, revisionComments);
-      
-      console.log('Submitting revision comment:', revisionComments);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      alert('Revision comment submitted successfully!');
-      // Optionally reload data or update UI
-      // setRevisionComments(''); // Clear after submission if needed
+      const result = await saveRevisionComment(submissionId, revisionComments, revisionChecklist);
+
+      if (result.success) {
+        alert('Revision request sent successfully! Researcher will be notified.');
+        router.push('/secretariatmodule/submissions');
+      } else {
+        alert(`Failed to request revision: ${result.error}`);
+      }
     } catch (error) {
-      console.error('Error submitting comment:', error);
-      alert('Failed to submit revision comment');
+      console.error('Error requesting revision:', error);
+      alert('Failed to request revision');
     } finally {
       setIsSubmittingComment(false);
     }
@@ -129,7 +156,7 @@ export default function SecretariatSubmissionDetailsPage() {
       const result = await saveClassification(submissionId, category, revisionComments);
 
       console.log('Classification saved:', category);
-      
+
       if (result.success) {
         // Navigate based on category
         if (category === 'Exempted') {
@@ -206,7 +233,7 @@ export default function SecretariatSubmissionDetailsPage() {
               {data.consolidatedDocument ? (
                 <ConsolidatedDocument
                   title="Documents"
-                  description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
+                  description="Review the consolidated submission. If revision is needed, select the documents below and provide feedback."
                   consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
                   fileUrl={data.consolidatedDocument.url}
                   originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}
@@ -219,59 +246,169 @@ export default function SecretariatSubmissionDetailsPage() {
                 </div>
               )}
 
-              {/* Revision Comments Section */}
+              {/* Revision Checklist Section */}
               <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Comments for Revision
+                  Request Revision
                 </h3>
-                <p className="text-sm text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Add any comments or feedback regarding revisions needed before classification. This will be visible to the researcher.
+                <p className="text-sm text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Select the documents that need revision and provide specific feedback below. This will send the submission back to the researcher.
                 </p>
-                <textarea
-                  value={revisionComments}
-                  onChange={(e) => setRevisionComments(e.target.value)}
-                  placeholder="Enter your comments here... (e.g., Please update the methodology section, Add missing references, Clarify research objectives)"
-                  className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
-                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '120px' }}
-                  maxLength={1000}
-                  disabled={isSubmittingComment}
-                />
 
-                <div className="flex justify-between items-center mt-3">
-                  <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {revisionComments.length} / 1000 characters
+
+                {/* Checklist */}
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                  <p className="text-sm font-semibold text-gray-700 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Documents requiring revision:
                   </p>
-                  <div className="flex gap-2">
-                    {revisionComments.length > 0 && (
-                      <button
-                        onClick={() => setRevisionComments('')}
-                        className="text-sm text-gray-600 hover:text-gray-800 font-medium px-3 py-1 rounded-lg hover:bg-gray-100 transition-colors"
-                        style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        disabled={isSubmittingComment}
-                      >
-                        Clear
-                      </button>
-                    )}
-                    <button
-                      onClick={handleSubmitComment}
-                      disabled={!revisionComments.trim() || isSubmittingComment}
-                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold text-sm"
-                      style={{ fontFamily: 'Metropolis, sans-serif' }}
-                    >
-                      {isSubmittingComment ? (
-                        <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send size={16} />
-                          Send Comment
-                        </>
-                      )}
-                    </button>
+
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.researchProtocol}
+                        onChange={() => handleChecklistChange('researchProtocol')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Research Protocol
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.consentForm}
+                        onChange={() => handleChecklistChange('consentForm')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Informed Consent Form
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.researchInstrument}
+                        onChange={() => handleChecklistChange('researchInstrument')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Research Instrument
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.endorsementLetter}
+                        onChange={() => handleChecklistChange('endorsementLetter')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Endorsement Letter
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.proposalDefense}
+                        onChange={() => handleChecklistChange('proposalDefense')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Proposal Defense
+                      </span>
+                    </label>
+
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={revisionChecklist.applicationForm}
+                        onChange={() => handleChecklistChange('applicationForm')}
+                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Application Form
+                      </span>
+                    </label>
                   </div>
                 </div>
+
+                {/* Comments Section */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Specific Feedback: <span className="text-red-600">*</span>
+                  </label>
+ 
+                  <textarea
+                    value={revisionComments}
+                    onChange={(e) => setRevisionComments(e.target.value)}
+                    placeholder="Example:&#10;&#10;Research Protocol - Section 3.2:&#10;Please clarify the sampling method and justify the sample size.&#10;&#10;Consent Form - Page 2:&#10;Add information about data storage and retention period."
+                    className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
+                    style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '200px' }}
+                    maxLength={2000}
+                    disabled={isSubmittingComment}
+                  />
+                  <div className="flex justify-between items-center mt-2">
+                    <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {revisionComments.length} / 2000 characters
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    onClick={() => {
+                      setRevisionChecklist({
+                        researchProtocol: false,
+                        consentForm: false,
+                        researchInstrument: false,
+                        endorsementLetter: false,
+                        proposalDefense: false,
+                        applicationForm: false,
+                      });
+                      setRevisionComments('');
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    disabled={isSubmittingComment}
+                  >
+                    Clear All
+                  </button>
+                  <button
+                    onClick={handleRequestRevision}
+                    disabled={Object.values(revisionChecklist).every(v => !v) || !revisionComments.trim() || isSubmittingComment}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold flex items-center gap-2"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    {isSubmittingComment ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        Request Revision
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4 my-6">
+                <div className="flex-1 h-px bg-gray-300"></div>
+                <p className="text-sm text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  OR
+                </p>
+                <div className="flex-1 h-px bg-gray-300"></div>
               </div>
 
               <ClassificationPanel

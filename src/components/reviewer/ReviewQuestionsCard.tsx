@@ -76,7 +76,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
       <h3 className="text-lg md:text-xl font-bold mb-2" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
         {title}
       </h3>
-      
+
       {subtitle && (
         <p className="text-sm text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           {subtitle}
@@ -96,7 +96,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               {question.question && (
                 <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {question.question}
-                  {question.required && <span className="text-red-600 ml-1">*</span>}
+                  <span className="text-red-600 ml-1">*</span> {/* ✅ Always show asterisk */}
                 </p>
               )}
 

@@ -7,6 +7,8 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { getReviewerEvaluations } from '@/app/actions/reviewer/getReviewerEvaluations';
+import { postReviewReply } from '@/app/actions/reviewer/postReviewReply';
 
 // Add Reply interface
 interface Reply {
@@ -41,90 +43,74 @@ export default function ReviewDetailPage() {
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null); // Changed to string to support nested IDs
   const [replyText, setReplyText] = useState('');
-  const [showRepliesFor, setShowRepliesFor] = useState<number[]>([]);
+  const [showRepliesFor, setShowRepliesFor] = useState<string[]>([]);
+  const [reviewerEvaluations, setReviewerEvaluations] = useState<any[]>([]);
+  const [currentReviewerId, setCurrentReviewerId] = useState<string>('');
 
-  // Current logged-in reviewer ID (mock - replace with actual auth)
-  const currentReviewerId = 1;
+// REPLACE the mock submissionData and submittedFiles with state:
+const [submissionData, setSubmissionData] = useState({
+  id: id,
+  title: 'Loading...',
+  category: '',
+  assignedDate: '',
+  dueDate: '',
+  description: '',
+  status: 'Pending'
+});
+const [submittedFiles, setSubmittedFiles] = useState<any[]>([]);
 
-  // Mock data with nested replies
-  const submissionData = {
-    id: id,
-    title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-    category: 'Full Review',
-    assignedDate: '08-15-2025',
-    dueDate: '08-30-2025',
-    description: 'This study aims to investigate the relationship between dietary patterns and cognitive performance in adults aged 25-45. The research will collect data through surveys, cognitive assessments, and food diaries.',
-    status: 'Pending'
-  };
+// REPLACE the useEffect and loadEvaluations with this:
+useEffect(() => {
+  if (id) {
+    loadEvaluations();
+  }
+}, [id]);
 
-  const submittedFiles = [
-    { id: 1, name: 'Title of the project', time: '2 hours ago', status: 'viewed' },
-    { id: 2, name: 'Revised - Title of the project', time: '2 hours ago', status: 'needs-review' }
-  ];
+const loadEvaluations = async () => {
+  if (!id) return;
 
-  const reviewerEvaluations: Evaluation[] = [
-    {
-      id: 1,
-      reviewerId: 1,
-      name: 'Prof. Juan Dela Cruz',
-      code: '201',
-      date: '10 / 2 / 2025',
-      decision: 'Approved with no revision',
-      ethicsRecommendation: 'Comment 1',
-      technicalSuggestions: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
-      replies: []
-    },
-    {
-      id: 2,
-      reviewerId: 2,
-      name: 'Prof. Juan Dela Paz',
-      code: '223',
-      date: '10 / 2 / 2025',
-      decision: 'Approved with no revision',
-      ethicsRecommendation: 'Comment 1',
-      technicalSuggestions: 'Reply to Comment 1',
-      replies: [
-        {
-          id: 1,
-          reviewerId: 3,
-          name: 'Prof. John Dela Ruiz',
-          code: '232',
-          date: '10 / 2 / 2025',
-          decision: 'Approved with no revision',
-          ethicsRecommendation: 'Reply to Comment 1',
-          technicalSuggestions: 'TestC1 User reply to page comment',
-          replies: [
-            {
-              id: 1,
-              reviewerId: 4,
-              name: 'Prof. Maria Santos',
-              code: '245',
-              date: '10 / 3 / 2025',
-              decision: 'Approved with revision',
-              ethicsRecommendation: 'TestC1 User reply to page comment',
-              technicalSuggestions: 'Reply from the Facebook Interface',
-              replies: []
-            }
-          ]
-        },
-        {
-          id: 2,
-          reviewerId: 1,
-          name: 'Prof. Juan Dela Cruz',
-          code: '201',
-          date: '10 / 3 / 2025',
-          decision: 'Approved with no revision',
-          ethicsRecommendation: 'Reply to reply',
-          technicalSuggestions: 'Additional comments on the nested reply',
-          replies: []
-        }
-      ]
+  setLoading(true);
+  try {
+    const result = await getReviewerEvaluations(id);
+    
+    if (result.success) {
+      setReviewerEvaluations(result.evaluations || []);
+      setCurrentReviewerId(result.currentReviewerId || '');
+      
+      // ✅ Set submission data from database
+      if (result.submission) {
+        setSubmissionData({
+          id: result.submission.id,
+          title: result.submission.title,
+          category: result.submission.category,
+          assignedDate: result.submission.assignedDate,
+          dueDate: result.submission.dueDate || 'TBD',
+          description: result.submission.description,
+          status: result.submission.status
+        });
+      }
+      
+      // ✅ Set consolidated document
+      if (result.consolidatedDocument) {
+        setSubmittedFiles([
+          {
+            id: 1,
+            name: result.consolidatedDocument.name,
+            time: new Date(result.consolidatedDocument.uploadedAt).toLocaleDateString('en-US'),
+            status: 'viewed',
+            url: result.consolidatedDocument.url
+          }
+        ]);
+      }
+    } else {
+      console.error('Failed to load evaluations:', result.error);
     }
-  ];
-
-  useEffect(() => {
-    setTimeout(() => setLoading(false), 500);
-  }, []);
+  } catch (error) {
+    console.error('Error loading evaluations:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleStartReview = () => {
     setShowModal(true);
@@ -135,20 +121,62 @@ export default function ReviewDetailPage() {
     router.push(`/reviewermodule/review-submission?id=${id}`);
   };
 
-  const handleReplyClick = (replyId: string) => {
-    setReplyingTo(replyingTo === replyId ? null : replyId);
+  const handleReplyClick = (evaluationId: string) => {
+    setReplyingTo(replyingTo === evaluationId ? null : evaluationId);
     setReplyText('');
   };
 
-  const handlePostReply = () => {
-    if (replyText.trim()) {
-      console.log('Posting reply:', replyText, 'to:', replyingTo);
+ const handlePostReply = async () => {
+  if (!replyText.trim() || !replyingTo) return;
+
+  try {
+    const result = await postReviewReply(replyingTo, replyText);
+    
+    if (result.success && result.reply) {
+      // ✅ Optimistically add reply to state without reloading
+      setReviewerEvaluations(prev => prev.map(evaluation => {
+        if (evaluation.id === replyingTo) {
+          return {
+            ...evaluation,
+            replies: [
+              ...(evaluation.replies || []),
+              {
+                id: result.reply.id,
+                reviewerId: currentReviewerId,
+                name: 'You', // Will show as current user
+                code: 'N/A',
+                date: new Date().toLocaleDateString('en-US', {
+                  month: 'numeric',
+                  day: 'numeric',
+                  year: 'numeric'
+                }),
+                text: replyText,
+              }
+            ]
+          };
+        }
+        return evaluation;
+      }));
+
+      // ✅ Auto-expand replies to show the new reply
+      if (!showRepliesFor.includes(replyingTo)) {
+        setShowRepliesFor(prev => [...prev, replyingTo]);
+      }
+
+      // Clear input
       setReplyText('');
       setReplyingTo(null);
+    } else {
+      alert(`Failed to post reply: ${result.error}`);
     }
-  };
+  } catch (error) {
+    console.error('Error posting reply:', error);
+    alert('Failed to post reply');
+  }
+};
+;
 
-  const toggleReplies = (evaluationId: number) => {
+  const toggleReplies = (evaluationId: string) => {
     setShowRepliesFor(prev => 
       prev.includes(evaluationId) 
         ? prev.filter(id => id !== evaluationId)
@@ -376,7 +404,43 @@ export default function ReviewDetailPage() {
             <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Submitted File
             </h2>
+          <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
+            <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Submitted File
+            </h2>
 
+            <div className="space-y-3">
+              {submittedFiles.map((file) => (
+                <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+                      </svg>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {file.time}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    className={`w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors ${
+                      file.status === 'viewed' 
+                        ? 'bg-[#101C50] text-white hover:bg-[#0d1640]'
+                        : 'bg-[#7C1100] text-white hover:bg-[#5a0c00]'
+                    }`}
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    {file.status === 'viewed' ? 'View' : 'Review'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
             <div className="space-y-3">
               {submittedFiles.map((file) => (
                 <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
@@ -433,8 +497,7 @@ export default function ReviewDetailPage() {
                 {reviewerEvaluations.map((evaluation) => {
                   const isMyEvaluation = evaluation.reviewerId === currentReviewerId;
                   const showReplies = showRepliesFor.includes(evaluation.id);
-                  const hasReplies = evaluation.replies.length > 0;
-                  const evaluationId = `eval-${evaluation.id}`;
+                  const hasReplies = evaluation.replies && evaluation.replies.length > 0;
                   
                   return (
                     <div key={evaluation.id}>
@@ -550,14 +613,38 @@ export default function ReviewDetailPage() {
                         </div>
                       )}
 
-                      {/* Render nested replies with connecting lines */}
-                      {showReplies && evaluation.replies.map((reply, index) => (
-                        <RenderReply 
-                          key={reply.id} 
-                          reply={reply} 
-                          parentId={evaluationId}
-                          isLast={index === evaluation.replies.length - 1}
-                        />
+                      {/* Replies - Facebook Style - Show only when toggled */}
+                      {showReplies && evaluation.replies && evaluation.replies.map((reply: any) => (
+                        <div key={reply.id} className="ml-8 sm:ml-14 mt-3">
+                          <div className="bg-white rounded-lg p-4 border border-gray-200">
+                            <div className="flex gap-3">
+                              {/* Avatar/Icon */}
+                              <div className="w-8 h-8 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
+                                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  {reply.name.split(' ')[1]?.[0] || 'R'}
+                                </span>
+                              </div>
+
+                              {/* Reply Content */}
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-sm font-bold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    {reply.name} - {reply.code}
+                                  </h3>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  {reply.date}
+                                </p>
+
+                                <div className="space-y-2">
+                                  <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    {reply.text}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       ))}
                     </div>
                   );

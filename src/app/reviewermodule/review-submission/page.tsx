@@ -13,6 +13,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { getSubmissionForReview } from '@/app/actions/reviewer/getSubmissionForReview';
 import { submitReview } from '@/app/actions/reviewer/submitReview';
+import { getReviewForm } from '@/app/actions/reviewer/getReviewForm';
 
 export default function ReviewSubmissionPage() {
   const router = useRouter();
@@ -25,12 +26,22 @@ export default function ReviewSubmissionPage() {
   const [reviewAnswers, setReviewAnswers] = useState<any>({});
   const [submissionData, setSubmissionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // ✅ NEW: State for review form from database
+  const [reviewSections, setReviewSections] = useState<any[]>([]);
+  const [formVersionId, setFormVersionId] = useState<string>('');
 
+  // Load submission data
   useEffect(() => {
     if (submissionId) {
       loadSubmissionData();
     }
   }, [submissionId]);
+
+  // ✅ NEW: Load review form from database
+  useEffect(() => {
+    loadReviewForm();
+  }, []);
 
   const loadSubmissionData = async () => {
     setLoading(true);
@@ -48,439 +59,22 @@ export default function ReviewSubmissionPage() {
     }
   };
 
-  // Complete review sections with all UMREC questions
-  const reviewSections = [
-    {
-      title: 'Protocol Review - Research Design & Methodology',
-      questions: [
-        {
-          id: 'q1',
-          question: '1. Is/Are the research question(s) reasonable?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q1_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q1', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q2',
-          question: '2. Are the study objectives specific, measurable, attainable, and reasonable?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q2_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q2', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q3',
-          question: '3. Is the research methodology appropriate?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q3_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q3', values: ['No', 'Unable to Assess'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Participants & Background',
-      questions: [
-        {
-          id: 'q4',
-          question: '4. Does the research need to be carried out with human participants?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q4_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q4', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q5',
-          question: '5. Does the protocol present sufficient background information or results of previous studies prior to human experimentation?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q5_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q5', values: ['No', 'Unable to Assess'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Vulnerable Populations',
-      questions: [
-        {
-          id: 'q6',
-          question: '6. Does the study involve individuals who are vulnerable?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q6_comment',
-          question: 'If YES, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q6', values: ['Yes'] },
-        },
-        {
-          id: 'q7',
-          question: '7. Are appropriate mechanisms in place to protect the vulnerable potential participants?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess', 'N/A'],
-        },
-        {
-          id: 'q7_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q7', values: ['No', 'Unable to Assess'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Risks & Benefits',
-      questions: [
-        {
-          id: 'q8',
-          question: '8. Are there probable risks to the human participants in the study?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q8_comment',
-          question: 'If YES, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q8', values: ['Yes'] },
-        },
-        {
-          id: 'q9',
-          question: '9. What are the risks? Are these identified in the protocol?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q9_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q9', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q9b',
-          question: '● Are the possible benefits identified in the protocol?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q9b_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q9b', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q10',
-          question: '10. Does the protocol adequately address the risk/benefit balance?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q10_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q10', values: ['No', 'Unable to Assess'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Privacy & Data Protection',
-      questions: [
-        {
-          id: 'q11',
-          question: '11. Does the protocol address issues of privacy and confidentiality? Is there a Data Protection Plan?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q11_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q11', values: ['No', 'Unable to Assess'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Technical Aspects',
-      questions: [
-        {
-          id: 'q12',
-          question: '12. Are toxicological and pharmacological data adequate?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'N/A'],
-        },
-        {
-          id: 'q12_comment',
-          question: 'If NO, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q12', values: ['No'] },
-        },
-        {
-          id: 'q13',
-          question: '13. Is the informed consent procedure/form adequate and culturally appropriate?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'q13_comment',
-          question: 'If NO, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q13', values: ['No'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Researcher Qualifications',
-      questions: [
-        {
-          id: 'q14',
-          question: '14. Are the proponents adequately trained and do they have sufficient experience?',
-          type: 'radio' as const,
-          options: ['Yes', 'No', 'Unable to Assess'],
-        },
-        {
-          id: 'q14_comment',
-          question: 'If NO or UNABLE TO ASSESS, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q14', values: ['No', 'Unable to Assess'] },
-        },
-        {
-          id: 'q15',
-          question: '15. Does the protocol describe community engagement/consultation prior to and during the conduct of research?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'q15_comment',
-          question: 'If NO, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q15', values: ['No'] },
-        },
-      ],
-    },
-    {
-      title: 'Protocol Review - Dissemination & Facilities',
-      questions: [
-        {
-          id: 'q16',
-          question: '16. Does the protocol include strategies to be used in disseminating/ensuring utilization of the expected research results?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'q16_comment',
-          question: 'If NO, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q16', values: ['No'] },
-        },
-        {
-          id: 'q17',
-          question: '17. Is the research facility appropriate?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'q17_comment',
-          question: 'If NO, please comment:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q17', values: ['No'] },
-        },
-        {
-          id: 'q18',
-          question: '18. Do you have any other concerns?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'q18_comment',
-          question: 'If YES, please describe:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'q18', values: ['Yes'] },
-        },
-      ],
-    },
-    {
-      title: 'Informed Consent Review - Part 1',
-      questions: [
-        {
-          id: 'icf_q1',
-          question: '1. Is it necessary to seek the informed consent of the participants?',
-          type: 'radio' as const,
-          options: ['Unable to Assess', 'Yes', 'No'],
-        },
-        {
-          id: 'icf_q1_explain',
-          question: 'If NO, please explain:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'icf_q1', values: ['No'] },
-        },
-      ],
-    },
-    {
-      title: 'Informed Consent - Information Provided (Part 1)',
-      subtitle: 'If YES to Question 1, are the participants provided with sufficient information about:',
-      questions: [
-        {
-          id: 'icf_purpose',
-          question: '● Purpose of the study?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_duration',
-          question: '● Expected duration of participation?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_procedures',
-          question: '● Procedures to be carried out?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_discomforts',
-          question: '● Discomforts and inconveniences?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_risks',
-          question: '● Risks (including possible discrimination)?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-      ],
-    },
-    {
-      title: 'Informed Consent - Information Provided (Part 2)',
-      questions: [
-        {
-          id: 'icf_benefits',
-          question: '● Benefit to the participants?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_compensation',
-          question: '● Compensation and/or medical treatments in case of injury?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_contact',
-          question: '● Who to contact for questions/assistance?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_withdrawal',
-          question: '● Voluntary participation and withdrawal?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_confidentiality',
-          question: '● Extent of confidentiality?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_data_protection',
-          question: '● Data protection plan?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-      ],
-    },
-    {
-      title: 'Informed Consent - Final Questions',
-      questions: [
-        {
-          id: 'icf_q2',
-          question: '2. Is the informed consent written in simple language?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_q3',
-          question: '3. Does the protocol ensure consent is voluntary?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_q4',
-          question: '4. Do you have any other concerns?',
-          type: 'radio' as const,
-          options: ['Yes', 'No'],
-        },
-        {
-          id: 'icf_q4_concerns',
-          question: 'If YES, please describe:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'icf_q4', values: ['Yes'] },
-        },
-      ],
-    },
-    {
-      title: 'Final Recommendation',
-      questions: [
-        {
-          id: 'recommendation',
-          question: 'Select your recommendation:',
-          type: 'radio' as const,
-          options: [
-            'Approved with no revision',
-            {
-              label: 'Approved with Minor revision/s',
-              subtext: '*The researcher may consider the suggestion for improvement purposes',
-            },
-            {
-              label: 'Major revision/s and resubmission required',
-              subtext: '*The researcher should submit the revised protocol with compliance',
-            },
-            'Disapproved',
-          ],
-        },
-        {
-          id: 'disapproval_reasons',
-          question: 'Reasons for disapproval:',
-          type: 'textarea' as const,
-          dependsOn: { id: 'recommendation', values: ['Disapproved'] },
-        },
-        {
-          id: 'ethics_recommendation',
-          question: 'Ethics Review Recommendation:',
-          type: 'textarea' as const,
-          required: true,
-        },
-        {
-          id: 'technical_suggestions',
-          question: 'Technical Suggestions:',
-          type: 'textarea' as const,
-        },
-      ],
-    },
-  ];
+  // ✅ NEW: Load review form function
+  const loadReviewForm = async () => {
+    try {
+      const result = await getReviewForm();
+      if (result.success && result.sections && result.formVersion) {
+        setReviewSections(result.sections);
+        setFormVersionId(result.formVersion.id);
+      } else {
+        console.error('Failed to load review form:', result.error);
+        alert('Failed to load review form: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error loading review form:', error);
+      alert('Error loading review form');
+    }
+  };
 
   const breadcrumbItems = [
     { label: 'Dashboard', href: '/reviewermodule' },
@@ -499,35 +93,61 @@ export default function ReviewSubmissionPage() {
     }
   };
 
-  const handleNext = async () => {
-    if (currentStep < reviewSections.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else {
-      // Submit review
-      console.log('Submitting review with answers:', reviewAnswers);
-      
-      const result = await submitReview(submissionId!, reviewAnswers);
-      
-      if (result.success) {
-        const needsRevision =
-          reviewAnswers.recommendation === 'Approved with Minor revision/s' ||
-          reviewAnswers.recommendation === 'Major revision/s and resubmission required' ||
-          reviewAnswers.recommendation === 'Disapproved';
-        
-        setIsRevisionRequested(needsRevision);
-        setShowSuccessModal(true);
-      } else {
-        alert('Failed to submit review: ' + result.error);
-      }
+const handleNext = async () => {
+  // ✅ Simple validation: Check current section questions
+  const currentSection = reviewSections[currentStep];
+  
+  // Get all visible questions (excluding conditional ones that shouldn't show)
+  const visibleQuestions = currentSection.questions.filter((q: any) => {
+    // If question has dependsOn, check if it should be visible
+    if (q.dependsOn) {
+      const dependsOnValue = reviewAnswers[q.dependsOn.id];
+      return q.dependsOn.values.includes(dependsOnValue);
     }
-  };
+    return true; // Always visible if no dependency
+  });
+
+  // Check if all visible questions are answered
+  const unansweredQuestions = visibleQuestions.filter((q: any) => {
+    const answer = reviewAnswers[q.id];
+    return !answer || (typeof answer === 'string' && answer.trim() === '');
+  });
+
+  // ✅ Block if any questions are unanswered
+  if (unansweredQuestions.length > 0) {
+    alert('Please answer all questions before proceeding.');
+    return;
+  }
+
+  // Continue to next step or submit
+  if (currentStep < reviewSections.length - 1) {
+    setCurrentStep(currentStep + 1);
+  } else {
+    // Submit review
+    const result = await submitReview(submissionId!, reviewAnswers, formVersionId);
+    
+    if (result.success) {
+      const needsRevision =
+        reviewAnswers.recommendation === 'Approved with Minor revision/s' ||
+        reviewAnswers.recommendation === 'Major revision/s and resubmission required' ||
+        reviewAnswers.recommendation === 'Disapproved';
+      
+      setIsRevisionRequested(needsRevision);
+      setShowSuccessModal(true);
+    } else {
+      alert('Failed to submit review: ' + result.error);
+    }
+  }
+};
+
 
   const handleModalClose = () => {
     setShowSuccessModal(false);
     router.push('/reviewermodule');
   };
 
-  if (loading) {
+  // ✅ Show loading if either submission or form is loading
+  if (loading || reviewSections.length === 0) {
     return (
       <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
         <NavbarRoles role="reviewer" />
@@ -535,7 +155,7 @@ export default function ReviewSubmissionPage() {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading submission...
+              Loading...
             </p>
           </div>
         </div>
@@ -597,6 +217,7 @@ export default function ReviewSubmissionPage() {
 
               <ReviewQuestionsCard
                 title={reviewSections[currentStep].title}
+                subtitle={reviewSections[currentStep].subtitle}
                 questions={reviewSections[currentStep].questions}
                 onAnswersChange={handleAnswersChange}
               />

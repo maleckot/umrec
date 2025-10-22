@@ -146,6 +146,9 @@ export default function SecretariatSubmissionsPage() {
     else if (submission.status === 'under_review') {
       router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
     } 
+    else if (submission.status === 'approved') {
+      router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
+    } 
     else {
       router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
     }

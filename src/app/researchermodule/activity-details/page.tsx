@@ -7,7 +7,6 @@ import Breadcrumbs from '@/components/researcher-reviewer/Breadcrumbs';
 import BackButton from '@/components/researcher-reviewer/BackButton';
 import ActivityInfoCard from '@/components/researcher/ActivityInfoCard';
 import PreviewCard from '@/components/researcher-reviewer/PreviewCard';
-import RevisionCard from '@/components/researcher/RevisionCard';
 import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -25,6 +24,12 @@ interface Document {
   revisionComment?: string | null;   
 }
 
+interface Comment {
+  id: string;
+  commentText: string;
+  createdAt: string;
+}
+
 export default function ActivityDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -34,6 +39,7 @@ export default function ActivityDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [submissionData, setSubmissionData] = useState({
     dateSubmitted: '',
     status: '',
@@ -67,6 +73,7 @@ export default function ActivityDetailsPage() {
         setDocuments(filteredDocs);
         const selected = filteredDocs[0] || null;
         setSelectedDocument(selected);
+        setComments(result.comments || []);
         
         setSubmissionData({
           title: result.submission.title,
@@ -95,6 +102,28 @@ export default function ActivityDetailsPage() {
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  const formatCommentDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${Math.floor(diffInHours)} hours ago`;
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    }
   };
 
   const getStatusLabel = (status: string) => {
@@ -138,11 +167,21 @@ export default function ActivityDetailsPage() {
       'endorsement_letter': 'step7',
     };
 
+    // If viewing a specific document that needs revision, go to that step
     if (selectedDocument && selectedDocument.needsRevision) {
       const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
       router.push(`/researchermodule/submissions/new/${step}?mode=revision&id=${activityId}`);
-    } else {
-      router.push(`/researchermodule/submissions/new/step1`);
+    } 
+    // Otherwise, go to the first document that needs revision
+    else {
+      const firstRejectedDoc = documents.find(doc => doc.needsRevision);
+      if (firstRejectedDoc) {
+        const step = documentTypeToStep[firstRejectedDoc.fileType] || 'step1';
+        router.push(`/researchermodule/submissions/new/${step}?mode=revision&id=${activityId}`);
+      } else {
+        // If no specific doc rejected (general comment), start from beginning
+        router.push(`/researchermodule/submissions/new/step1?mode=revision&id=${activityId}`);
+      }
     }
   };
 
@@ -246,14 +285,74 @@ export default function ActivityDetailsPage() {
                 </div>
               )}
 
-              {submissionData.needsRevision && submissionData.revisionMessage && (
-                <RevisionCard
-                  message={submissionData.revisionMessage}
-                  isVisible={submissionData.needsRevision}
-                />
+              {/* UNIFIED Revision Card - Shows only latest comment (deduplicated) */}
+              {(selectedDocument?.needsRevision || comments.length > 0) && (
+                <div className="bg-white rounded-xl p-6 border-2 border-red-200">
+                  <div className="flex items-center gap-2 mb-4">
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <h3 
+                      className="text-lg font-bold text-red-600" 
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      Revision Required - Comments from UMREC
+                    </h3>
+                  </div>
+
+                  <p 
+                    className="text-sm text-gray-600 mb-4" 
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Please review the feedback below and update the documents mentioned
+                  </p>
+
+                  {/* Show only the LATEST comment (deduplicated) */}
+                  {comments.length > 0 && (
+                    <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex justify-between items-start mb-2">
+                            <p 
+                              className="text-sm font-semibold text-red-800" 
+                              style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            >
+                              UMREC Review Committee
+                            </p>
+                            <p 
+                              className="text-xs text-gray-500" 
+                              style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            >
+                              {formatCommentDate(comments[0].createdAt)}
+                            </p>
+                          </div>
+                          <p 
+                            className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium" 
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            {comments[0].commentText}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action notice */}
+                  <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                    <p className="text-sm text-blue-800 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      📝 Please address all feedback above and resubmit the required documents using the button below.
+                    </p>
+                  </div>
+                </div>
               )}
 
-              {submissionData.needsRevision && (
+              {/* Show resubmit button if ANY document needs revision OR there are comments */}
+              {(documents.some(doc => doc.needsRevision) || comments.length > 0) && (
                 <ResubmitButton onClick={handleResubmit} />
               )}
             </div>

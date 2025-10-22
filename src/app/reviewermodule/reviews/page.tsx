@@ -2,10 +2,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { Search, Filter } from 'lucide-react';
+import { getReviewerAssignments } from '@/app/actions/reviewer/getReviewerAssignments';
 
 interface Review {
   id: string;
@@ -21,38 +22,28 @@ export default function ReviewsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Submissions');
   const [loading, setLoading] = useState(true);
-
-  // Mock data - replace with API call
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: '1',
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Expedited',
-      assignedDate: '08-03-2025',
-      dueDate: '08-27-2025',
-      status: 'Completed'
-    },
-    {
-      id: '2',
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Full Review',
-      assignedDate: '08-03-2025',
-      dueDate: '08-27-2025',
-      status: 'Overdue'
-    },
-    {
-      id: '3',
-      title: 'UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms',
-      category: 'Full Review',
-      assignedDate: '08-03-2025',
-      dueDate: '08-27-2025',
-      status: 'Overdue'
-    }
-  ]);
+  const [reviews, setReviews] = useState<Review[]>([]);
 
   useEffect(() => {
-    setTimeout(() => setLoading(false), 500);
+    loadAssignments();
   }, []);
+
+  const loadAssignments = async () => {
+    setLoading(true);
+    try {
+      const result = await getReviewerAssignments();
+      
+      if (result.success) {
+        setReviews(result.assignments || []);
+      } else {
+        console.error('Failed to load assignments:', result.error);
+      }
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {

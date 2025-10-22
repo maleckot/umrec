@@ -1,4 +1,4 @@
-// src/app/actions/getSubmissionActivity.ts
+// app/actions/researcher/getSubmissionActivity.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -14,7 +14,8 @@ export async function getSubmissionActivity(submissionId: string) {
         error: 'User not authenticated',
         submission: null,
         documents: [],
-        revisionInfo: null
+        revisionInfo: null,
+        comments: []
       };
     }
 
@@ -31,7 +32,8 @@ export async function getSubmissionActivity(submissionId: string) {
         error: 'Submission not found',
         submission: null,
         documents: [],
-        revisionInfo: null
+        revisionInfo: null,
+        comments: []
       };
     }
 
@@ -46,6 +48,13 @@ export async function getSubmissionActivity(submissionId: string) {
       .from('document_verifications')
       .select('*')
       .eq('submission_id', submissionId);
+
+    // Fetch comments (anonymous for researchers)
+    const { data: commentsData } = await supabase
+      .from('submission_comments')
+      .select('id, comment_text, created_at')
+      .eq('submission_id', submissionId)
+      .order('created_at', { ascending: false });
 
     let documentsWithUrls = [];
     
@@ -93,7 +102,12 @@ export async function getSubmissionActivity(submissionId: string) {
         needsRevision: submission.status === 'needs_revision',
         revisionCount: revisionCount,
         message: revisionMessage, 
-      }
+      },
+      comments: commentsData?.map(c => ({
+        id: c.id,
+        commentText: c.comment_text,
+        createdAt: c.created_at,
+      })) || [],
     };
 
   } catch (error) {
@@ -102,7 +116,8 @@ export async function getSubmissionActivity(submissionId: string) {
       error: error instanceof Error ? error.message : 'Failed to fetch activity',
       submission: null,
       documents: [],
-      revisionInfo: null
+      revisionInfo: null,
+      comments: []
     };
   }
 }

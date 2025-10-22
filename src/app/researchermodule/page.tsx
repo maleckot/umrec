@@ -581,7 +581,7 @@ export default function ResearcherDashboard() {
                         ? {
                           buttonText: 'Revise',
                           buttonColor: 'bg-[#8B0000] hover:bg-[#6b0000]',
-                          description: doc.revisionComment || 'Revisions requested by the committee'
+                          description: 'Revisions requested by UMREC.'
                         }
                         : {
                           buttonText: 'View',
