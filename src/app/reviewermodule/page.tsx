@@ -53,7 +53,7 @@ export default function ReviewerDashboard() {
     if (activeTab === 'all') {
       return allNewAssignments;
     } else if (activeTab === 'expedited') {
-      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited review');
+      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited');
     } else if (activeTab === 'full') {
       return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review');
     }
@@ -65,7 +65,7 @@ export default function ReviewerDashboard() {
     if (overdueActiveTab === 'all') {
       return allOverdueReviews;
     } else if (overdueActiveTab === 'expedited') {
-      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited review');
+      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited');
     } else if (overdueActiveTab === 'full') {
       return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review');
     }
@@ -76,11 +76,11 @@ export default function ReviewerDashboard() {
   const filteredOverdueReviews = getFilteredOverdueReviews();
 
   // Count assignments by category
-  const expeditedCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited review').length;
+  const expeditedCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited').length;
   const fullReviewCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
 
   // Count overdue reviews by category
-  const overdueExpeditedCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited review').length;
+  const overdueExpeditedCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited').length;
   const overdueFullReviewCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
 
   const handleStartReview = (assignment: any) => {

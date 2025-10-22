@@ -1,0 +1,17 @@
+# Dependencies
+node_modules
+
+# Next.js build outputs
+.next
+out
+
+# Environment files
+.env
+.env.local
+.env*.local
+
+# Git
+.git
+
+# Misc
+README.md

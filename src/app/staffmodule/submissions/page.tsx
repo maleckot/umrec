@@ -149,8 +149,11 @@ export default function SubmissionsPage() {
       router.push(`/staffmodule/submissions/waiting-revision?id=${submission.id}`);
     } 
     else if (submission.status === 'approved') {
+      router.push(`/staffmodule/submissions/approved?id=${submission.id}`);
+    }     
+    else if (submission.status === 'review_complete') {
       router.push(`/staffmodule/submissions/review-complete?id=${submission.id}`);
-    } 
+    }    
     else {
       router.push(`/staffmodule/submissions/details?id=${submission.id}`);
     }
