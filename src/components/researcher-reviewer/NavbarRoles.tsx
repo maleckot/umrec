@@ -8,8 +8,10 @@ import { marcellus, metropolis } from '@/app/fonts';
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { updateReviewerAvailability, getReviewerAvailability } from '@/app/actions/reviewer/updateAvailability';
+import { createPortal } from 'react-dom';
 
-// Interface for a single text link object
+
+// Keep all your interfaces the same...
 interface NavLinkProps {
   href: string;
   text: string;
@@ -17,14 +19,12 @@ interface NavLinkProps {
   showLine?: boolean;
 }
 
-// Interface for icon-based links
 interface IconLinkProps {
   href: string;
   icon: 'bell' | 'user';
   ariaLabel: string;
 }
 
-// Data structures for different user roles
 const NAV_LINKS = {
   main: {
     mainLinks: [
@@ -58,7 +58,6 @@ const NAV_LINKS = {
   },
 };
 
-// Helper component for rendering individual text links
 const NavButton: React.FC<NavLinkProps & { isActive: boolean; onClick?: () => void; showLine?: boolean }> = ({ href, text, icon, isActive, onClick, showLine = true }) => {
   const IconComponent = icon === 'bell' ? Bell : icon === 'user' ? User : null;
   
@@ -66,24 +65,24 @@ const NavButton: React.FC<NavLinkProps & { isActive: boolean; onClick?: () => vo
     <Link 
       href={href}
       onClick={onClick}
-      className="inline-block relative"
+      className="inline-block relative group"
     >
-      <div className={`px-2 md:px-3 py-2 md:py-2 transition duration-150 flex items-center gap-2 whitespace-nowrap ${
-        isActive ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
+      <div className={`px-2 md:px-3 py-2 md:py-2 transition-all duration-300 flex items-center gap-2 whitespace-nowrap ${
+        isActive ? 'text-[#F0E847]' : 'text-white hover:text-[#F0E847]'
       }`}
       style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500, fontSize: 'clamp(0.875rem, 2vw, 1rem)' }}>
         {IconComponent && <IconComponent className="w-5 h-5 md:w-5 md:h-5" />}
         {text}
       </div>
-      {/* Yellow line at the bottom - only show on desktop */}
-      {isActive && showLine && (
-        <div className="absolute bottom-[-16px] md:bottom-[-21px] left-0 right-0 h-[3px] md:h-[4px] bg-[#F0E847]"></div>
+      {showLine && (
+        <div className={`absolute bottom-[-16px] md:bottom-[-21px] left-0 right-0 h-[3px] md:h-[4px] bg-gradient-to-r from-[#D3CC50] to-[#F0E847] transition-all duration-300 ${
+          isActive ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 group-hover:opacity-100 group-hover:scale-x-100'
+        }`} style={{ boxShadow: '0 0 10px rgba(240, 232, 71, 0.5)' }}></div>
       )}
     </Link>
   );
 };
 
-// Notification dropdown component
 const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   if (!isOpen) return null;
   
@@ -94,19 +93,19 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   ];
   
   return (
-    <div className="absolute right-0 top-full mt-2 w-80 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
-      <div className="p-4 border-b border-gray-700">
-        <h3 className="text-white font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>Notifications</h3>
+    <div className="absolute right-0 top-full mt-2 w-80 bg-[#050B24]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-[#F0E847]/20 overflow-hidden z-50 animate-dropdown">
+      <div className="p-4 border-b border-[#F0E847]/10 bg-gradient-to-r from-[#071139] to-[#050B24]">
+        <h3 className="text-white font-bold text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>Notifications</h3>
       </div>
       <div className="max-h-96 overflow-y-auto">
         {notifications.map((notif) => (
           <div 
             key={notif.id} 
-            className="p-4 border-b border-gray-800 hover:bg-[#0a1a4a] transition-colors cursor-pointer"
+            className="p-4 border-b border-[#F0E847]/5 hover:bg-[#F0E847]/5 transition-all duration-300 cursor-pointer group"
           >
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-[#F0E847] rounded-full flex items-center justify-center flex-shrink-0">
-                <Bell size={16} className="text-[#071139]" />
+              <div className="w-8 h-8 bg-gradient-to-br from-[#D3CC50] to-[#F0E847] rounded-full flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <Bell size={16} className="text-[#050B24]" />
               </div>
               <div className="flex-1">
                 <p className="text-white text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -124,24 +123,37 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   );
 };
 
-// Logout Confirmation Modal - With Login-Style Animated Border
+// FIXED: Properly Centered Logout Modal using Portal
 const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
-  return (
+  // Use portal to render at document body level, bypassing any positioning context
+  return createPortal(
     <>
-      <div className="fixed inset-0 flex items-center justify-center z-[100] p-4" style={{ backgroundColor: 'rgba(3, 2, 17, 0.91)' }}>
-        <div className="relative w-full max-w-md mx-4">
+      {/* Full screen centered backdrop */}
+      <div 
+        className="fixed top-0 left-0 right-0 bottom-0 z-[99999] flex items-center justify-center p-4 animate-fade-in"
+        style={{ 
+          backgroundColor: 'rgba(3, 2, 17, 0.91)',
+          backdropFilter: 'blur(8px)'
+        }}
+        onClick={onClose}
+      >
+        {/* Centered modal container */}
+        <div 
+          className="relative w-full max-w-md mx-auto my-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden">
-            {/* Animated light beam - 120 degrees */}
+            {/* Animated light beam */}
             <div className="absolute inset-0 rounded-2xl animate-spin-slow" style={{
               background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
               filter: 'blur(20px)'
             }}></div>
             
-            {/* Enhanced glow effect */}
+            {/* Glow effect */}
             <div className="absolute inset-0 rounded-2xl" style={{
-              boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2), 0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3)'
+              boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2)'
             }}></div>
 
             {/* Modal Content */}
@@ -153,7 +165,7 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
                   alt="UMRec Logo" 
                   width={80} 
                   height={80}
-                  className="w-16 h-16 sm:w-20 sm:h-20"
+                  className="w-16 h-16 sm:w-20 sm:h-20 animate-pulse-subtle"
                 />
               </div>
 
@@ -168,20 +180,21 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
 
                 {/* Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={onClose}
-                    className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-semibold hover:bg-gray-700 transition-colors text-sm sm:text-base"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    Cancel
-                  </button>
-                  <button
+                   <button
                     onClick={onConfirm}
-                    className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-sm sm:text-base"
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold hover:from-red-700 hover:to-red-800 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg shadow-red-500/50"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Logout
                   </button>
+                  <button
+                    onClick={onClose}
+                    className="flex-1 px-4 py-3 bg-gray-600/80 backdrop-blur-sm text-white rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
+                    Cancel
+                  </button>
+                 
                 </div>
               </div>
             </div>
@@ -191,19 +204,34 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
 
       <style jsx>{`
         @keyframes spin-slow {
-          from {
-            transform: rotate(0deg);
-          }
-          to {
-            transform: rotate(360deg);
-          }
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        @keyframes pulse-subtle {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
         }
         
         .animate-spin-slow {
           animation: spin-slow 8s linear infinite;
         }
+
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+
+        .animate-pulse-subtle {
+          animation: pulse-subtle 3s ease-in-out infinite;
+        }
       `}</style>
-    </>
+    </>,
+    document.body
   );
 };
 
@@ -213,7 +241,6 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
   const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   
-  // Load availability status when dropdown opens (only for reviewers)
   useEffect(() => {
     if (isOpen && role === 'reviewer') {
       loadAvailability();
@@ -223,7 +250,6 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
   const loadAvailability = async () => {
     const result = await getReviewerAvailability();
     if (result.success && result.availability) {
-      // Validate the value before setting
       const status = result.availability;
       if (status === 'available' || status === 'unavailable') {
         setAvailability(status);
@@ -237,12 +263,10 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
   const isAvailable = availability === 'available';
   
   const toggleAvailability = async () => {
-    if (loading) return; // Prevent double-clicks
+    if (loading) return;
     
     const newStatus = availability === 'available' ? 'unavailable' : 'available';
     setLoading(true);
-    
-    // Optimistically update UI
     setAvailability(newStatus);
     
     const result = await updateReviewerAvailability(newStatus);
@@ -250,7 +274,6 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
     if (result.success) {
       console.log('✅ Availability changed to:', newStatus);
     } else {
-      // Revert on error
       setAvailability(availability);
       console.error('❌ Failed to update availability:', result.error);
       alert('Failed to update availability. Please try again.');
@@ -271,11 +294,10 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
   
   return (
     <>
-      <div className="absolute right-0 top-full mt-2 w-56 bg-[#071139] rounded-lg shadow-xl border border-gray-700 overflow-hidden z-50">
-        {/* Availability Status - Only for Reviewer */}
+      <div className="absolute right-0 top-full mt-2 w-56 bg-[#050B24]/95 backdrop-blur-xl rounded-xl shadow-2xl border border-[#F0E847]/20 overflow-hidden z-50 animate-dropdown">
         {isReviewer && (
           <>
-            <div className="p-4">
+            <div className="p-4 bg-gradient-to-r from-[#071139] to-[#050B24]">
               <p className="text-gray-400 text-xs mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Availability Status
               </p>
@@ -284,15 +306,15 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
                   {isAvailable ? 'Available' : 'Unavailable'}
                 </span>
                 
-                {/* Facebook-style Toggle Switch */}
                 <button
                   onClick={toggleAvailability}
                   disabled={loading}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${
-                    isAvailable ? 'bg-green-500' : 'bg-gray-600'
-                  } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all duration-300 focus:outline-none shadow-lg ${
+                    isAvailable ? 'bg-gradient-to-r from-green-500 to-green-600' : 'bg-gray-600'
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105'}`}
                   role="switch"
                   aria-checked={isAvailable}
+                  style={{ boxShadow: isAvailable ? '0 0 15px rgba(34, 197, 94, 0.5)' : 'none' }}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 shadow-md ${
@@ -302,39 +324,54 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
                 </button>
               </div>
             </div>
-            <div className="h-px bg-gray-700" />
+            <div className="h-px bg-gradient-to-r from-transparent via-[#F0E847]/20 to-transparent" />
           </>
         )}
         
         <Link 
           href={role === 'reviewer' ? '/reviewermodule/profile' : '/researchermodule/profile'}
-          className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors"
+          className="flex items-center gap-3 p-4 hover:bg-[#F0E847]/10 transition-all duration-300 group"
           onClick={onClose}
         >
-          <UserCircle size={20} className="text-white" />
-          <span className="text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>Profile</span>
+          <UserCircle size={20} className="text-white group-hover:text-[#F0E847] transition-colors duration-300" />
+          <span className="text-white group-hover:text-[#F0E847] transition-colors duration-300" style={{ fontFamily: 'Metropolis, sans-serif' }}>Profile</span>
         </Link>
-        <div className="h-px bg-gray-700" />
+        <div className="h-px bg-gradient-to-r from-transparent via-[#F0E847]/20 to-transparent" />
         <button 
-          className="flex items-center gap-3 p-4 hover:bg-[#0a1a4a] transition-colors w-full text-left"
+          className="flex items-center gap-3 p-4 hover:bg-red-500/10 transition-all duration-300 w-full text-left group"
           onClick={handleLogoutClick}
         >
-          <LogOut size={20} style={{ color: '#FF3B3B' }} />
-          <span style={{ color: '#FF3B3B', fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
+          <LogOut size={20} className="text-red-500 group-hover:scale-110 transition-transform duration-300" />
+          <span className="text-red-500 group-hover:text-red-400 transition-colors duration-300" style={{ fontFamily: 'Metropolis, sans-serif' }}>Logout</span>
         </button>
       </div>
 
-      {/* Logout Confirmation Modal */}
       <LogoutModal 
         isOpen={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 
         onConfirm={handleLogoutConfirm}
       />
+
+      <style jsx>{`
+        @keyframes dropdown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .animate-dropdown {
+          animation: dropdown 0.3s ease-out;
+        }
+      `}</style>
     </>
   );
 };
 
-// Interface for the component's props
 interface NavbarProps {
   role: keyof typeof NAV_LINKS;
 }
@@ -349,19 +386,15 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   const { mainLinks, iconLinks } = NAV_LINKS[role] || NAV_LINKS.main;
   const isMainRole = role === 'main';
   
-  // Function to check if a link is active
   const isLinkActive = (href: string) => {
-    // Special handling for submission pages - match entire /submissions path
     if (href.includes('/submissions')) {
       return pathname?.startsWith('/researchermodule/submissions');
     }
     
-    // Special handling for review pages - match entire /reviews path
     if (href.includes('/reviews')) {
-      return pathname?.startsWith('/reviewermodule/reviews');
+      return pathname?.startsWith('/reviewermodule/reviews') || pathname?.startsWith('/reviewermodule/review-submission');
     }
     
-    // Exact match for other links
     return pathname === href;
   };
   
@@ -376,29 +409,30 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
   
   const getBackgroundClass = () => {
     if (isMainRole) {
-      return isScrolled ? 'bg-[#071139]' : 'bg-transparent';
+      return isScrolled ? 'bg-[#071139]/95 backdrop-blur-xl border-b border-[#F0E847]/10' : 'bg-transparent';
     }
-    return 'bg-[#071139]';
+    return 'bg-[#071139]/95 backdrop-blur-xl border-b border-[#F0E847]/10';
   };
   
   return (
     <>
       <nav className={`${getBackgroundClass()} py-3 md:py-4 px-4 md:px-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
-        {/* Mobile Burger Button and Logo */}
         <div className="flex items-center gap-3 md:gap-4">
-          {/* Mobile Burger Menu Button - Only show for researcher/reviewer */}
+          {/* ENHANCED: Burger Menu Button */}
           {!isMainRole && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-white p-2"
+              className="md:hidden relative group"
               aria-label="Toggle menu"
             >
-              <Menu size={24} />
+              <div className="relative w-10 h-10 rounded-lg bg-gradient-to-br from-[#F0E847]/10 to-transparent border border-[#F0E847]/30 flex items-center justify-center hover:bg-[#F0E847]/20 transition-all duration-300 hover:scale-110 hover:shadow-lg hover:shadow-[#F0E847]/30">
+                <Menu size={22} className="text-[#F0E847] group-hover:scale-110 transition-transform duration-300" />
+              </div>
             </button>
           )}
 
           <div className="text-white text-xl font-extrabold">
-            <a href="/">
+            <a href="/" className="hover:opacity-80 transition-opacity duration-300">
               <Image 
                 src="/img/logonavbar.png" 
                 alt="Logo" 
@@ -427,34 +461,32 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           
           {iconLinks.length > 0 && (
             <>
-              <div className="h-6 w-px bg-gray-600" />
+              <div className="h-6 w-px bg-gradient-to-b from-transparent via-[#F0E847]/30 to-transparent" />
               <div className="flex space-x-2 relative">
-                {/* Notification Bell */}
                 <button
                   onClick={() => {
                     setNotificationOpen(!notificationOpen);
                     setAccountOpen(false);
                   }}
-                  className="text-white hover:text-gray-300 p-2 transition duration-150 relative"
+                  className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300 relative group"
                   aria-label="Notifications"
                 >
-                  <Bell size={20} />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-[#F0E847] rounded-full"></span>
+                  <Bell size={20} className="group-hover:scale-110 transition-transform duration-300" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-[#F0E847] rounded-full shadow-lg shadow-[#F0E847]/50 animate-pulse"></span>
                 </button>
                 
                 <NotificationDropdown isOpen={notificationOpen} />
                 
-                {/* Account Icon */}
                 <div className="relative">
                   <button
                     onClick={() => {
                       setAccountOpen(!accountOpen);
                       setNotificationOpen(false);
                     }}
-                    className="text-white hover:text-gray-300 p-2 transition duration-150"
+                    className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300 group"
                     aria-label="Account"
                   >
-                    <User size={20} />
+                    <User size={20} className="group-hover:scale-110 transition-transform duration-300" />
                   </button>
                   
                   <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} role={role} />
@@ -464,7 +496,6 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           )}
         </div>
 
-        {/* Mobile Navigation - Show Login button for main role */}
         {isMainRole && (
           <div className="md:hidden flex items-center">
             {mainLinks.map((link) => (
@@ -480,36 +511,33 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           </div>
         )}
 
-        {/* Mobile Icons - Always visible for researcher/reviewer */}
         {!isMainRole && (
           <div className="md:hidden flex items-center space-x-2">
             {iconLinks.length > 0 && (
               <>
-                {/* Notification Bell */}
                 <div className="relative">
                   <button
                     onClick={() => {
                       setNotificationOpen(!notificationOpen);
                       setAccountOpen(false);
                     }}
-                    className="text-white hover:text-gray-300 p-2 transition duration-150 relative"
+                    className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300 relative"
                     aria-label="Notifications"
                   >
                     <Bell size={20} />
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#F0E847] rounded-full"></span>
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#F0E847] rounded-full animate-pulse"></span>
                   </button>
                   
                   <NotificationDropdown isOpen={notificationOpen} />
                 </div>
                 
-                {/* Account Icon */}
                 <div className="relative">
                   <button
                     onClick={() => {
                       setAccountOpen(!accountOpen);
                       setNotificationOpen(false);
                     }}
-                    className="text-white hover:text-gray-300 p-2 transition duration-150"
+                    className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300"
                     aria-label="Account"
                   >
                     <User size={20} />
@@ -523,15 +551,14 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
         )}
       </nav>
 
-      {/* Mobile Sidebar Drawer - NO OVERLAY, only for researcher/reviewer */}
+      {/* Mobile Sidebar */}
       {!isMainRole && (
         <div 
-          className={`md:hidden fixed left-0 top-0 bottom-0 w-80 bg-[#071139] shadow-xl z-40 overflow-y-auto transition-transform duration-300 ${
+          className={`md:hidden fixed left-0 top-0 bottom-0 w-80 bg-gradient-to-b from-[#071139] to-[#050B24] shadow-2xl z-40 overflow-y-auto transition-transform duration-300 border-r border-[#F0E847]/20 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          {/* Header with close button */}
-          <div className="flex justify-between items-center p-4 border-b border-gray-700">
+          <div className="flex justify-between items-center p-4 border-b border-[#F0E847]/10 bg-[#050B24]/50 backdrop-blur-sm">
             <Image 
               src="/img/logonavbar.png" 
               alt="Logo" 
@@ -540,26 +567,28 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
             />
             <button
               onClick={() => setMobileMenuOpen(false)}
-              className="text-white p-2"
+              className="text-white p-2 hover:bg-[#F0E847]/10 rounded-lg transition-all duration-300"
               aria-label="Close menu"
             >
               <X size={24} />
             </button>
           </div>
 
-          {/* Navigation Links */}
-          <div className="flex flex-col pt-13 px-7 space-y-11">
+          <div className="flex flex-col pt-8 px-6 space-y-6">
             {mainLinks.map((link) => (
-              <div key={link.href}>
+              <div key={link.href} className="group">
                 <Link
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-xl transition-colors block ${
-                    isLinkActive(link.href) ? 'text-[#F0E847]' : 'text-white hover:text-gray-300'
+                  className={`text-xl transition-all duration-300 block relative ${
+                    isLinkActive(link.href) ? 'text-[#F0E847]' : 'text-white hover:text-[#F0E847]'
                   }`}
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}
                 >
                   {link.text}
+                  <span className={`absolute -bottom-2 left-0 w-full h-0.5 bg-gradient-to-r from-[#D3CC50] to-[#F0E847] transition-all duration-300 ${
+                    isLinkActive(link.href) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                  }`} style={{ boxShadow: '0 0 10px rgba(240, 232, 71, 0.5)' }}></span>
                 </Link>
               </div>
             ))}

@@ -13,14 +13,12 @@ const ModernMenuIcon = ({ className = "w-6 h-6", color }: { className?: string; 
   </svg>
 );
 
-// Interface for menu items
 interface MenuItem {
   icon: LucideIcon;
   label: string;
   href: string;
 }
 
-// Interface for downloadable document
 interface DocumentTemplate {
   id: string;
   title: string;
@@ -30,7 +28,6 @@ interface DocumentTemplate {
   fileSize: string;
 }
 
-// Interface for role configuration
 interface RoleConfig {
   title?: string;
   menuItems?: MenuItem[];
@@ -46,7 +43,6 @@ interface HelpCenterLayoutProps {
   customConfig?: RoleConfig;
 }
 
-// Default document templates for researchers
 const DEFAULT_RESEARCHER_TEMPLATES: DocumentTemplate[] = [
   {
     id: '1',
@@ -90,7 +86,6 @@ const DEFAULT_RESEARCHER_TEMPLATES: DocumentTemplate[] = [
   }
 ];
 
-// Default configurations for different roles
 const ROLE_CONFIGS: Record<string, RoleConfig> = {
   researcher: {
     title: 'UMREC Smart Help',
@@ -101,8 +96,8 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
       { icon: HelpCircle, label: 'Common Questions', href: '#faq' }
     ],
     initialMessage: "Hello! I'm your UMREC Smart Help. How can I help you today?",
-    primaryColor: '#050C2D',
-    accentColor: '#F0E847',
+    primaryColor: '#071139', // ← Changed to match navbar
+    accentColor: '#F7D117',
     documentTemplates: DEFAULT_RESEARCHER_TEMPLATES
   },
   reviewer: {
@@ -114,8 +109,8 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
       { icon: HelpCircle, label: 'FAQ for Reviewers', href: '#reviewer-faq' }
     ],
     initialMessage: "Hello! I'm here to assist you with the review process. What do you need help with?",
-    primaryColor: '#050C2D',
-    accentColor: '#F0E847'
+    primaryColor: '#071139', // ← Changed to match navbar
+    accentColor: '#F7D117'
   },
 };
 
@@ -212,23 +207,23 @@ export default function HelpCenterLayout({
 
   return (
     <div className="flex h-full w-full relative pt-[72px]" style={{ backgroundColor: '#DAE0E7' }}>
-      {/* Overlay for mobile/tablet */}
+      {/* Overlay */}
       {isSidebarOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity duration-300"
-          style={{ top: '72px', backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+          style={{ top: '72px' }}
           onClick={() => setIsSidebarOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Now matches navbar color */}
       <aside
         className={`${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0 fixed lg:static w-80 left-0 z-40 transition-transform duration-300 ease-in-out flex-shrink-0`}
         style={{ 
-          backgroundColor: config.primaryColor,
+          backgroundColor: '#071139', 
           top: '72px',
           height: 'calc(100vh - 72px)'
         }}
@@ -236,7 +231,7 @@ export default function HelpCenterLayout({
       >
         <button
           onClick={() => setIsSidebarOpen(false)}
-          className="lg:hidden absolute top-4 right-4 z-10 w-10 h-10 rounded-full flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/30"
+          className="lg:hidden absolute top-4 right-4 z-10 w-10 h-10 rounded-lg flex items-center justify-center bg-white/10 hover:bg-white/20 transition-colors focus:outline-none"
           aria-label="Close sidebar"
         >
           <X className="w-5 h-5 text-white" />
@@ -247,6 +242,7 @@ export default function HelpCenterLayout({
             {config.title}
           </h2>
 
+          {/* Clean Search */}
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 w-5 h-5" />
             <input
@@ -254,14 +250,12 @@ export default function HelpCenterLayout({
               placeholder="Search help topics..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-white text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2"
-              style={{ 
-                fontFamily: 'Metropolis, sans-serif',
-                outlineColor: config.accentColor
-              }}
+              className="w-full pl-10 pr-4 py-3 rounded-lg bg-white text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F7D117]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
             />
           </div>
 
+          {/* Clean Nav */}
           <nav className="space-y-2" aria-label="Help topics">
             {config.menuItems?.map((item, index) => {
               const IconComponent = item.icon;
@@ -270,10 +264,10 @@ export default function HelpCenterLayout({
                   key={index}
                   href={item.href}
                   onClick={() => handleMenuClick(item.href)}
-                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-colors group focus:outline-none focus:ring-2 focus:ring-white/30"
+                  className="flex items-center space-x-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-colors group focus:outline-none"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
-                  <IconComponent className="w-5 h-5 text-white group-hover:text-[#F0E847] transition-colors" />
+                  <IconComponent className="w-5 h-5 text-white group-hover:text-[#F7D117] transition-colors" />
                   <span className="text-sm">{item.label}</span>
                 </a>
               );
@@ -282,40 +276,26 @@ export default function HelpCenterLayout({
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0" style={{ height: 'calc(100vh - 72px)' }}>
         {activeSection === 'chat' ? (
           <>
-            {/* Chat Header */}
+            {/* Clean Header */}
             <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex-shrink-0 relative z-10 mt-3">
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 flex-shrink-0"
-                  style={{ 
-                    backgroundColor: '#F5F5F5',
-                    outlineColor: config.primaryColor
-                  }}
+                  className="lg:hidden w-10 h-10 rounded-lg flex items-center justify-center bg-gray-100 hover:bg-gray-200 transition-colors focus:outline-none flex-shrink-0"
                   aria-label="Open navigation menu"
-                  aria-expanded={isSidebarOpen}
                 >
-                  <ModernMenuIcon className="w-6 h-6" color={config.primaryColor} />
+                  <ModernMenuIcon className="w-6 h-6" color="#071139" />
                 </button>
 
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" 
-                  style={{ backgroundColor: config.primaryColor }}
-                >
-                  <Bot className="w-5 h-5" color={config.accentColor} />
+                <div className="w-10 h-10 rounded-lg bg-[#071139] flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-5 h-5 text-[#F7D117]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 
-                    className="font-bold text-base truncate" 
-                    style={{ 
-                      fontFamily: 'Metropolis, sans-serif',
-                      color: config.primaryColor
-                    }}
-                  >
+                  <h3 className="font-bold text-base text-[#071139] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {config.title}
                   </h3>
                   <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -335,31 +315,18 @@ export default function HelpCenterLayout({
                   <div className="max-w-[90%] sm:max-w-[85%] md:max-w-[70%]">
                     {!message.isUser && (
                       <div className="flex items-center space-x-2 mb-2">
-                        <div 
-                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" 
-                          style={{ backgroundColor: config.primaryColor }}
-                        >
-                          <Bot className="w-4 h-4" color={config.accentColor} />
+                        <div className="w-8 h-8 rounded-lg bg-[#071139] flex items-center justify-center flex-shrink-0">
+                          <Bot className="w-4 h-4 text-[#F7D117]" />
                         </div>
-                        <span 
-                          className="text-xs font-semibold" 
-                          style={{ 
-                            fontFamily: 'Metropolis, sans-serif',
-                            color: config.primaryColor
-                          }}
-                        >
+                        <span className="text-xs font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {config.title}
                         </span>
                       </div>
                     )}
                     <div
                       className={`rounded-2xl px-4 py-3 ${
-                        message.isUser ? 'rounded-tr-none' : 'rounded-tl-none'
+                        message.isUser ? 'rounded-tr-none bg-[#A0A0A0] text-white' : 'rounded-tl-none bg-white text-[#071139]'
                       }`}
-                      style={{
-                        backgroundColor: message.isUser ? '#A0A0A0' : 'white',
-                        color: message.isUser ? 'white' : config.primaryColor
-                      }}
                     >
                       <p className="text-sm leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {message.text}
@@ -382,17 +349,13 @@ export default function HelpCenterLayout({
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="flex-1 px-4 sm:px-5 py-3 rounded-full bg-gray-100 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2"
-                  style={{ 
-                    fontFamily: 'Metropolis, sans-serif',
-                    outlineColor: config.primaryColor
-                  }}
+                  className="flex-1 px-4 sm:px-5 py-3 rounded-full bg-gray-100 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#071139]"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
                   aria-label="Type your message"
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="w-11 h-11 rounded-full flex items-center justify-center transition-colors hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#A0A0A0]/50 flex-shrink-0"
-                  style={{ backgroundColor: '#A0A0A0' }}
+                  className="w-11 h-11 rounded-full bg-[#A0A0A0] flex items-center justify-center transition-colors hover:bg-[#8a8a8a] focus:outline-none flex-shrink-0"
                   aria-label="Send message"
                 >
                   <Send className="w-5 h-5 text-white" />
@@ -401,31 +364,21 @@ export default function HelpCenterLayout({
             </div>
           </>
         ) : (
-          // Document Templates Section
+          // Document Templates
           <div className="flex-1 overflow-y-auto" style={{ backgroundColor: '#DAE0E7' }}>
             {/* Header */}
             <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 sticky top-0 z-10 mt-3">
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden w-10 h-10 rounded-lg flex items-center justify-center hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 flex-shrink-0"
-                  style={{ 
-                    backgroundColor: '#F5F5F5',
-                    outlineColor: config.primaryColor
-                  }}
+                  className="lg:hidden w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors focus:outline-none flex-shrink-0"
                   aria-label="Open navigation menu"
                 >
-                  <ModernMenuIcon className="w-6 h-6" color={config.primaryColor} />
+                  <ModernMenuIcon className="w-6 h-6" color="#071139" />
                 </button>
 
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6 flex-shrink-0" style={{ color: config.primaryColor }} />
-                <h3 
-                  className="font-bold text-base sm:text-lg md:text-xl truncate" 
-                  style={{ 
-                    fontFamily: 'Metropolis, sans-serif',
-                    color: config.primaryColor
-                  }}
-                >
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-[#071139] flex-shrink-0" />
+                <h3 className="font-bold text-base sm:text-lg md:text-xl text-[#071139] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Document Templates
                 </h3>
               </div>
@@ -441,19 +394,10 @@ export default function HelpCenterLayout({
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                       <div className="flex-1 min-w-0">
-                        <h4 
-                          className="text-base sm:text-lg font-bold mb-1.5 sm:mb-2 break-words" 
-                          style={{ 
-                            fontFamily: 'Metropolis, sans-serif',
-                            color: config.primaryColor
-                          }}
-                        >
+                        <h4 className="text-base sm:text-lg font-bold text-[#071139] mb-1.5 sm:mb-2 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {template.title}
                         </h4>
-                        <p 
-                          className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 leading-relaxed"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
+                        <p className="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {template.description}
                         </p>
                         <div className="flex flex-col xs:flex-row xs:items-center gap-1 xs:gap-4 text-xs text-gray-500">
@@ -467,12 +411,8 @@ export default function HelpCenterLayout({
                       </div>
                       <button
                         onClick={() => handleDownload(template.fileUrl, template.fileName)}
-                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-lg flex items-center justify-center gap-2 transition-colors font-medium text-sm flex-shrink-0 hover:opacity-90 active:scale-95"
-                        style={{ 
-                          backgroundColor: config.primaryColor,
-                          color: 'white',
-                          fontFamily: 'Metropolis, sans-serif'
-                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-[#071139] hover:bg-[#163049] text-white rounded-lg flex items-center justify-center gap-2 transition-colors font-medium text-sm flex-shrink-0"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
                         <Download className="w-4 h-4 flex-shrink-0" />
                         <span>Download</span>

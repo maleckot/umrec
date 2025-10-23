@@ -38,6 +38,9 @@ export default function SubmissionSidebar({
   actionLabel,
   actionType = 'primary',
 }: SubmissionSidebarProps) {
+  // Check if status is "Review Complete"
+  const isReviewComplete = status === 'Review Complete';
+
   return (
     <div className="bg-gray-100 rounded-xl p-3 sm:p-4 lg:p-6 border border-gray-200 space-y-3 sm:space-y-4 lg:sticky lg:top-6">
       {/* Status */}
@@ -129,7 +132,7 @@ export default function SubmissionSidebar({
         </div>
       </div>
 
-      {/* Timeline */}
+      {/* Timeline - Conditional Labels */}
       <div>
         <h4 className="text-xs sm:text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Timeline
@@ -140,11 +143,15 @@ export default function SubmissionSidebar({
             <span className="font-semibold text-gray-800 text-right">{timeline.submitted}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span className="flex-shrink-0">Review Due:</span>
+            <span className="flex-shrink-0">
+              {isReviewComplete ? 'Started Reviewing:' : 'Review Due:'}
+            </span>
             <span className="font-semibold text-gray-800 text-right">{timeline.reviewDue}</span>
           </div>
           <div className="flex justify-between gap-2">
-            <span className="flex-shrink-0">Decision Target:</span>
+            <span className="flex-shrink-0">
+              {isReviewComplete ? 'Completed Date:' : 'Decision Target:'}
+            </span>
             <span className="font-semibold text-gray-800 text-right">{timeline.decisionTarget}</span>
           </div>
         </div>

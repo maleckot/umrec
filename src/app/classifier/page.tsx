@@ -1,5 +1,5 @@
 // src/app/classifier/page.tsx
-import ModelPrediction from '@/components/ModelPrediction';
+import ModelPrediction from '@/components/staff-secretariat-admin/ModelPrediction';
 
 export default function ClassifierPage() {
   return (

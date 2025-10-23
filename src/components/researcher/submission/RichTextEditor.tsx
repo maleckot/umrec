@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 interface RichTextEditorProps {
-  label: string;
+  label: string | React.ReactNode;
   value: string;
   onChange: (value: string) => void;
   helperText?: string;
@@ -41,15 +41,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   useEffect(() => {
     if (editorRef.current) {
       editorRef.current.innerHTML = value || '';
-      setWordCount(countWords(value));
+      setWordCount(countWords(value || ''));
     }
   }, []);
 
-  // Count words in text
-  const countWords = (text: string) => {
+  // Count words in text - with null/undefined safety and minimum 2 characters per word
+  const countWords = (text: string | null | undefined) => {
+    if (!text) return 0;
     const cleaned = text.replace(/<[^>]*>/g, '').trim();
     if (!cleaned) return 0;
-    return cleaned.split(/\s+/).length;
+    
+    // Split by whitespace and filter out single characters and empty strings
+    const words = cleaned.split(/\s+/).filter(word => word.length >= 2);
+    return words.length;
   };
 
   const handleTextChange = () => {
@@ -237,13 +241,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     alert('Please click inside a table cell to delete the column');
   };
 
-  const isOverLimit = maxWords > 0 && wordCount > maxWords;
   const cleanValue = value?.replace(/<[^>]*>/g, '').trim() || '';
   const isEmpty = cleanValue === '';
 
   return (
     <div className="space-y-3">
-      {/* Label */}
+      {/* Label - Now accepts JSX/React.ReactNode */}
       <label className="block text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
         {label} {required && <span className="text-red-600">*</span>}
       </label>
@@ -337,23 +340,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           onBlur={handleBlur}
           suppressContentEditableWarning
           data-placeholder={placeholder || ''}
-          className={`editor-with-placeholder w-full h-[400px] p-4 border-2 ${
-            isOverLimit ? 'border-red-500' : 'border-gray-300'
-          } rounded-b-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B] bg-white overflow-auto relative`}
+          className="editor-with-placeholder w-full h-[400px] p-4 border-2 border-gray-300 rounded-b-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B] bg-white overflow-auto relative"
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         />
       </div>
 
-
-      {/* Word Count */}
-      {maxWords > 0 && (
-        <div className="flex justify-between items-center text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          <span className={isOverLimit ? 'text-red-600 font-semibold' : 'text-[#64748B]'}>
-            {wordCount} / {maxWords} words
-            {isOverLimit && ' - Exceeds limit!'}
-          </span>
-        </div>
-      )}
+      {/* Word Count Display - Always show, no limit enforcement */}
+      <div className="flex justify-between items-center text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <span className="text-[#64748B]">
+          Word count: <span className="font-semibold text-[#1E293B]">{wordCount}</span> {wordCount === 1 ? 'word' : 'words'}
+        </span>
+      </div>
 
       {/* Uploaded Files */}
       {uploadedFiles.length > 0 && (
