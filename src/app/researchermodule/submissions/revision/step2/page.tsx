@@ -42,12 +42,10 @@ export default function RevisionStep2() {
     submittedToOther: '',
     hasApplicationForm: true,
     hasResearchProtocol: false,
-    hasInformedConsentEnglish: false,
-    hasInformedConsentFilipino: false,
+    hasInformedConsent: false,
     hasInformedConsentOthers: false,
     informedConsentOthers: '',
-    hasAssentFormEnglish: false,
-    hasAssentFormFilipino: false,
+    hasAssentForm: false,
     hasAssentFormOthers: false,
     assentFormOthers: '',
     hasEndorsementLetter: false,
@@ -60,6 +58,34 @@ export default function RevisionStep2() {
     hasOtherDocs: false,
     otherDocsDetails: '',
   });
+
+  // UMak Colleges/Departments
+  const umakColleges = [
+    'College of Liberal Arts and Sciences (CLAS)',
+    'College of Human Kinetics (CHK)',
+    'College of Business and Financial Science (CBFS)',
+    'College of Computing and Information Sciences (CCIS)',
+    'College of Construction Sciences and Engineering (CCSE)',
+    'College of Governance and Public Policy (CGPP)',
+    'College of Engineering Technology (CET)',
+    'College of Tourism and Hospitality Management (CTHM)',
+    'College of Innovative Teacher Education (CITE)',
+    'College of Continuing, Advanced and Professional Studies (CCAPS)',
+    'Institute of Arts and Design (IAD)',
+    'Institute of Accountancy (IOA)',
+    'Institute of Pharmacy (IOP)',
+    'Institute of Nursing (ION)',
+    'Institute of Imaging Health Science (IIHS)',
+    'Institute of Technical Education and Skills Training (ITEST)',
+    'Institute for Social Development and Nation Building (ISDNB)',
+    'Institute of Psychology (IOPsy)',
+    'Institute of Social Work (ISW)',
+    'Institute of Disaster and Emergency Management (IDEM)',
+  ];
+
+  // Check if institution is UMak
+  const isUMak = formData.institution.toLowerCase().includes('umak') || 
+                 formData.institution.toLowerCase().includes('university of makati');
 
   const [revisionComments] = useState(
     'Please update the study duration dates and ensure all required documents are properly indicated. The methodology section needs clarification regarding participant selection.'
@@ -368,18 +394,6 @@ export default function RevisionStep2() {
           />
         </FormField>
 
-        {/* College/Department */}
-        <FormField label="College/Department" required>
-          <input
-            type="text"
-            value={formData.college}
-            onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
-
         {/* Institution */}
         <FormField label="Institution" required>
           <input
@@ -390,6 +404,41 @@ export default function RevisionStep2() {
             style={{ fontFamily: 'Metropolis, sans-serif' }}
             required
           />
+        </FormField>
+
+        {/* College/Department - Conditional Dropdown for UMak */}
+        <FormField label="College/Department" required>
+          {isUMak ? (
+            <>
+              <select
+                value={formData.college}
+                onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                required
+              >
+                <option value="">Select College/Department</option>
+                {umakColleges.map((college) => (
+                  <option key={college} value={college}>
+                    {college}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Select from UMak colleges and institutes
+              </p>
+            </>
+          ) : (
+            <input
+              type="text"
+              value={formData.college}
+              onChange={(e) => setFormData({ ...formData, college: e.target.value })}
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              placeholder="Enter your college/department"
+              required
+            />
+          )}
         </FormField>
 
         {/* Address of Institution */}
@@ -611,52 +660,48 @@ export default function RevisionStep2() {
             </span>
           </label>
 
-          <div className="ml-6 sm:ml-8 space-y-2">
+          {/* Informed Consent Form - Responsive nested checkbox with Others option */}
+          <div className="space-y-2">
             <label className="flex items-start cursor-pointer">
               <input
                 type="checkbox"
-                checked={formData.hasInformedConsentEnglish}
-                onChange={(e) => setFormData({ ...formData, hasInformedConsentEnglish: e.target.checked })}
+                checked={formData.hasInformedConsent}
+                onChange={(e) => setFormData({ ...formData, hasInformedConsent: e.target.checked })}
                 className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
               />
               <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Informed Consent Form - English version
+                Informed Consent Form
               </span>
             </label>
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasInformedConsentFilipino}
-                onChange={(e) => setFormData({ ...formData, hasInformedConsentFilipino: e.target.checked })}
-                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-              />
-              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Informed Consent Form - Filipino version
-              </span>
-            </label>
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasInformedConsentOthers}
-                onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
-                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-              />
-              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Informed Consent Form - Others (please specify)
-              </span>
-            </label>
-            {formData.hasInformedConsentOthers && (
-              <input
-                type="text"
-                placeholder="Specify other language"
-                value={formData.informedConsentOthers}
-                onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
-                className="ml-6 sm:ml-8 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
+            
+            {formData.hasInformedConsent && (
+              <div className="ml-6 sm:ml-8 space-y-2">
+                <label className="flex items-start cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasInformedConsentOthers}
+                    onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
+                    className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                  />
+                  <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Others (please specify)
+                  </span>
+                </label>
+                {formData.hasInformedConsentOthers && (
+                  <input
+                    type="text"
+                    placeholder="Specify language (e.g., Spanish, Chinese)"
+                    value={formData.informedConsentOthers}
+                    onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
+                    className="ml-6 sm:ml-8 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  />
+                )}
+              </div>
             )}
           </div>
 
+          {/* Assent Form - Responsive nested checkbox with Others option */}
           <div className="space-y-2">
             <p className="text-xs sm:text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Assent Form (if applicable):
@@ -665,45 +710,39 @@ export default function RevisionStep2() {
               <label className="flex items-start cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={formData.hasAssentFormEnglish}
-                  onChange={(e) => setFormData({ ...formData, hasAssentFormEnglish: e.target.checked })}
+                  checked={formData.hasAssentForm}
+                  onChange={(e) => setFormData({ ...formData, hasAssentForm: e.target.checked })}
                   className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
                 />
                 <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  English version
+                  Assent Form
                 </span>
               </label>
-              <label className="flex items-start cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.hasAssentFormFilipino}
-                  onChange={(e) => setFormData({ ...formData, hasAssentFormFilipino: e.target.checked })}
-                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-                />
-                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Filipino version
-                </span>
-              </label>
-              <label className="flex items-start cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.hasAssentFormOthers}
-                  onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
-                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-                />
-                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Others: (please specify)
-                </span>
-              </label>
-              {formData.hasAssentFormOthers && (
-                <input
-                  type="text"
-                  placeholder="Specify other language"
-                  value={formData.assentFormOthers}
-                  onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
-                  className="ml-6 sm:ml-8 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                />
+              
+              {formData.hasAssentForm && (
+                <div className="ml-6 sm:ml-8 space-y-2">
+                  <label className="flex items-start cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasAssentFormOthers}
+                      onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
+                      className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                    />
+                    <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Others (please specify)
+                    </span>
+                  </label>
+                  {formData.hasAssentFormOthers && (
+                    <input
+                      type="text"
+                      placeholder="Specify language (e.g., Spanish, Chinese)"
+                      value={formData.assentFormOthers}
+                      onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
+                      className="ml-6 sm:ml-8 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    />
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -793,7 +832,7 @@ export default function RevisionStep2() {
                 placeholder="Specify details"
                 value={formData.specialPopulationPermitDetails}
                 onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
-                className="ml-6 sm:ml-8 mt-2 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                className="ml-6 sm:ml-8 mt-2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
             )}
@@ -817,7 +856,7 @@ export default function RevisionStep2() {
                 placeholder="Specify other documents"
                 value={formData.otherDocsDetails}
                 onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
-                className="ml-6 sm:ml-8 mt-2 w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                className="ml-6 sm:ml-8 mt-2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
             )}

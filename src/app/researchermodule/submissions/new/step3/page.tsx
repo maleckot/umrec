@@ -8,22 +8,6 @@ import RichTextEditor from '@/components/researcher/submission/RichTextEditor';
 import { FileUpload } from '@/components/researcher/submission/FormComponents';
 import { Plus, X } from 'lucide-react';
 
-// Word limits configuration
-const WORD_LIMITS = {
-  title: 0,
-  introduction: 300,
-  background: 500,
-  problemStatement: 400,
-  scopeDelimitation: 300,
-  literatureReview: 600,
-  methodology: 400,
-  population: 300,
-  samplingTechnique: 300,
-  researchInstrument: 400,
-  statisticalTreatment: 300,
-  references: 0
-};
-
 interface ResearcherSignature {
   id: string;
   name: string;
@@ -62,6 +46,7 @@ export default function Step3ResearchProtocol() {
             population: '',
             samplingTechnique: '',
             researchInstrument: '',
+            ethicalConsideration: '',
             statisticalTreatment: '',
             references: '',
           };
@@ -83,6 +68,7 @@ export default function Step3ResearchProtocol() {
       population: '',
       samplingTechnique: '',
       researchInstrument: '',
+      ethicalConsideration: '',
       statisticalTreatment: '',
       references: '',
     };
@@ -201,7 +187,6 @@ export default function Step3ResearchProtocol() {
               <li>• <strong>Text formatting:</strong> Bold, italic, underline, lists (bullet/numbered)</li>
               <li>• <strong>Alignment & indentation:</strong> Align text left/center/right/justify, adjust indentation</li>
               <li>• <strong>Media uploads:</strong> Upload images and tables per section</li>
-              <li>• <strong>Word limits:</strong> Some sections have maximum word counts - please stay within limits</li>
               <li>• <strong>Auto-save:</strong> Your progress is automatically saved every few seconds</li>
             </ul>
           </div>
@@ -225,13 +210,13 @@ export default function Step3ResearchProtocol() {
           />
         </div>
 
-        {/* All RichTextEditor sections */}
+        {/* All RichTextEditor sections - maxWords={0} means no limit */}
         <RichTextEditor
           label="II. Introduction (Highlights)"
           value={formData.introduction}
           onChange={(val) => setFormData({...formData, introduction: val})}
           helperText="Provide a brief introduction to the study which includes an overview of the study."
-          maxWords={WORD_LIMITS.introduction}
+          maxWords={0}
           required
         />
 
@@ -240,16 +225,16 @@ export default function Step3ResearchProtocol() {
           value={formData.background}
           onChange={(val) => setFormData({...formData, background: val})}
           helperText="Include the reason for embarking on the study, the historical background of the study, and the research gap."
-          maxWords={WORD_LIMITS.background}
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="IV. Statement of the Problem (Objectives of the Study)"
+          label="IV. Statement of the Problem/Objectives of the Study)"
           value={formData.problemStatement}
           onChange={(val) => setFormData({...formData, problemStatement: val})}
-          helperText="Include the general and specific research problems."
-          maxWords={WORD_LIMITS.problemStatement}
+          helperText="Include the general and specific research problems/objectives of the study."
+          maxWords={0}
           required
         />
 
@@ -258,16 +243,16 @@ export default function Step3ResearchProtocol() {
           value={formData.scopeDelimitation}
           onChange={(val) => setFormData({...formData, scopeDelimitation: val})}
           helperText="Provide the locale, topic, and respondent inclusions and the exclusions."
-          maxWords={WORD_LIMITS.scopeDelimitation}
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="VI. Related Literature & Studies (Major Themes Only)"
+          label="VI. Related Literature & Studies "
           value={formData.literatureReview}
           onChange={(val) => setFormData({...formData, literatureReview: val})}
-          helperText="Present the related literature and studies that support the major themes."
-          maxWords={WORD_LIMITS.literatureReview}
+          helperText="Write the related literature and studies that support the objectives/problem."
+          maxWords={0}
           required
         />
 
@@ -276,51 +261,61 @@ export default function Step3ResearchProtocol() {
           value={formData.methodology}
           onChange={(val) => setFormData({...formData, methodology: val})}
           helperText="Indicate the research design of the study."
-          maxWords={WORD_LIMITS.methodology}
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="VIII. Population, Respondents, and Sample Size / Participants"
+          label={<>VIII. Population, Respondents, and Sample Size for <strong>Quantitative Research</strong> / Participants for <strong>Qualitative Research</strong></>}
           value={formData.population}
           onChange={(val) => setFormData({...formData, population: val})}
-          helperText="For Quantitative: Include the population of the study and indicate the number of respondents. For Qualitative: Indicate the participants of the study."
-          maxWords={WORD_LIMITS.population}
+          helperText="Include the population of the study and indicate the number of respondents. Participants for Qualitative Research: Indicate the participants of the study."
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="IX. Sampling Technique / Criteria of Participants"
+          label={<>IX. Sampling Technique for <strong>Quantitative Research</strong> / Criteria of Participants for <strong>Qualitative Research</strong></>}
           value={formData.samplingTechnique}
           onChange={(val) => setFormData({...formData, samplingTechnique: val})}
-          helperText="For Quantitative: Present the sampling technique. For Qualitative: Write the criteria for choosing participants."
-          maxWords={WORD_LIMITS.samplingTechnique}
+          helperText="Present the sampling technique for quantitative. Criteria of Participants for Qualitative Research: Write the criteria for choosing participants."
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="X. Research Instrument and Validation / Interview/FGD Questions"
+          label={<>X. Research Instrument and Validation for <strong>Quantitative Research</strong> / Interview/FGD Questions for <strong>Qualitative Research</strong></>}
           value={formData.researchInstrument}
           onChange={(val) => setFormData({...formData, researchInstrument: val})}
-          helperText="For Quantitative: Describe the details of the questionnaire. For Qualitative: Describe the details of the Interview/FGD Questions."
-          maxWords={WORD_LIMITS.researchInstrument}
+          helperText="Describe the details of the questionnaire or Interview/FGD Questions. Interview/FGD Questions for Qualitative Research: Describe the details of the Interview/FGD Questions."
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="XI. Statistical Treatment of Data / Data Analysis"
+          label="XI. Ethical Consideration"
+          value={formData.ethicalConsideration}
+          onChange={(val) => setFormData({...formData, ethicalConsideration: val})}
+          helperText="Explain the risks, benefits, mitigation of risks, inconveniences, vulnerability, data protection plan, and confidentiality of the study."
+          maxWords={0}
+          required
+        />
+
+        <RichTextEditor
+          label={<>XII. Statistical Treatment of Data for <strong>Quantitative Research</strong> / Data Analysis for <strong>Qualitative Research</strong></>}
           value={formData.statisticalTreatment}
           onChange={(val) => setFormData({...formData, statisticalTreatment: val})}
-          helperText="For Quantitative: Indicate the statistical tool of the study. For Qualitative: Indicate how the study will be analyzed."
-          maxWords={WORD_LIMITS.statisticalTreatment}
+          helperText="Indicate the statistical tool of the study. Data Analysis for Qualitative Research: Indicate how the study will be analyzed."
+          maxWords={0}
           required
         />
 
         <RichTextEditor
-          label="XII. References (Main Themes Only)"
+          label="XIII. References (Main Themes Only)"
           value={formData.references}
           onChange={(val) => setFormData({...formData, references: val})}
           helperText="Indicate the main references of the study."
+          maxWords={0}
           required
         />
 

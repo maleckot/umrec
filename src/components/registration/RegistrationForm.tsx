@@ -149,14 +149,18 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-2 sm:space-y-3">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-lg p-3 mb-4">
-          <p className="text-sm text-red-700 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {error}
-          </p>
-        </div>
-      )}
+     {error && (
+  <div className="bg-red-50 border-2 border-red-200 rounded-xl p-3 sm:p-4 mb-4 backdrop-blur-sm animate-shake">
+    <div className="flex items-center gap-2">
+      <svg className="w-5 h-5 text-red-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+      </svg>
+      <p className="text-sm text-red-700 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        {error}
+      </p>
+    </div>
+  </div>
+)}
 
       {/* Personal Information */}
       <div>
@@ -323,53 +327,88 @@ export default function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            <div className="relative">
-              <FormInput
-                label="Password"
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={(value) => handleChange('password', value)}
-                placeholder="••••••••••••••••"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] text-gray-500 hover:text-gray-700"
-              >
-                {showPassword ? <EyeOff className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> : <Eye className="w-3.5 sm:w-4 h-3.5 sm:h-4" />}
-              </button>
-            </div>
-            <div className="relative">
-              <FormInput
-                label="Confirm Password"
-                type={showConfirmPassword ? 'text' : 'password'}
-                value={formData.confirmPassword}
-                onChange={(value) => handleChange('confirmPassword', value)}
-                placeholder="password123"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] text-gray-500 hover:text-gray-700"
-              >
-                {showConfirmPassword ? <EyeOff className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> : <Eye className="w-3.5 sm:w-4 h-3.5 sm:h-4" />}
-              </button>
-            </div>
+            {/* Password field - around line 300+ */}
+<div className="relative">
+  <FormInput
+    label="Password"
+    type={showPassword ? 'text' : 'password'}
+    value={formData.password}
+    onChange={(value) => handleChange('password', value)}
+    placeholder="••••••••••••••••"
+    required
+  />
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] text-gray-500 hover:text-gray-700 transition-colors duration-200"
+    aria-label={showPassword ? 'Hide password' : 'Show password'}
+  >
+    {showPassword ? <EyeOff className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> : <Eye className="w-3.5 sm:w-4 h-3.5 sm:h-4" />}
+  </button>
+</div>
+
+{/* Confirm Password field */}
+<div className="relative">
+  <FormInput
+    label="Confirm Password"
+    type={showConfirmPassword ? 'text' : 'password'}
+    value={formData.confirmPassword}
+    onChange={(value) => handleChange('confirmPassword', value)}
+    placeholder="password123"
+    required
+  />
+  <button
+    type="button"
+    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+    className="absolute right-2 sm:right-3 top-[27px] sm:top-[29px] text-gray-500 hover:text-gray-700 transition-colors duration-200"
+    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+  >
+    {showConfirmPassword ? <EyeOff className="w-3.5 sm:w-4 h-3.5 sm:h-4" /> : <Eye className="w-3.5 sm:w-4 h-3.5 sm:h-4" />}
+  </button>
+</div>
           </div>
         </div>
       </div>
 
       {/* Submit Button */}
       <button
-        type="submit"
-        disabled={loading}
-        className="w-full py-2.5 sm:py-3 bg-[#212A4E] text-white rounded-lg font-bold text-sm sm:text-base hover:opacity-90 transition-opacity mt-3 sm:mt-4 disabled:opacity-50"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      >
-        {loading ? 'Registering...' : 'Register'}
-      </button>
+  type="submit"
+  disabled={loading}
+  className="w-full py-3 sm:py-3.5 bg-gradient-to-r from-[#212A4E] to-[#050C2D] text-white rounded-xl font-bold text-sm sm:text-base hover:scale-[1.02] transition-all duration-300 mt-4 sm:mt-5 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group shadow-xl"
+  style={{ fontFamily: 'Metropolis, sans-serif' }}
+>
+  <span className="absolute inset-0 bg-gradient-to-r from-[#F0E847] via-white/10 to-[#F0E847] translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-20"></span>
+  <span className="relative z-10 flex items-center justify-center gap-2">
+    {loading ? (
+      <>
+        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Registering...
+      </>
+    ) : (
+      <>
+        Register
+        <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      </>
+    )}
+  </span>
+</button>
+<style jsx global>{`
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+`}</style>
     </form>
+    
   );
 }

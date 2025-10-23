@@ -12,6 +12,7 @@ import MySubmissionTab from '@/components/researcher/profile/MySubmissionTab';
 import PasswordVerificationModal from '@/components/researcher/profile/PasswordVerificationModal';
 import { getResearcherProfile } from '@/app/actions/researcher/getResearcherProfile';
 import { updateResearcherProfile } from '@/app/actions/researcher/updateResearcherProfile';
+import { User, Mail, Building, GraduationCap } from 'lucide-react';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -111,10 +112,13 @@ export default function ProfilePage() {
     return (
       <>
         <NavbarRoles role="researcher" />
-        <div className="min-h-screen bg-[#E8EEF3] pt-24 md:pt-28 lg:pt-32 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7] pt-24 md:pt-28 lg:pt-32 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#003366] mx-auto mb-4"></div>
-            <p className="text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            <div className="relative inline-block">
+              <div className="absolute inset-0 blur-2xl bg-[#071139]/20 rounded-full animate-pulse"></div>
+              <div className="relative animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-[#071139] mx-auto mb-4"></div>
+            </div>
+            <p className="text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Loading profile...
             </p>
           </div>
@@ -127,57 +131,91 @@ export default function ProfilePage() {
   return (
     <>
       <NavbarRoles role="researcher" />
-      <div className="min-h-screen bg-[#E8EEF3] pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
+      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7] pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-28 pb-8">
         <div className="max-w-[1600px] mx-auto">
+          {/* Page Header */}
+          <div className="mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] relative inline-block" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              My Profile
+            </h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Manage your personal information and account settings
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-            {/* Left Sidebar - Profile Card */}
+            {/* Enhanced Left Sidebar - Profile Card */}
             <div className="lg:col-span-4 xl:col-span-3">
-              <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm">
-                <div className="flex justify-center mb-4 sm:mb-6">
-                  <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-[#003366] flex items-center justify-center">
-                    <svg className="w-12 h-12 sm:w-16 sm:h-16 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                    </svg>
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-xl border border-gray-200 hover:shadow-2xl transition-all duration-300">
+                {/* Profile Picture with Gradient Border */}
+                <div className="flex justify-center mb-6 sm:mb-8">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#071139] to-[#F7D117] rounded-full blur-md opacity-50"></div>
+                    <div className="relative w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-br from-[#071139] to-[#0a1a52] flex items-center justify-center shadow-xl ring-4 ring-white">
+                      <User className="w-14 h-14 sm:w-18 sm:h-18 text-white" />
+                    </div>
                   </div>
                 </div>
 
-                <h2 className="text-lg sm:text-xl font-bold text-[#003366] text-center mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {/* Name */}
+                <h2 className="text-xl sm:text-2xl font-bold text-[#071139] text-center mb-6 sm:mb-8" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {userData.firstName} {userData.middleName && userData.middleName[0]}. {userData.lastName}
                 </h2>
 
-                <div className="space-y-3 sm:space-y-4">
-                  <div>
-                    <p className="text-xs font-semibold text-[#003366] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Organization:
-                    </p>
-                    <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {/* Profile Details with Icons */}
+                <div className="space-y-4 sm:space-y-5">
+                  <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#0a1a52] flex items-center justify-center flex-shrink-0">
+                        <Building className="w-4 h-4 text-[#F7D117]" />
+                      </div>
+                      <p className="text-xs font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Organization
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-700 ml-11" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {userData.organization || 'N/A'}
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-semibold text-[#003366] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      School:
-                    </p>
-                    <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#0a1a52] flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-4 h-4 text-[#F7D117]" />
+                      </div>
+                      <p className="text-xs font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        School
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-700 ml-11" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {userData.school || 'N/A'}
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-semibold text-[#003366] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      College:
-                    </p>
-                    <p className="text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#0a1a52] flex items-center justify-center flex-shrink-0">
+                        <GraduationCap className="w-4 h-4 text-[#F7D117]" />
+                      </div>
+                      <p className="text-xs font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        College
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-700 ml-11" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {userData.college || 'N/A'}
                     </p>
                   </div>
 
-                  <div>
-                    <p className="text-xs font-semibold text-[#003366] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Email Address:
-                    </p>
-                    <p className="text-sm text-gray-700 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="bg-gradient-to-br from-gray-50 to-white p-4 rounded-xl border border-gray-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#0a1a52] flex items-center justify-center flex-shrink-0">
+                        <Mail className="w-4 h-4 text-[#F7D117]" />
+                      </div>
+                      <p className="text-xs font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Email Address
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-700 break-words ml-11" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {userData.email}
                     </p>
                   </div>
@@ -185,12 +223,12 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Right Content - Tabs */}
+            {/* Enhanced Right Content - Tabs */}
             <div className="lg:col-span-8 xl:col-span-9">
-              <div className="bg-white rounded-xl shadow-sm">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200">
                 <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
-
-                <div className="p-4 sm:p-6">
+                
+                <div className="p-4 sm:p-6 md:p-8">
                   {activeTab === 'personal' && (
                     <PersonalInformationTab
                       userData={userData}

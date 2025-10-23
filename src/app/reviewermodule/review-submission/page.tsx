@@ -149,7 +149,7 @@ const handleNext = async () => {
   // ✅ Show loading if either submission or form is loading
   if (loading || reviewSections.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#E8EEF3'}}>
         <NavbarRoles role="reviewer" />
         <div className="flex-grow flex items-center justify-center mt-24">
           <div className="text-center">
@@ -166,7 +166,7 @@ const handleNext = async () => {
 
   if (!submissionData) {
     return (
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#E8EEF3' }}>
         <NavbarRoles role="reviewer" />
         <div className="flex-grow flex items-center justify-center mt-24">
           <div className="text-center">
@@ -181,7 +181,7 @@ const handleNext = async () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#E8EEF3' }}>
       <NavbarRoles role="reviewer" />
 
       <div className="flex-grow py-6 sm:py-8 px-4 sm:px-6 md:px-12 lg:px-20 mt-16 sm:mt-20 md:mt-24">
