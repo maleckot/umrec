@@ -95,12 +95,12 @@ export default function AssignReviewersPage() {
                 description="Please ensure the research paper is thoroughly classified before assigning it to a reviewer."
               />
               
-              <ReviewerAssignment
+              {/* <ReviewerAssignment
                 category="Expedited"
                 reviewers={reviewers}
                 maxReviewers={3}
                 onAssign={handleAssign}
-              />
+              /> */}
             </div>
           )}
 

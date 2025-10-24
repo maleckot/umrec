@@ -61,6 +61,7 @@ export default function SecuritySettingsCard({ lastPasswordChange }: SecuritySet
         onClose={() => setShowModal(false)}
         onVerify={handleVerify}
         title="Verify Your Password"
+        email=''
       />
     </>
   );

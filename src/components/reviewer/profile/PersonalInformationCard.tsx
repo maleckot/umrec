@@ -176,6 +176,7 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
         onClose={() => setShowModal(false)}
         onVerify={handleVerify}
         title="Verify Your Password"
+        email={profileData?.email || ''}
       />
     </>
   );

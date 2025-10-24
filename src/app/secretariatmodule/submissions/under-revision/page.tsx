@@ -11,8 +11,9 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import { Suspense } from 'react';
 
-export default function SecretariatUnderRevisionPage() {
+function UnderRevisionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
@@ -135,8 +136,7 @@ export default function SecretariatUnderRevisionPage() {
       description: 'Reviewers requested revisions to 3 documents',
     },
   ];
-
-  return (
+ return (
     <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
       {/* Back Button */}
       <div className="mb-6">
@@ -277,5 +277,18 @@ export default function SecretariatUnderRevisionPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function SecretariatUnderRevisionPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <UnderRevisionContent />
+    </Suspense>
   );
 }

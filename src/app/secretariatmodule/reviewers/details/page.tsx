@@ -1,6 +1,7 @@
 // app/secretariatmodule/reviewers/details/page.tsx
 'use client';
 
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, User, Phone, Mail, Building2, Edit2, Award, FileText, ExternalLink, Download } from 'lucide-react';
@@ -13,7 +14,7 @@ import { updateReviewerCode } from '@/app/actions/secretariat-staff/updateReview
 
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
 
-export default function SecretariatReviewerDetailsPage() {
+function ReviewerDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewerId = searchParams.get('id');
@@ -27,7 +28,6 @@ export default function SecretariatReviewerDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [reviewerData, setReviewerData] = useState<any>(null);
   
-  // Document viewer state
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
 
@@ -47,7 +47,6 @@ export default function SecretariatReviewerDetailsPage() {
       setReviewerData(result);
       setReviewerCode(result.reviewer.code);
       
-      // Safely access expertise fields that might not exist in the type
       const reviewerAny = result.reviewer as any;
       const areasString = reviewerAny.areasOfExpertise || reviewerAny.expertiseAreas || '';
       const areasArray = areasString ? 
@@ -88,11 +87,9 @@ export default function SecretariatReviewerDetailsPage() {
   };
 
   const handleSaveExpertise = async () => {
-    // Convert array back to comma-separated string for backend
     const expertiseString = expertiseAreas.join(', ');
     console.log('Saving expertise:', expertiseString);
     setIsEditingExpertise(false);
-    // TODO: await updateReviewerExpertise(reviewerId, expertiseString);
   };
 
   const handleReviewClick = (reviewId: string) => {
@@ -145,7 +142,6 @@ export default function SecretariatReviewerDetailsPage() {
 
   const { reviewer, currentReviews, reviewHistory } = reviewerData;
 
-  // Mock certificates data - replace with actual data from API
   const certificates = [
     {
       id: '1',
@@ -176,10 +172,8 @@ export default function SecretariatReviewerDetailsPage() {
         </button>
       </div>
 
-      {/* Reviewer Header */}
       <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          {/* Left side - Reviewer Info */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-1">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
               <User size={32} className="text-white sm:w-10 sm:h-10" />
@@ -201,7 +195,6 @@ export default function SecretariatReviewerDetailsPage() {
             </div>
           </div>
 
-          {/* Right side - Reviewer Code */}
           <div className="text-left lg:text-right">
             <p className="text-sm text-gray-600 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Reviewer Code
@@ -272,7 +265,6 @@ export default function SecretariatReviewerDetailsPage() {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="border-b border-gray-200 overflow-x-auto">
           <div className="flex min-w-max">
@@ -330,7 +322,6 @@ export default function SecretariatReviewerDetailsPage() {
         </div>
 
         <div className="p-4 sm:p-6">
-          {/* Current Reviews Tab */}
           {activeTab === 'current' && (
             <ReviewerReviewsTable
               reviews={currentReviews}
@@ -339,7 +330,6 @@ export default function SecretariatReviewerDetailsPage() {
             />
           )}
 
-          {/* Review History Tab */}
           {activeTab === 'history' && (
             <ReviewerReviewsTable
               reviews={reviewHistory}
@@ -348,7 +338,6 @@ export default function SecretariatReviewerDetailsPage() {
             />
           )}
 
-          {/* Expertise Tab */}
           {activeTab === 'expertise' && (
             <div>
               <div className="flex items-center justify-between mb-4">
@@ -369,7 +358,6 @@ export default function SecretariatReviewerDetailsPage() {
 
               {isEditingExpertise ? (
                 <div className="space-y-4">
-                  {/* Add New Expertise */}
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -389,7 +377,6 @@ export default function SecretariatReviewerDetailsPage() {
                     </button>
                   </div>
 
-                  {/* Expertise List */}
                   <div className="flex flex-wrap gap-2">
                     {expertiseAreas.map((area, index) => (
                       <div
@@ -409,7 +396,6 @@ export default function SecretariatReviewerDetailsPage() {
                     ))}
                   </div>
 
-                  {/* Save/Cancel Buttons */}
                   <div className="flex gap-3 pt-4">
                     <button
                       onClick={handleSaveExpertise}
@@ -420,7 +406,6 @@ export default function SecretariatReviewerDetailsPage() {
                     </button>
                     <button
                       onClick={() => {
-                        // Safely access expertise fields
                         const reviewerAny = reviewer as any;
                         const areasString = reviewerAny.areasOfExpertise || reviewerAny.expertiseAreas || '';
                         const areasArray = areasString ? 
@@ -464,7 +449,6 @@ export default function SecretariatReviewerDetailsPage() {
             </div>
           )}
 
-          {/* Certificates Tab */}
           {activeTab === 'certificates' && (
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -531,7 +515,6 @@ export default function SecretariatReviewerDetailsPage() {
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
       {showDocumentViewer && selectedDocument && (
         <DocumentViewerModal
           isOpen={showDocumentViewer}
@@ -544,5 +527,19 @@ export default function SecretariatReviewerDetailsPage() {
         />
       )}
     </DashboardLayout>
+  );
+}
+
+export default function SecretariatReviewerDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Reviewer Details" activeNav="reviewers">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <ReviewerDetailsContent />
+    </Suspense>
   );
 }
