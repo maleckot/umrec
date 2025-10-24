@@ -140,7 +140,7 @@ export default function SubmissionsPage() {
       router.push(`/staffmodule/submissions/waiting-classification?id=${submission.id}`);
     } 
     else if (submission.status === 'classified') {
-      router.push(`/staffmodule/submissions/assign-reviewers?id=${submission.id}`);
+      router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);
     } 
     else if (submission.status === 'under_review') {
       router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);

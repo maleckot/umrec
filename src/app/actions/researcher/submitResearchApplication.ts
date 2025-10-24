@@ -3,10 +3,10 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { 
-  generateApplicationFormPdf, 
-  generateResearchProtocolPdf, 
-  generateConsentFormPdf 
+import {
+  generateApplicationFormPdf,
+  generateResearchProtocolPdf,
+  generateConsentFormPdf
 } from '@/app/actions/generatePdfFromDatabase';
 import { autoClassifyFromDatabase } from '@/app/actions/autoClassifyFromDatabase';
 
@@ -152,6 +152,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
 
     // 3. Insert research protocol
     if (formData.step3?.formData && Object.keys(formData.step3.formData).length > 0) {
+      // ✅ FIRST: Insert the research protocol with basic data
       const { error: protocolError } = await supabase
         .from('research_protocols')
         .insert({
@@ -168,11 +169,88 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
           research_instrument: safeString(formData.step3.formData?.researchInstrument),
           statistical_treatment: safeString(formData.step3.formData?.statisticalTreatment),
           research_references: safeString(formData.step3.formData?.references),
-          researchers: formData.step3?.researchers || [],
+          researchers: formData.step3?.researchers || [], // Save basic researchers first
         });
 
       if (protocolError) throw protocolError;
+
+      // ✅ THEN: Process and upload signatures
+      if (formData.step3?.researchers && Array.isArray(formData.step3.researchers)) {
+        console.log('📝 Processing researcher signatures...');
+
+        const researchersWithPaths = await Promise.all(
+          formData.step3.researchers.map(async (researcher: any, index: number) => {
+            if (!researcher.signatureBase64) {
+              return {
+                id: researcher.id,
+                name: researcher.name,
+                signaturePath: null,
+                signatureBase64: null
+              };
+            }
+
+            try {
+              // Convert base64 to buffer
+              const base64Data = researcher.signatureBase64.split(',')[1];
+              const buffer = Buffer.from(base64Data, 'base64');
+
+              // Upload to storage
+              const signaturePath = `${user.id}/signatures/researcher-${index + 1}-${Date.now()}.png`;
+
+              const { error: uploadError } = await supabase.storage
+                .from('research-documents')
+                .upload(signaturePath, buffer, {
+                  contentType: 'image/png',
+                  upsert: false
+                });
+
+              if (uploadError) {
+                console.error('Signature upload error:', uploadError);
+                return {
+                  id: researcher.id,
+                  name: researcher.name,
+                  signaturePath: null,
+                  signatureBase64: researcher.signatureBase64 // Keep for PDF
+                };
+              }
+
+              console.log(`✅ Uploaded signature for ${researcher.name}`);
+
+              return {
+                id: researcher.id,
+                name: researcher.name,
+                signaturePath: signaturePath,
+                signatureBase64: researcher.signatureBase64 // Keep for PDF generation
+              };
+            } catch (error) {
+              console.error('Error processing signature:', error);
+              return {
+                id: researcher.id,
+                name: researcher.name,
+                signaturePath: null,
+                signatureBase64: researcher.signatureBase64
+              };
+            }
+          })
+        );
+
+        // ✅ Update research_protocols with signature paths
+        const { error: updateError } = await supabase
+          .from('research_protocols')
+          .update({
+            researchers: researchersWithPaths
+          })
+          .eq('submission_id', submission.id);
+
+        if (updateError) {
+          console.error('Failed to update researcher signatures:', updateError);
+        } else {
+          console.log('✅ Researcher signatures saved to database');
+        }
+      }
     }
+
+
 
     // 4. Insert consent forms
     if (formData.step4?.consentType) {
@@ -298,7 +376,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
 
       const protocolPdf = await generateResearchProtocolPdf(formData);
       await uploadGeneratedPdf(protocolPdf, 'research_protocol', 'Research_Protocol');
-        
+
       const consentPdf = await generateConsentFormPdf(formData);
       await uploadGeneratedPdf(consentPdf, 'consent_form', 'Informed_Consent_Form');
 
@@ -306,7 +384,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       console.error('PDF generation error (non-critical):', pdfError);
     }
 
-    
+
     autoClassifyFromDatabase(submission.id)
       .then(result => {
         if (result.success) {

@@ -93,12 +93,14 @@ export default function ReviewDetailPage() {
             {
               id: 1,
               name: result.consolidatedDocument.name,
+              displayTitle: result.consolidatedDocument.displayTitle, // ✅ Use from backend
               time: new Date(result.consolidatedDocument.uploadedAt).toLocaleDateString('en-US'),
               status: 'viewed',
               url: result.consolidatedDocument.url
             }
           ]);
         }
+
       } else {
         console.error('Failed to load evaluations:', result.error);
       }
@@ -387,8 +389,9 @@ export default function ReviewDetailPage() {
                       </svg>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {file.name}
+                      {/* ✅ Show display title instead of raw filename */}
+                      <p className="text-sm font-semibold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {file.displayTitle || 'Consolidated Application - ' + submissionData.title}
                       </p>
                       <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {file.time}
@@ -398,7 +401,7 @@ export default function ReviewDetailPage() {
                   <button
                     onClick={() => {
                       if (file.url) {
-                        setSelectedDocument({ name: file.name, url: file.url });
+                        setSelectedDocument({ name: file.displayTitle || file.name, url: file.url });
                         setViewerOpen(true);
                       } else {
                         alert('Document URL not available');
@@ -412,6 +415,7 @@ export default function ReviewDetailPage() {
                 </div>
               ))}
             </div>
+
           </div>
 
           <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">

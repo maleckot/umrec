@@ -1,7 +1,7 @@
 // components/staff-secretariat-admin/submission-details/ReviewerAssignment.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Search, X } from 'lucide-react';
 
 interface Reviewer {
@@ -20,83 +20,79 @@ interface ReviewerAssignmentProps {
   onAssign: (selectedReviewers: string[]) => void;
 }
 
-const PANELS = [
-  {
-    id: 'panel1',
-    name: 'Panel 1 - Science, Technology, Engineering, Food Science, and Math',
-    code: 'Panel 1'
-  },
-  {
-    id: 'panel2',
-    name: 'Panel 2 - Social Development, Economics, Public Policy and Administration, Humanities and Arts, Business',
-    code: 'Panel 2'
-  },
-  {
-    id: 'panel3',
-    name: 'Panel 3 - Health, Sciences, and Its Allied Disciplines',
-    code: 'Panel 3'
-  },
-  {
-    id: 'panel4',
-    name: 'Panel 4 - UMREC Officers',
-    code: 'Panel 4'
-  }
-];
+// ✅ Panel descriptions mapping
+const PANEL_DESCRIPTIONS: Record<string, string> = {
+  'Panel 1': 'Panel 1 - Science, Technology, Engineering, Food Science, and Math',
+  'Panel 2': 'Panel 2 - Social Development, Economics, Public Policy and Administration, Humanities and Arts, Business',
+  'Panel 3': 'Panel 3 - Health, Sciences, and Its Allied Disciplines',
+  'Panel 4': 'Panel 4 - UMREC Officers',
+};
 
 export default function ReviewerAssignment({ category, reviewers, maxReviewers, onAssign }: ReviewerAssignmentProps) {
   const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
-  const [selectedPanels, setSelectedPanels] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'panel' | 'individual'>('individual');
 
+  // ✅ Dynamically extract unique panels from reviewers
+  const uniquePanels = Array.from(new Set(reviewers.map(r => r.panel)))
+    .filter(Boolean)
+    .sort();
+
   // Filter reviewers based on search query
   const filteredReviewers = reviewers.filter(r =>
     r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.code.toLowerCase().includes(searchQuery.toLowerCase())
+    r.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.panel.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Group reviewers by panel
+  // ✅ Group reviewers by panel (dynamically)
   const reviewersByPanel = filteredReviewers.reduce((acc, reviewer) => {
-    if (!acc[reviewer.panel]) {
-      acc[reviewer.panel] = [];
+    const panelKey = reviewer.panel || 'Unassigned';
+    if (!acc[panelKey]) {
+      acc[panelKey] = [];
     }
-    acc[reviewer.panel].push(reviewer);
+    acc[panelKey].push(reviewer);
     return acc;
   }, {} as Record<string, Reviewer[]>);
+
+  // ✅ Calculate which panels are fully selected (on-demand, no useEffect)
+  const isPanelFullySelected = (panelName: string) => {
+    const panelReviewers = reviewersByPanel[panelName] || [];
+    if (panelReviewers.length === 0) return false;
+    
+    const panelReviewerIds = panelReviewers.map(r => r.id);
+    return panelReviewerIds.every(id => selectedReviewers.includes(id));
+  };
 
   // Handle Select All
   const handleSelectAll = () => {
     if (selectedReviewers.length === filteredReviewers.length) {
-      // Deselect all
       setSelectedReviewers([]);
     } else {
-      // Select all (up to maxReviewers)
       const reviewerIds = filteredReviewers.slice(0, maxReviewers).map(r => r.id);
       setSelectedReviewers(reviewerIds);
     }
   };
 
   // Handle panel selection
-  const handlePanelToggle = (panelCode: string) => {
-    const panelReviewers = reviewersByPanel[panelCode] || [];
+  const handlePanelToggle = (panelName: string) => {
+    const panelReviewers = reviewersByPanel[panelName] || [];
     const panelReviewerIds = panelReviewers.map(r => r.id);
     
-    const isPanelSelected = selectedPanels.includes(panelCode);
+    const isPanelSelected = isPanelFullySelected(panelName);
     
     if (isPanelSelected) {
-      setSelectedPanels(prev => prev.filter(p => p !== panelCode));
       setSelectedReviewers(prev => prev.filter(id => !panelReviewerIds.includes(id)));
     } else {
-      setSelectedPanels(prev => [...prev, panelCode]);
       setSelectedReviewers(prev => {
         const newSelected = [...prev];
         panelReviewerIds.forEach(id => {
-          if (!newSelected.includes(id)) {
+          if (!newSelected.includes(id) && newSelected.length < maxReviewers) {
             newSelected.push(id);
           }
         });
-        return newSelected;
+        return newSelected.slice(0, maxReviewers);
       });
     }
   };
@@ -111,24 +107,6 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
       }
     }
   };
-
-  // Update panel checkboxes based on individual selections
-  useEffect(() => {
-    if (assignmentMode === 'panel') {
-      const newSelectedPanels: string[] = [];
-      
-      Object.entries(reviewersByPanel).forEach(([panelCode, panelReviewers]) => {
-        const panelReviewerIds = panelReviewers.map(r => r.id);
-        const allSelected = panelReviewerIds.every(id => selectedReviewers.includes(id));
-        
-        if (allSelected && panelReviewerIds.length > 0) {
-          newSelectedPanels.push(panelCode);
-        }
-      });
-      
-      setSelectedPanels(newSelectedPanels);
-    }
-  }, [selectedReviewers, assignmentMode]);
 
   const handleSaveClick = () => {
     if (selectedReviewers.length > 0) {
@@ -146,7 +124,6 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
   };
 
   const allSelected = selectedReviewers.length === filteredReviewers.length && filteredReviewers.length > 0;
-  const canSelectMore = selectedReviewers.length < maxReviewers;
 
   if (category === 'Exempted') {
     return (
@@ -185,7 +162,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="Search Reviewers"
+                placeholder="Search Reviewers or Panels"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 text-sm text-gray-900 bg-white border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
@@ -264,6 +241,9 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
                         <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {reviewer.name}
                         </p>
+                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {PANEL_DESCRIPTIONS[reviewer.panel] || reviewer.panel} {/* ✅ Show full description */}
+                        </p>
                       </div>
                     </div>
                     <span className="text-xs text-gray-500 ml-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -281,54 +261,60 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             </div>
           )}
 
-          {/* Panel Assignment Mode */}
+          {/* ✅ Panel Assignment Mode - DYNAMIC with descriptions */}
           {assignmentMode === 'panel' && (
             <div className="space-y-4 mb-4">
-              {PANELS.map(panel => {
-                const panelReviewers = reviewersByPanel[panel.code] || [];
-                const isPanelSelected = selectedPanels.includes(panel.code);
-                
-                return (
-                  <div key={panel.id} className="border-2 border-gray-300 rounded-lg p-4">
-                    {/* Panel Header with Checkbox */}
-                    <div
-                      className="flex items-start gap-3 mb-3 cursor-pointer"
-                      onClick={() => handlePanelToggle(panel.code)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isPanelSelected}
-                        onChange={() => {}}
-                        className="mt-1 cursor-pointer"
-                      />
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 text-sm mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {panel.name}
-                        </h4>
-                        <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {panelReviewers.length} reviewer(s) available
-                        </p>
+              {uniquePanels.length > 0 ? (
+                uniquePanels.map(panelCode => {
+                  const panelReviewers = reviewersByPanel[panelCode] || [];
+                  const panelDescription = PANEL_DESCRIPTIONS[panelCode] || panelCode; // ✅ Map to full description
+                  
+                  return (
+                    <div key={panelCode} className="border-2 border-gray-300 rounded-lg p-4">
+                      <div
+                        className="flex items-start gap-3 mb-3 cursor-pointer"
+                        onClick={() => handlePanelToggle(panelCode)}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isPanelFullySelected(panelCode)}
+                          onChange={() => {}}
+                          className="mt-1 cursor-pointer"
+                        />
+                        <div className="flex-1">
+                          <h4 className="font-bold text-gray-900 text-sm mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {panelDescription} {/* ✅ Show full description */}
+                          </h4>
+                          <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {panelReviewers.length} reviewer(s) available
+                          </p>
+                        </div>
                       </div>
-                    </div>
 
-                    {/* Panel Reviewers List */}
-                    {panelReviewers.length > 0 && (
-                      <div className="ml-7 space-y-1 border-t border-gray-200 pt-2">
-                        {panelReviewers.map(reviewer => (
-                          <div key={reviewer.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
-                            <span className="text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {reviewer.name}
-                            </span>
-                            <span className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {reviewer.code}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      {panelReviewers.length > 0 && (
+                        <div className="ml-7 space-y-1 border-t border-gray-200 pt-2">
+                          {panelReviewers.map(reviewer => (
+                            <div key={reviewer.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
+                              <span className="text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {reviewer.name}
+                              </span>
+                              <span className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {reviewer.code}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-4 text-center border border-gray-200 rounded-lg">
+                  <p className="text-sm text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    No panels available. Reviewers need to be assigned to panels.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -339,10 +325,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <button
-              onClick={() => {
-                setSelectedReviewers([]);
-                setSelectedPanels([]);
-              }}
+              onClick={() => setSelectedReviewers([])}
               className="px-4 py-2 bg-gray-500 text-white text-sm font-semibold rounded-lg hover:bg-gray-600 transition-colors"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >

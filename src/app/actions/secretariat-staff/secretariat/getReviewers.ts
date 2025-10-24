@@ -1,4 +1,4 @@
-// src/app/actions/getReviewers.ts
+// src/app/actions/secretariat-staff/secretariat/getReviewers.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -13,23 +13,25 @@ export async function getReviewers() {
       return { success: false, error: 'Not authenticated' };
     }
 
-    // Get all users with reviewer role
+    // ✅ ONLY ADD: panel to SELECT (reviewer_code already exists)
     const { data: reviewers, error: reviewersError } = await supabase
       .from('profiles')
-      .select('id, full_name, email, role')
-      .eq('role', 'reviewer')
+      .select('id, full_name, email, role, panel, reviewer_code') // ✅ Just add panel
+      .eq('role', 'reviewer');
 
     if (reviewersError) {
       console.error('Error fetching reviewers:', reviewersError);
       return { success: false, error: 'Failed to fetch reviewers' };
     }
 
-
+    // ✅ ONLY ADD: panel to formatted output
     const formattedReviewers = (reviewers || []).map(r => ({
       id: r.id,
-      name: `${r.full_name}`,
-      email: r.email,
-      availability: 'Available', 
+      name: r.full_name || 'Unknown',
+      email: r.email || '',
+      code: r.reviewer_code || 'N/A', // Already have this
+      panel: r.panel || 'Unassigned', // ✅ Just add this line
+      availability: 'Available',
     }));
 
     return {

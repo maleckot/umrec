@@ -102,7 +102,7 @@ export async function getSubmissionActivity(submissionId: string) {
         needsRevision: submission.status === 'needs_revision',
         revisionCount: revisionCount,
         message: revisionMessage, 
-      },
+      },  
       comments: commentsData?.map(c => ({
         id: c.id,
         commentText: c.comment_text,

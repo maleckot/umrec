@@ -3,7 +3,7 @@
 
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
-import StartReviewModal from '@/components/reviewer/StartReviewModal';
+// import StartReviewModal from '@/components/reviewer/StartReviewModal';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getReviewerDashboardData } from '@/app/actions/reviewer/getReviewerDashboardData';
@@ -14,8 +14,8 @@ export default function ReviewerDashboard() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState<any>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  // const [modalOpen, setModalOpen] = useState(false);
+  // const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [overdueActiveTab, setOverdueActiveTab] = useState<TabType>('all');
 
@@ -83,17 +83,20 @@ export default function ReviewerDashboard() {
   const overdueExpeditedCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited').length;
   const overdueFullReviewCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
 
-  const handleStartReview = (assignment: any) => {
-    console.log('Opening modal for:', assignment);
-    setSelectedSubmission(assignment);
-    setModalOpen(true);
-  };
+  // const handleStartReview = (assignment: any) => {
+  //   console.log('Opening modal for:', assignment);
+  //   setSelectedSubmission(assignment);
+  //   setModalOpen(true);
+  // };
 
-  const confirmStartReview = () => {
-    console.log('Confirmed review for:', selectedSubmission);
-    setModalOpen(false);
-    router.push(`/reviewermodule/review-submission?id=${selectedSubmission.submissionId}`);
-  };
+  // const confirmStartReview = () => {
+  //   console.log('Confirmed review for:', selectedSubmission);
+  //   setModalOpen(false);
+  //   router.push(`/reviewermodule/review-submission?id=${selectedSubmission.submissionId}`);
+  // };
+const handleViewSubmission = (assignment: any) => {
+  router.push(`/reviewermodule/reviews/details?id=${assignment.submissionId}`);
+};
 
   const getTabLabel = (tab: TabType, count: number) => {
     if (tab === 'all') return `All Submissions (${count})`;
@@ -305,11 +308,11 @@ export default function ReviewerDashboard() {
                           </td>
                           <td className="py-4 text-center">
                             <button
-                              onClick={() => handleStartReview(assignment)}
+                              onClick={() => handleViewSubmission(assignment)}
                               className="px-6 py-2.5 w-[140px] bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
                               style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                             >
-                              Start Review
+                              View
                             </button>
                           </td>
                         </tr>
@@ -356,11 +359,11 @@ export default function ReviewerDashboard() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleStartReview(assignment)}
+                        onClick={() => handleViewSubmission(assignment)}
                         className="w-full px-6 py-2.5 bg-[#101C50] text-white text-sm rounded-full hover:bg-[#0d1640] transition-colors cursor-pointer"
                         style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                       >
-                        Start Review
+                         View
                       </button>
                     </div>
                   ))}
@@ -483,11 +486,11 @@ export default function ReviewerDashboard() {
                           </td>
                           <td className="py-4 text-center">
                             <button
-                              onClick={() => handleStartReview(review)}
+                        onClick={() => handleViewSubmission(review)}
                               className="px-6 py-2.5 w-[140px] bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
                               style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                             >
-                              Start Review
+                              View
                             </button>
                           </td>
                         </tr>
@@ -528,11 +531,11 @@ export default function ReviewerDashboard() {
                         </div>
                       </div>
                       <button
-                        onClick={() => handleStartReview(review)}
+                        onClick={() => handleViewSubmission(review)}
                         className="w-full px-6 py-2.5 bg-[#7C1100] text-white text-sm rounded-full hover:bg-[#5a0c00] transition-colors cursor-pointer"
                         style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                       >
-                        Start Review
+                        View
                       </button>
                     </div>
                   ))}
@@ -544,12 +547,12 @@ export default function ReviewerDashboard() {
       </div>
 
       {/* Start Review Modal */}
-      <StartReviewModal
+      {/* <StartReviewModal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onConfirm={confirmStartReview}
         submissionTitle={selectedSubmission?.title || ''}
-      />
+      /> */}
 
       <Footer />
     </div>

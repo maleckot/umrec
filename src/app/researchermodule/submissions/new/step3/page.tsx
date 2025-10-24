@@ -18,7 +18,7 @@ export default function Step3ResearchProtocol() {
   const router = useRouter();
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const [formData, setFormData] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('step3Data');
@@ -30,7 +30,7 @@ export default function Step3ResearchProtocol() {
           console.error('Error loading saved data:', error);
         }
       }
-      
+
       const step1 = localStorage.getItem('step1Data');
       if (step1) {
         try {
@@ -55,7 +55,7 @@ export default function Step3ResearchProtocol() {
         }
       }
     }
-    
+
     // Default empty state
     return {
       title: '',
@@ -87,7 +87,7 @@ export default function Step3ResearchProtocol() {
           console.error('Error loading researchers:', error);
         }
       }
-      
+
       // Fallback to step1 leader name
       const step1 = localStorage.getItem('step1Data');
       if (step1) {
@@ -100,7 +100,7 @@ export default function Step3ResearchProtocol() {
         }
       }
     }
-    
+
     return [{ id: '1', name: '', signature: null }];
   });
 
@@ -151,15 +151,35 @@ export default function Step3ResearchProtocol() {
 
   const removeResearcher = (id: string) => {
     if (researchers.length > 1) {
-      setResearchers(researchers.filter(r => r.id !== id)); 
+      setResearchers(researchers.filter(r => r.id !== id));
     }
   };
 
-  const updateResearcher = (id: string, field: 'name' | 'signature', value: string | File | null) => {
-    setResearchers(researchers.map(r => 
-      r.id === id ? { ...r, [field]: value } : r
-    ));
+
+  const updateResearcher = async (id: string, field: 'name' | 'signature', value: string | File | null) => {
+    if (field === 'signature' && value instanceof File) {
+      // ✅ Convert to Base64 and store in sessionStorage
+      const reader = new FileReader();
+      reader.readAsDataURL(value);
+      reader.onload = () => {
+        const base64 = reader.result as string;
+
+        // Store in sessionStorage (survives navigation)
+        sessionStorage.setItem(`signature_${id}`, base64);
+        console.log(`✅ Saved signature for researcher ${id} to sessionStorage`);
+
+        // Update state
+        setResearchers(researchers.map(r =>
+          r.id === id ? { ...r, signature: value } : r
+        ));
+      };
+    } else {
+      setResearchers(researchers.map(r =>
+        r.id === id ? { ...r, [field]: value } : r
+      ));
+    }
   };
+
 
   return (
     <SubmissionStepLayout
@@ -203,7 +223,7 @@ export default function Step3ResearchProtocol() {
           <input
             type="text"
             value={formData.title}
-            onChange={(e) => setFormData({...formData, title: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B]"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
             required
@@ -214,7 +234,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="II. Introduction (Highlights)"
           value={formData.introduction}
-          onChange={(val) => setFormData({...formData, introduction: val})}
+          onChange={(val) => setFormData({ ...formData, introduction: val })}
           helperText="Provide a brief introduction to the study which includes an overview of the study."
           maxWords={0}
           required
@@ -223,7 +243,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="III. Background of the Study (Highlights)"
           value={formData.background}
-          onChange={(val) => setFormData({...formData, background: val})}
+          onChange={(val) => setFormData({ ...formData, background: val })}
           helperText="Include the reason for embarking on the study, the historical background of the study, and the research gap."
           maxWords={0}
           required
@@ -232,7 +252,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="IV. Statement of the Problem/Objectives of the Study)"
           value={formData.problemStatement}
-          onChange={(val) => setFormData({...formData, problemStatement: val})}
+          onChange={(val) => setFormData({ ...formData, problemStatement: val })}
           helperText="Include the general and specific research problems/objectives of the study."
           maxWords={0}
           required
@@ -241,7 +261,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="V. Scope and Delimitation"
           value={formData.scopeDelimitation}
-          onChange={(val) => setFormData({...formData, scopeDelimitation: val})}
+          onChange={(val) => setFormData({ ...formData, scopeDelimitation: val })}
           helperText="Provide the locale, topic, and respondent inclusions and the exclusions."
           maxWords={0}
           required
@@ -250,7 +270,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="VI. Related Literature & Studies "
           value={formData.literatureReview}
-          onChange={(val) => setFormData({...formData, literatureReview: val})}
+          onChange={(val) => setFormData({ ...formData, literatureReview: val })}
           helperText="Write the related literature and studies that support the objectives/problem."
           maxWords={0}
           required
@@ -259,7 +279,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="VII. Research Methodology"
           value={formData.methodology}
-          onChange={(val) => setFormData({...formData, methodology: val})}
+          onChange={(val) => setFormData({ ...formData, methodology: val })}
           helperText="Indicate the research design of the study."
           maxWords={0}
           required
@@ -268,7 +288,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label={<>VIII. Population, Respondents, and Sample Size for <strong>Quantitative Research</strong> / Participants for <strong>Qualitative Research</strong></>}
           value={formData.population}
-          onChange={(val) => setFormData({...formData, population: val})}
+          onChange={(val) => setFormData({ ...formData, population: val })}
           helperText="Include the population of the study and indicate the number of respondents. Participants for Qualitative Research: Indicate the participants of the study."
           maxWords={0}
           required
@@ -277,7 +297,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label={<>IX. Sampling Technique for <strong>Quantitative Research</strong> / Criteria of Participants for <strong>Qualitative Research</strong></>}
           value={formData.samplingTechnique}
-          onChange={(val) => setFormData({...formData, samplingTechnique: val})}
+          onChange={(val) => setFormData({ ...formData, samplingTechnique: val })}
           helperText="Present the sampling technique for quantitative. Criteria of Participants for Qualitative Research: Write the criteria for choosing participants."
           maxWords={0}
           required
@@ -286,7 +306,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label={<>X. Research Instrument and Validation for <strong>Quantitative Research</strong> / Interview/FGD Questions for <strong>Qualitative Research</strong></>}
           value={formData.researchInstrument}
-          onChange={(val) => setFormData({...formData, researchInstrument: val})}
+          onChange={(val) => setFormData({ ...formData, researchInstrument: val })}
           helperText="Describe the details of the questionnaire or Interview/FGD Questions. Interview/FGD Questions for Qualitative Research: Describe the details of the Interview/FGD Questions."
           maxWords={0}
           required
@@ -295,7 +315,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="XI. Ethical Consideration"
           value={formData.ethicalConsideration}
-          onChange={(val) => setFormData({...formData, ethicalConsideration: val})}
+          onChange={(val) => setFormData({ ...formData, ethicalConsideration: val })}
           helperText="Explain the risks, benefits, mitigation of risks, inconveniences, vulnerability, data protection plan, and confidentiality of the study."
           maxWords={0}
           required
@@ -304,7 +324,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label={<>XII. Statistical Treatment of Data for <strong>Quantitative Research</strong> / Data Analysis for <strong>Qualitative Research</strong></>}
           value={formData.statisticalTreatment}
-          onChange={(val) => setFormData({...formData, statisticalTreatment: val})}
+          onChange={(val) => setFormData({ ...formData, statisticalTreatment: val })}
           helperText="Indicate the statistical tool of the study. Data Analysis for Qualitative Research: Indicate how the study will be analyzed."
           maxWords={0}
           required
@@ -313,7 +333,7 @@ export default function Step3ResearchProtocol() {
         <RichTextEditor
           label="XIII. References (Main Themes Only)"
           value={formData.references}
-          onChange={(val) => setFormData({...formData, references: val})}
+          onChange={(val) => setFormData({ ...formData, references: val })}
           helperText="Indicate the main references of the study."
           maxWords={0}
           required
@@ -339,7 +359,7 @@ export default function Step3ResearchProtocol() {
           <p className="text-xs sm:text-sm text-[#475569] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             All research team members must provide their printed name and signature below.
           </p>
-          
+
           <div className="space-y-4 sm:space-y-6">
             {researchers.map((researcher, index) => (
               <div key={researcher.id} className="bg-white p-4 sm:p-6 rounded-lg border-2 border-gray-200 relative">

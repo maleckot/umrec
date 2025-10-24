@@ -111,7 +111,7 @@ export default function AssignSubmissionsPage() {
   ];
 
   const handleRowClick = (submission: any) => {
-    router.push(`/staffmodule/submissions/assign-reviewers?id=${submission.id}`);
+    router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);
   };
 
   return (

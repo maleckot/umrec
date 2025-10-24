@@ -11,6 +11,7 @@ import { CheckCircle } from 'lucide-react';
 import { submitResearchApplication } from '@/app/actions/researcher/submitResearchApplication';
 
 export default function Step8ReviewSubmit() {
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allData, setAllData] = useState<any>({});
 
@@ -28,12 +29,65 @@ export default function Step8ReviewSubmit() {
     console.log('All collected data:', { step1, step2, step3, step4, step5, step6, step7 });
   }, []);
 
+  // ✅ Helper function to convert File to Base64
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
     try {
       console.log('Starting submission...');
-      console.log('Data to submit:', allData);
+
+      // ✅ Process researcher signatures
+      // app/researchermodule/submissions/new/step8/page.tsx
+
+      // In handleSubmit function, replace the signature processing block with:
+
+      // ✅ Process researcher signatures from sessionStorage
+      let processedStep3 = allData.step3;
+      if (allData.step3?.researchers && Array.isArray(allData.step3.researchers)) {
+        console.log('📝 Processing researcher signatures from sessionStorage...');
+
+        const researchersWithBase64 = allData.step3.researchers.map((r: any) => {
+          // ✅ Get signature from sessionStorage
+          const base64 = sessionStorage.getItem(`signature_${r.id}`);
+
+          if (base64) {
+            console.log(`✅ Found signature for ${r.name}`);
+          } else {
+            console.log(`❌ No signature found for ${r.name}`);
+          }
+
+          return {
+            id: r.id,
+            name: r.name,
+            signatureBase64: base64 || null
+          };
+        });
+
+        processedStep3 = {
+          ...allData.step3,
+          researchers: researchersWithBase64
+        };
+
+        console.log('✅ Signatures processed:', researchersWithBase64);
+      }
+
+
+      // ✅ Create submission data with processed signatures
+      const submissionData = {
+        ...allData,
+        step3: processedStep3
+      };
+
+      console.log('Data to submit:', submissionData);
 
       const files = {
         step5: sessionStorage.getItem('step5File') || undefined,
@@ -47,7 +101,7 @@ export default function Step8ReviewSubmit() {
         step7: files.step7 ? 'Present' : 'Missing',
       });
 
-      const result = await submitResearchApplication(allData, files);
+      const result = await submitResearchApplication(submissionData, files);
 
       console.log('Server action result:', result);
 
@@ -61,14 +115,14 @@ export default function Step8ReviewSubmit() {
       sessionStorage.removeItem('step7File');
 
       // Store submission data for success page
-      const submissionData = {
+      const submissionDataForStorage = {
         submissionId: result.submissionId,
-        ...allData,
+        ...submissionData,
         submittedAt: new Date().toISOString(),
         status: 'Pending Review'
       };
 
-      localStorage.setItem('lastSubmission', JSON.stringify(submissionData));
+      localStorage.setItem('lastSubmission', JSON.stringify(submissionDataForStorage));
 
       // Redirect to success page
       router.push('/researchermodule/submissions/new/success');
@@ -84,8 +138,6 @@ export default function Step8ReviewSubmit() {
   const handleBack = () => {
     router.push('/researchermodule/submissions/new/step7');
   };
-
-  const router = useRouter();
 
   const handleEdit = (step: number) => {
     router.push(`/researchermodule/submissions/new/step${step}`);

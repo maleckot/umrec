@@ -1,7 +1,7 @@
 // app/staffmodule/submissions/approved/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, FileCheck, Eye, Send, FileText } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -12,6 +12,8 @@ import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-d
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
+import { getApprovedDetails } from '@/app/actions/secretariat-staff/staff/getApprovedDetails';
+import { releaseApprovalDocuments } from '@/app/actions/secretariat-staff/staff/releaseApprovalDocuments';
 
 export default function StaffApprovedPage() {
   const router = useRouter();
@@ -22,133 +24,136 @@ export default function StaffApprovedPage() {
   const [isReleasing, setIsReleasing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
 
-  const originalDocuments = [
-    'Application Form Ethics Review.pdf',
-    'Research Protocol.pdf',
-    'Informed Consent Form.pdf',
-    'Validated Research Instrument.pdf',
-    'Endorsement Letter.pdf',
-    'Proposal defense certification/evaluation.pdf',
-  ];
+  useEffect(() => {
+    if (submissionId) {
+      loadData();
+    }
+  }, [submissionId]);
 
-  const approvalDocuments = [
-    {
-      id: 1,
-      title: 'Certificate of Approval',
-      description: 'Official certificate confirming ethical approval',
-      url: '/sample-certificate.pdf',
-      icon: FileText,
-    },
-    {
-      id: 2,
-      title: 'Form 0011 - Protocol Reviewer Worksheet',
-      description: 'Protocol reviewer worksheet document',
-      url: '/sample-form-0011.pdf',
-      icon: FileText,
-    },
-    {
-      id: 3,
-      title: 'Form 0012 - Informed Consent Checklist',
-      description: 'Informed consent checklist document',
-      url: '/sample-form-0012.pdf',
-      icon: FileText,
-    },
-  ];
-
-  const reviews = [
-    {
-      id: 1,
-      reviewerName: 'Prof. Juan Dela Cruz',
-      status: 'Complete' as const,
-      completedDate: 'May 25, 2023',
-      overallAssessment: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-      feedbacks: [
-        {
-          document: 'Research Protocol',
-          comment: 'It is essential that [Specific Section/Issue Name] be addressed and revised accordingly',
-        },
-      ],
-    },
-    {
-      id: 2,
-      reviewerName: 'Prof. Anton John Garcia',
-      status: 'Complete' as const,
-      completedDate: 'May 28, 2023',
-      overallAssessment: 'The research methodology is sound and the ethical considerations have been thoroughly addressed.',
-      feedbacks: [],
-    },
-  ];
-
-  const historyEvents = [
-    {
-      id: 1,
-      title: 'Submission Received',
-      date: 'May 15, 2023 • 09:45 AM',
-      icon: 'submission' as const,
-    },
-    {
-      id: 2,
-      title: 'Document Verification Complete',
-      date: 'May 16, 2023 • 11:23 AM',
-      icon: 'verification' as const,
-      description: 'All documents verified and consolidated by staff',
-    },
-    {
-      id: 3,
-      title: 'Classification - Expedited',
-      date: 'May 21, 2023 • 1:43 PM',
-      icon: 'classification' as const,
-      description: 'Classified as Expedited by secretariat',
-    },
-    {
-      id: 4,
-      title: 'Reviewers Assigned',
-      date: 'May 22, 2023 • 10:15 AM',
-      icon: 'assignment' as const,
-      description: '2 reviewers assigned by staff',
-    },
-    {
-      id: 5,
-      title: 'Under Review',
-      date: 'May 22, 2023 • 10:16 AM',
-      icon: 'review' as const,
-    },
-    {
-      id: 6,
-      title: 'All Reviews Completed',
-      date: 'May 28, 2023 • 3:30 PM',
-      icon: 'complete' as const,
-      description: 'All reviewers have completed their assessments',
-    },
-    {
-      id: 7,
-      title: 'Approved for Certificate Release',
-      date: 'May 29, 2023 • 10:00 AM',
-      icon: 'complete' as const,
-      isCurrent: true,
-      description: 'Submission approved and documents generated',
-    },
-  ];
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await getApprovedDetails(submissionId!);
+      if (result.success) {
+        setData(result);
+      } else {
+        console.error('Failed to load:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewDocument = (name: string, url: string) => {
     setSelectedDocument({ name, url });
     setIsModalOpen(true);
   };
 
-  const handleReleaseDocuments = async () => {
-    setIsReleasing(true);
-    // Simulate releasing documents to researcher
-    await new Promise(resolve => setTimeout(resolve, 1500));
+const handleReleaseDocuments = async () => {
+  if (!confirm('Are you sure you want to release the approval documents to the researcher?')) {
+    return;
+  }
+
+  setIsReleasing(true);
+  
+  try {
+    const result = await releaseApprovalDocuments(submissionId!);
+    
+    if (result.success) {
+      alert('Documents released to researcher successfully!');
+      router.push('/staffmodule/submissions');
+    } else {
+      alert(`Failed to release documents: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Error releasing documents:', error);
+    alert('An error occurred while releasing documents');
+  } finally {
     setIsReleasing(false);
-    alert('Documents released to researcher successfully!');
-    // Redirect to review-complete after release
-    router.push(`/staffmodule/submissions/review-complete?id=${submissionId}`);
-  };
+  }
+};
+
+
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Loading..." activeNav="submissions">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Not Found" activeNav="submissions">
+        <p className="text-center py-12">Submission not found</p>
+      </DashboardLayout>
+    );
+  }
+
+  const { submission, consolidatedDocument, originalDocuments, reviews, assignedReviewers, reviewsComplete, reviewsRequired } = data;
+
+  // ✅ Get ap  val documents from database with FileText icon
+  const approvalDocuments = data.approvalDocuments?.map((doc: any) => ({
+    ...doc,
+    icon: FileText,
+  })) || [];
+
+  const historyEvents = [
+    {
+      id: 1,
+      title: 'Submission Received',
+      date: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+      icon: 'submission' as const,
+    },
+    {
+      id: 2,
+      title: 'Document Verification Complete',
+      date: consolidatedDocument?.uploadedAt ? new Date(consolidatedDocument.uploadedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+      icon: 'verification' as const,
+      description: 'All documents verified and consolidated by staff',
+    },
+    {
+      id: 3,
+      title: `Classification - ${submission?.classificationType || 'Full Review'}`,
+      date: 'Completed',
+      icon: 'classification' as const,
+      description: 'Classified by secretariat',
+    },
+    {
+      id: 4,
+      title: 'Reviewers Assigned',
+      date: 'Completed',
+      icon: 'assignment' as const,
+      description: `${reviewsRequired} reviewers assigned by staff`,
+    },
+    {
+      id: 5,
+      title: 'All Reviews Completed',
+      date: 'Completed',
+      icon: 'complete' as const,
+      description: 'All reviewers have completed their assessments',
+    },
+    {
+      id: 6,
+      title: 'Approved for Certificate Release',
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      icon: 'complete' as const,
+      isCurrent: true,
+      description: 'Submission approved and documents generated',
+    },
+  ];
+
+  const originalDocsList = originalDocuments?.map((doc: any) => doc.name) || [];
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -161,18 +166,16 @@ export default function StaffApprovedPage() {
       </div>
 
       <SubmissionHeader
-        title="UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms"
-        submittedBy="Juan Dela Cruz"
-        submittedDate="July 24, 2025"
-        coAuthors="Jeon Wonwoo, Choi Seungcheol, and Lee Dokyeom"
-        submissionId="SUB-2025-001"
+        title={submission?.title || 'Untitled Submission'}
+        submittedBy={submission?.researcher?.fullName || 'Unknown'}
+        submittedDate={submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
+        coAuthors={submission?.coAuthors || 'None'}
+        submissionId={submission?.trackingNumber || 'N/A'}
       />
 
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Conditional Grid */}
       <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
-        {/* Main Content */}
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
@@ -191,14 +194,14 @@ export default function StaffApprovedPage() {
                 </div>
               </div>
 
-              {/* Approval Documents Card */}
+              {/* Approval Documents */}
               <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Approval Documents
                 </h3>
                 
                 <div className="space-y-3 mb-6">
-                  {approvalDocuments.map((doc) => (
+                  {approvalDocuments.map((doc: any) => (
                     <div
                       key={doc.id}
                       className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
@@ -228,7 +231,6 @@ export default function StaffApprovedPage() {
                   ))}
                 </div>
 
-                {/* Release Button */}
                 <button
                   onClick={handleReleaseDocuments}
                   disabled={isReleasing}
@@ -246,18 +248,19 @@ export default function StaffApprovedPage() {
                 </div>
               </div>
 
+              {/* Consolidated Document */}
               <ConsolidatedDocument
                 title="Consolidated Document"
                 description="All reviews have been completed. You can view the final assessments in the Reviews tab."
-                consolidatedDate="May 16, 2023 • 11:23 AM"
-                fileUrl="/sample-document.pdf"
-                originalDocuments={originalDocuments}
+                consolidatedDate={consolidatedDocument?.uploadedAt || submission?.submittedAt || 'N/A'}
+                fileUrl={consolidatedDocument?.url || ''}
+                originalDocuments={originalDocsList}
               />
             </>
           )}
 
           {activeTab === 'reviews' && (
-            <ReviewsTab reviews={reviews} completionStatus="2/2 Reviews Complete" />
+            <ReviewsTab reviews={reviews || []} completionStatus={`${reviewsComplete}/${reviewsRequired} Reviews Complete`} />
           )}
 
           {activeTab === 'history' && (
@@ -265,40 +268,35 @@ export default function StaffApprovedPage() {
           )}
         </div>
 
-        {/* Sidebar - Only in overview */}
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
               status="Approved"
-              category="Expedited"
+              category={submission?.classificationType || 'Full Review'}
               details={{
-                submissionDate: 'July 24, 2025',
-                reviewersRequired: 2,
-                reviewersAssigned: 2,
+                submissionDate: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+                reviewersRequired: reviewsRequired || 0,
+                reviewersAssigned: reviewsRequired || 0,
               }}
               authorInfo={{
-                name: 'Juan Dela Cruz',
-                organization: 'Internal (UMAK)',
-                school: 'University of Makati',
-                college: 'College of Computing and Information Sciences',
-                email: 'jdelacruz.st2342@umak.edu.ph',
+                name: submission?.researcher?.fullName || 'Unknown',
+                organization: submission?.researcher?.organization || 'N/A',
+                school: submission?.researcher?.school || 'N/A',
+                college: submission?.researcher?.college || 'N/A',
+                email: submission?.researcher?.email || 'N/A',
               }}
               timeline={{
-                submitted: 'July 24, 2025',
-                reviewDue: 'August 5, 2025',
-                decisionTarget: 'August 10, 2025',
+                submitted: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+                reviewDue: 'Completed',
+                decisionTarget: 'Completed',
               }}
-              assignedReviewers={[
-                'Prof. Juan Dela Cruz',
-                'Prof. Anton John Garcia',
-              ]}
+              assignedReviewers={assignedReviewers || []}
               statusMessage="Review documents and release approval certificate and forms to researcher."
             />
           </div>
         )}
       </div>
 
-      {/* Document Viewer Modal */}
       {isModalOpen && selectedDocument && (
         <DocumentViewerModal
           isOpen={isModalOpen}

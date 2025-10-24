@@ -2,6 +2,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { generateApprovalDocuments } from '@/utils/pdf/generateApprovalDocs'; // ✅ Add import
 
 export async function submitReview(submissionId: string, answers: any, formVersionId: string) {
   try {
@@ -74,7 +75,6 @@ export async function submitReview(submissionId: string, answers: any, formVersi
       })
       .select()
       .single();
-
 
     if (reviewError) {
       console.error('❌ Review insert error:', reviewError);
@@ -163,10 +163,21 @@ export async function submitReview(submissionId: string, answers: any, formVersi
       }
 
       console.log(`✅ Submission status updated to: ${finalStatus}`, updatedSubmission);
+
+      // ✅✅✅ GENERATE APPROVAL DOCUMENTS IF APPROVED ✅✅✅
+      if (finalStatus === 'approved') {
+        console.log('📄 Generating approval documents...');
+        try {
+          await generateApprovalDocuments(submissionId);
+          console.log('✅ Approval documents generated successfully!');
+        } catch (genError) {
+          console.error('⚠️  Warning: Failed to generate approval documents:', genError);
+          // Don't fail the whole operation, just log the error
+        }
+      }
     } else {
       console.log('⏳ Waiting for other reviewers to complete');
     }
-
 
     return {
       success: true,

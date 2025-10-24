@@ -3,6 +3,21 @@
 
 import { createClient } from '@/utils/supabase/server';
 
+function formatDocumentTitle(documentType: string, submissionTitle: string): string {
+  const typeFormatMap: Record<string, string> = {
+    'application_form': 'Application Form',
+    'research_protocol': 'Research Protocol',
+    'informed_consent': 'Informed Consent Form',
+    'curriculum_vitae': 'Curriculum Vitae',
+    'data_collection_tools': 'Data Collection Tools',
+    'other_documents': 'Other Documents',
+    'consolidated_application': 'Consolidated Application',
+  };
+
+  const formattedType = typeFormatMap[documentType] || documentType;
+  return `${formattedType} - ${submissionTitle}`;
+}
+
 export async function getResearcherSubmissions() {
   try {
     const supabase = await createClient();
@@ -10,6 +25,7 @@ export async function getResearcherSubmissions() {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     console.log('Auth user:', user?.id);
     console.log('Auth error:', userError);
+    
     if (userError || !user) {
       return {
         success: false,
@@ -19,16 +35,20 @@ export async function getResearcherSubmissions() {
         currentSubmission: null
       };
     }
+    
     console.log('Current user email:', user?.email);
     console.log('Current user ID:', user?.id);
+
     const { data: submissions, error: submissionsError } = await supabase
       .from('research_submissions')
       .select('*')
       .eq('user_id', user.id)
       .order('submitted_at', { ascending: false });
+
     console.log('Submissions count:', submissions?.length);
     console.log('Submissions error:', submissionsError);
     console.log('Raw submissions:', submissions);
+
     if (submissionsError) {
       return {
         success: false,
@@ -54,18 +74,43 @@ export async function getResearcherSubmissions() {
           .select('*')
           .eq('submission_id', submission.id);
 
+        let filteredDocuments = documents || [];
+
+        console.log('=== FILTER DEBUG ===');
+        console.log('Status:', submission.status);
+        console.log('Total documents:', documents?.length);
+        console.log('Document types:', documents?.map(d => d.document_type));
+
+        // ✅ Show only consolidated document for these statuses:
+        if (submission.status === 'under_review' ||
+          submission.status === 'review_complete' ||
+          submission.status === 'approved') {
+          filteredDocuments = (documents || []).filter(
+            doc => doc.document_type === 'consolidated_application'
+          );
+          console.log('After filter - filtered count:', filteredDocuments.length);
+        }
+        console.log('===================');
+
         const documentsWithUrls = await Promise.all(
-          (documents || []).map(async (doc) => {
+          filteredDocuments.map(async (doc) => {
             const verification = verifications?.find(v => v.document_id === doc.id);
 
             const { data: urlData } = await supabase.storage
               .from('research-documents')
               .createSignedUrl(doc.file_url, 3600);
 
+            const displayTitle = formatDocumentTitle(doc.document_type, submission.title);
+
+            console.log('Document type:', doc.document_type);
+            console.log('Submission title:', submission.title);
+            console.log('Display title:', displayTitle);
+
             return {
               id: doc.id,
               fileName: doc.file_name,
               fileType: doc.document_type,
+              displayTitle: displayTitle,
               fileUrl: urlData?.signedUrl || null,
               fileSize: doc.file_size,
               isApproved: verification?.is_approved ?? null,
@@ -75,13 +120,46 @@ export async function getResearcherSubmissions() {
           })
         );
 
+        // ✅ Fetch approval documents if status is review_complete
+        let certificateUrl = null;
+        let form0011Url = null;
+        let form0012Url = null;
+
+        if (submission.status === 'review_complete') {
+          const { data: approvalDocs } = await supabase
+            .from('uploaded_documents')
+            .select('*')
+            .eq('submission_id', submission.id)
+            .in('document_type', ['certificate_of_approval', 'form_0011', 'form_0012']);
+
+          if (approvalDocs) {
+            for (const doc of approvalDocs) {
+              const { data: urlData } = await supabase.storage
+                .from('research-documents')
+                .createSignedUrl(doc.file_url, 3600);
+
+              if (doc.document_type === 'certificate_of_approval') {
+                certificateUrl = urlData?.signedUrl;
+              } else if (doc.document_type === 'form_0011') {
+                form0011Url = urlData?.signedUrl;
+              } else if (doc.document_type === 'form_0012') {
+                form0012Url = urlData?.signedUrl;
+              }
+            }
+          }
+        }
+
         return {
           ...submission,
-          documents: documentsWithUrls
+          documents: documentsWithUrls,
+          certificateUrl,
+          form0011Url,
+          form0012Url,
+          approvalDate: submission.status === 'review_complete' ? submission.updated_at : null
         };
       })
     );
-   
+
     const stats = {
       active: submissionList.filter(s =>
         ['new_submission', 'awaiting_classification', 'under_review', 'pending', 'classified'].includes(s.status)

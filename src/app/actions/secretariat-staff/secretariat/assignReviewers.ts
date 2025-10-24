@@ -49,26 +49,6 @@ export async function assignReviewers(
       return { success: false, error: 'Failed to update submission status' };
     }
 
-    // Create history record
-    const { error: historyError } = await supabase
-      .from('submission_history')
-      .insert({
-        submission_id: submissionId,
-        action: 'reviewers_assigned',
-        actor_id: user.id,
-        actor_role: 'staff',
-        details: {
-          reviewer_ids: reviewerIds,
-          reviewer_count: reviewerIds.length,
-          due_date: dueDate.toISOString(),
-        },
-        created_at: new Date().toISOString(),
-      });
-
-    if (historyError) {
-      console.error('History error:', historyError);
-    }
-
     return { 
       success: true,
       assignmentCount: reviewerIds.length 

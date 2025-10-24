@@ -98,7 +98,7 @@ export default function ClassificationPanel({
                   <p className="text-2xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {systemSuggestedCategory}
                   </p>
-                  <div className="flex items-center gap-2 mb-2">
+                  {/* <div className="flex items-center gap-2 mb-2">
                     <div className="flex-1 bg-blue-200 rounded-full h-2 overflow-hidden">
                       <div 
                         className="bg-blue-600 h-full rounded-full transition-all"
@@ -111,7 +111,7 @@ export default function ClassificationPanel({
                   </div>
                   <p className="text-xs text-blue-800 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     System has automatically analyzed this submission using {aiMethod || 'advanced classification'}
-                  </p>
+                  </p> */}
                   {aiClassifiedAt && (
                     <p className="text-xs text-blue-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Classified on {new Date(aiClassifiedAt).toLocaleDateString('en-US', {

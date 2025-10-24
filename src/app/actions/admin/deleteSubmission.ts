@@ -34,7 +34,7 @@ export async function deleteSubmission(submissionId: string) {
       return { success: false, error: deleteError.message };
     }
 
-    console.log('✅ Submission deleted successfully:', submissionId);
+    console.log('Submission deleted successfully:', submissionId);
 
     return {
       success: true,

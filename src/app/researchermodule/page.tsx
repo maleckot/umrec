@@ -13,6 +13,7 @@ interface Document {
   id: number;
   fileName: string;
   fileType: string;
+  displayTitle?: string; // ✅ Add this
   fileUrl: string | null;
   fileSize: number;
   isApproved?: boolean | null;
@@ -50,10 +51,10 @@ const getTimelineStage = (status: string) => {
     case 'under_revision':
     case 'needs_revision':
       return 5;
-    case 'review_complete':
     case 'completed':
-      return 6;
     case 'approved':
+      return 6;
+    case 'review_complete':
       return 7;
     default:
       return 1;
@@ -120,12 +121,15 @@ export default function ResearcherDashboard() {
       return hasRejectedDocs;
     }
     if (activeTab === 'pending') {
+      if (submission.status === 'review_complete') {
+         return false;
+      }
       const hasPendingDocs = submission.documents?.some(doc => doc.isApproved === null);
       return hasPendingDocs || submission.status === 'under_review';
     }
     if (activeTab === 'approved') {
       const allApproved = submission.documents?.every(doc => doc.isApproved === true);
-      return allApproved || submission.status === 'approved';
+      return allApproved || submission.status === 'review_complete';
     }
     return true;
   });
@@ -197,7 +201,7 @@ export default function ResearcherDashboard() {
             </p>
           </div>
 
-         {/* Enhanced Main Card with subtle shadow */}
+          {/* Enhanced Main Card with subtle shadow */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-xl border border-gray-200">
 
             {/* Enhanced Stats Overview */}
@@ -274,18 +278,16 @@ export default function ResearcherDashboard() {
                       const certificatesReleased = submission.certificateUrl || submission.form0011Url || submission.form0012Url;
 
                       return (
-                        <div 
-                          key={submission.id} 
-                          className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 shadow-md hover:shadow-lg transition-all duration-300 ${
-                            certificatesReleased 
-                              ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500' 
-                              : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-400 hover:border-yellow-500'
-                          }`}
+                        <div
+                          key={submission.id}
+                          className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 border-2 shadow-md hover:shadow-lg transition-all duration-300 ${certificatesReleased
+                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-400 hover:border-blue-500'
+                            : 'bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-400 hover:border-yellow-500'
+                            }`}
                         >
                           <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
-                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
-                              certificatesReleased ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-yellow-500 to-yellow-600'
-                            }`}>
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${certificatesReleased ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-yellow-500 to-yellow-600'
+                              }`}>
                               {certificatesReleased ? (
                                 <FileCheck size={20} className="text-white sm:w-6 sm:h-6" />
                               ) : (
@@ -293,15 +295,13 @@ export default function ResearcherDashboard() {
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h3 className={`text-base sm:text-lg font-bold mb-1 truncate ${
-                                certificatesReleased ? 'text-blue-900' : 'text-yellow-900'
-                              }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <h3 className={`text-base sm:text-lg font-bold mb-1 truncate ${certificatesReleased ? 'text-blue-900' : 'text-yellow-900'
+                                }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {submission.title}
                               </h3>
-                              <p className={`text-xs sm:text-sm ${
-                                certificatesReleased ? 'text-blue-800' : 'text-yellow-800'
-                              }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                {certificatesReleased 
+                              <p className={`text-xs sm:text-sm ${certificatesReleased ? 'text-blue-800' : 'text-yellow-800'
+                                }`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {certificatesReleased
                                   ? `Approved on ${submission.approvalDate ? formatDate(submission.approvalDate) : formatDate(submission.submitted_at)}`
                                   : 'Review completed. Awaiting certificate release from secretariat.'
                                 }
@@ -372,8 +372,8 @@ export default function ResearcherDashboard() {
               {/* Keep your entire timeline rendering code exactly as is */}
               {/* I'm not showing it here to save space, but use your EXACT original code */}
               {(() => {
-                const activeSubmissions = submissions.filter(s => getTimelineStage(s.status) < 7);
-                
+                const activeSubmissions = submissions.filter(s => getTimelineStage(s.status) < 8);
+
                 if (activeSubmissions.length === 0) {
                   return (
                     <div className="text-center py-8 sm:py-12 bg-gray-50 rounded-xl">
@@ -514,11 +514,10 @@ export default function ResearcherDashboard() {
                           <button
                             key={submission.id}
                             onClick={() => setSelectedSubmissionIndex(index)}
-                            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-medium rounded-xl transition-all duration-300 whitespace-nowrap shadow-sm ${
-                              selectedSubmissionIndex === index
-                                ? 'bg-gradient-to-r from-[#101C50] to-[#1a2d6e] text-white shadow-md scale-105'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow'
-                            }`}
+                            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-medium rounded-xl transition-all duration-300 whitespace-nowrap shadow-sm ${selectedSubmissionIndex === index
+                              ? 'bg-gradient-to-r from-[#101C50] to-[#1a2d6e] text-white shadow-md scale-105'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:shadow'
+                              }`}
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
                             {submission.title.length > 30 ? `${submission.title.substring(0, 30)}...` : submission.title}
@@ -601,15 +600,19 @@ export default function ResearcherDashboard() {
                   </div>
                 ) : (
                   filteredSubmissions.map((submission) => {
-                    const nonConsolidatedDocs = submission.documents?.filter(
-                      doc => doc.fileType !== 'consolidated_application'
-                    ) || [];
+                    // ✅ Determine which docs to show based on status
+                    const docsToDisplay = (submission.status === 'approved' ||
+                      submission.status === 'under_review' ||
+                      submission.status === 'review_complete')
+                      ? submission.documents || [] // ✅ Show all (consolidated only from backend)
+                      : submission.documents?.filter(doc => doc.fileType !== 'consolidated_application') || []; // ✅ Hide consolidated for other statuses
 
-                    if (nonConsolidatedDocs.length === 0) return null;
+                    if (docsToDisplay.length === 0) return null;
 
+                    // ✅ Apply revision filter if needed
                     const docsToShow = activeTab === 'revision'
-                      ? nonConsolidatedDocs.filter(doc => doc.needsRevision === true)
-                      : nonConsolidatedDocs;
+                      ? docsToDisplay.filter(doc => doc.needsRevision === true)
+                      : docsToDisplay;
 
                     if (docsToShow.length === 0) return null;
 
@@ -641,8 +644,9 @@ export default function ResearcherDashboard() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="font-bold text-sm sm:text-base md:text-lg text-[#101C50] mb-0.5 sm:mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                {getDocumentTypeLabel(doc.fileType)}
+                                {doc.displayTitle || getDocumentTypeLabel(doc.fileType)} {/* ✅ Use displayTitle */}
                               </h4>
+
                               <p className="text-xs sm:text-sm md:text-base text-gray-600 mb-0.5 sm:mb-1 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {docStatusInfo.description}
                               </p>

@@ -47,7 +47,7 @@ export async function getReviewerEvaluations(submissionId: string) {
       const { data: urlData } = await supabase.storage
         .from('research-documents')
         .createSignedUrl(consolidatedDoc.file_url, 3600); // 1 hour expiry
-      
+
       signedUrl = urlData?.signedUrl;
       console.log('🔗 Signed URL generated:', signedUrl ? 'Yes' : 'No');
     }
@@ -125,16 +125,16 @@ export async function getReviewerEvaluations(submissionId: string) {
     // Format the evaluations with CORRECT field names
     const evaluations = reviews?.map(review => {
       const reviewer = reviewerMap.get(review.reviewer_id);
-      
+
       // Combine Protocol and ICF recommendations
       const protocolRec = review.protocol_recommendation || '';
       const icfRec = review.icf_recommendation || '';
       const decision = protocolRec || icfRec || 'Pending';
-      
+
       const protocolEthics = review.protocol_ethics_recommendation || '';
       const icfEthics = review.icf_ethics_recommendation || '';
       const ethicsRecommendation = [protocolEthics, icfEthics].filter(Boolean).join(' | ') || 'No recommendation provided';
-      
+
       const protocolTech = review.protocol_technical_suggestions || '';
       const icfTech = review.icf_technical_suggestions || '';
       const technicalSuggestions = [protocolTech, icfTech].filter(Boolean).join(' | ') || 'No suggestions provided';
@@ -168,8 +168,8 @@ export async function getReviewerEvaluations(submissionId: string) {
       .maybeSingle();
 
     // Calculate due date
-    const assignedDate = assignment?.assigned_at 
-      ? new Date(assignment.assigned_at) 
+    const assignedDate = assignment?.assigned_at
+      ? new Date(assignment.assigned_at)
       : new Date(submission.submitted_at);
     const dueDate = new Date(assignedDate);
     dueDate.setDate(dueDate.getDate() + 30);
@@ -182,7 +182,7 @@ export async function getReviewerEvaluations(submissionId: string) {
         id: submission.id,
         title: submission.title,
         description: submission.description || 'No description provided',
-        category: submission.classification_category || 'Full Review',
+        category: submission.classification_type || 'Full Review',
         assignedDate: assignedDate.toLocaleDateString('en-US'),
         submittedDate: new Date(submission.submitted_at).toLocaleDateString('en-US'),
         dueDate: dueDate.toLocaleDateString('en-US'),
@@ -190,10 +190,12 @@ export async function getReviewerEvaluations(submissionId: string) {
       },
       consolidatedDocument: consolidatedDoc ? {
         name: consolidatedDoc.file_name,
-        url: signedUrl, // ✅ Return signed URL
+        displayTitle: `Consolidated Application - ${submission.title}`, // ✅ Add this
+        url: signedUrl,
         uploadedAt: consolidatedDoc.uploaded_at
       } : null
     };
+
 
   } catch (error) {
     console.error('❌ Error in getReviewerEvaluations:', error);

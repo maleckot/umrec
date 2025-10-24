@@ -13,12 +13,13 @@ import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-d
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getSubmissionDetails } from '@/app/actions/admin/getAdminSubmissionDetails';
+import { deleteSubmission } from '@/app/actions/admin/deleteSubmission';
 
 export default function AdminSubmissionDetailsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  
+
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,18 +41,18 @@ export default function AdminSubmissionDetailsPage() {
 
     console.log('📱 Admin: Loading data for submission:', submissionId);
     setLoading(true);
-    
+
     try {
       const result = await getSubmissionDetails(submissionId);
-      
+
       console.log('📱 Admin: Received result:', result);
-      
+
       if (!result.success) {
         setError(result.error || 'Failed to fetch submission details');
         return;
       }
-      
-      
+
+
       setData(result);
       setError(null);
     } catch (err) {
@@ -63,8 +64,26 @@ export default function AdminSubmissionDetailsPage() {
   };
 
   const handleDelete = async () => {
-    console.log('Deleting submission:', submissionId);
-    router.push('/adminmodule/submissions');
+    if (!submissionId) {
+      alert('No submission ID found');
+      return;
+    }
+
+    try {
+      const result = await deleteSubmission(submissionId);
+
+      if (result.success) {
+        alert('Submission deleted successfully!');
+        router.push('/adminmodule/submissions');
+      } else {
+        alert(`Failed to delete: ${result.error}`);
+        setShowDeleteModal(false);
+      }
+    } catch (error) {
+      console.error('Error deleting submission:', error);
+      alert('An error occurred while deleting the submission');
+      setShowDeleteModal(false);
+    }
   };
 
   const getStatusInfo = (status: string) => {
@@ -236,7 +255,7 @@ export default function AdminSubmissionDetailsPage() {
                   <DocumentList
                     documents={submission.documents}
                     title="Documents"
-                    description={submission.status === 'Under Verification' 
+                    description={submission.status === 'Under Verification'
                       ? "Please verify all submission documents are complete and meet requirements."
                       : "Individual documents from submission."}
                   />
