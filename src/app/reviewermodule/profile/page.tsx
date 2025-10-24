@@ -32,7 +32,7 @@ export default function ReviewerProfilePage() {
         expertiseAreas: result.profile.expertiseAreas,
         lastPasswordChange: result.profile.lastPasswordChange,
         statistics: result.statistics,
-        certificates: result.profile.certificates || [],
+        // certificates: result.profile.certificates || [],
       });
     } else {
       alert('Failed to load profile: ' + (result.error || 'Unknown error'));
