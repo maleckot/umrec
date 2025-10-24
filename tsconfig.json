@@ -22,6 +22,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/staffmodule/submissions/assign-reviewers"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/app/staffmodule/submissions/assign-reviewers", ".eslintrc.ts"],
   "exclude": ["node_modules"]
 }
