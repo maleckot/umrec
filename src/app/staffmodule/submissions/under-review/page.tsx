@@ -1,7 +1,7 @@
 // app/staffmodule/submissions/under-review/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -11,6 +11,7 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import { getUnderReviewDetails } from '@/app/actions/secretariat-staff/getUnderReviewSubmission';
 
 export default function UnderReviewPage() {
   const router = useRouter();
@@ -18,74 +19,84 @@ export default function UnderReviewPage() {
   const submissionId = searchParams.get('id');
   
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
 
-  // Original documents that were consolidated
-  const originalDocuments = [
-    'Application Form Ethics Review.pdf',
-    'Research Protocol.pdf',
-    'Informed Consent Form.pdf',
-    'Validated Research Instrument.pdf',
-    'Endorsement Letter.pdf',
-    'Proposal defense certification/evaluation.pdf',
-  ];
+  useEffect(() => {
+    if (submissionId) {
+      loadData();
+    }
+  }, [submissionId]);
 
-  const reviews = [
-    {
-      id: 1,
-      reviewerName: 'Prof. Juan Dela Cruz',
-      status: 'Complete' as const,
-      completedDate: 'May 25, 2023',
-      overallAssessment: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.',
-      feedbacks: [
-        {
-          document: 'Research Protocol',
-          comment: 'It is essential that [Specific Section/Issue Name] be addressed and revised accordingly',
-        },
-        {
-          document: 'Informed Consent Form',
-          comment: 'It is essential that [Specific Section/Issue Name] be addressed and revised accordingly',
-        },
-      ],
-    },
-    {
-      id: 2,
-      reviewerName: 'Prof. Anton John Garcia',
-      status: 'In Progress' as const,
-      dueDate: 'June 16, 2023',
-    },
-  ];
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const result = await getUnderReviewDetails(submissionId!);
+      if (result.success) {
+        setData(result);
+      } else {
+        console.error('Failed to load:', result.error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Loading..." activeNav="submissions">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!data) {
+    return (
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Not Found" activeNav="submissions">
+        <p className="text-center py-12">Submission not found</p>
+      </DashboardLayout>
+    );
+  }
+
+  const { submission, consolidatedDocument, originalDocuments, reviews, assignedReviewers, reviewsComplete, reviewsRequired } = data;
+
+  const originalDocsList = originalDocuments?.map((doc: any) => doc.name) || [];
 
   const historyEvents = [
     {
       id: 1,
       title: 'Submission Received',
-      date: 'May 15, 2023 • 09:45 AM',
+      date: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
       icon: 'submission' as const,
     },
     {
       id: 2,
       title: 'Document Verification Complete',
-      date: 'May 16, 2023 • 11:23 AM',
+      date: consolidatedDocument?.uploadedAt ? new Date(consolidatedDocument.uploadedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Processing',
       icon: 'verification' as const,
       description: 'All documents verified and consolidated into one file',
     },
     {
       id: 3,
-      title: 'Classification - Expedited',
-      date: 'May 21, 2023 • 1:43 PM',
+      title: `Classification - ${submission?.classificationType || 'Pending'}`,
+      date: 'Processing',
       icon: 'classification' as const,
     },
     {
       id: 4,
       title: 'Reviewers Assigned',
-      date: 'May 22, 2023 • 10:15 AM',
+      date: 'Processing',
       icon: 'assignment' as const,
-      description: '2 reviewers assigned',
+      description: `${reviewsRequired} reviewers assigned`,
     },
     {
       id: 5,
       title: 'Under Review',
-      date: 'May 22, 2023 • 10:16 AM',
+      date: 'In Progress',
       icon: 'review' as const,
       isCurrent: true,
     },
@@ -93,7 +104,6 @@ export default function UnderReviewPage() {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -106,31 +116,29 @@ export default function UnderReviewPage() {
       </div>
 
       <SubmissionHeader
-        title="UMREConnect: An AI-Powered Web Application for Document Management Using Classification Algorithms"
-        submittedBy="Juan Dela Cruz"
-        submittedDate="July 24, 2025"
-        coAuthors="Jeon Wonwoo, Choi Seungcheol, and Lee Dokyeom"
-        submissionId="SUB-2025-001"
+        title={submission?.title || 'Untitled Submission'}
+        submittedBy={submission?.researcher?.fullName || 'Unknown'}
+        submittedDate={submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A'}
+        coAuthors={submission?.coAuthors || 'None'}
+        submissionId={submission?.trackingNumber || 'N/A'}
       />
 
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Conditional Grid - Full width for reviews/history */}
       <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
-        {/* Main Content */}
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
             <ConsolidatedDocument
               title="Consolidated Document"
               description="This submission is currently under review. Please wait for reviewers to complete their assessments."
-              consolidatedDate="May 16, 2023 • 11:23 AM"
-              fileUrl="/sample-document.pdf"
-              originalDocuments={originalDocuments}
+              consolidatedDate={consolidatedDocument?.uploadedAt || submission?.submittedAt || 'N/A'}
+              fileUrl={consolidatedDocument?.url || '/sample-document.pdf'}
+              originalDocuments={originalDocsList}
             />
           )}
 
           {activeTab === 'reviews' && (
-            <ReviewsTab reviews={reviews} completionStatus="1/2 Reviews Complete" />
+            <ReviewsTab reviews={reviews || []} completionStatus={`${reviewsComplete}/${reviewsRequired} Reviews Complete`} />
           )}
 
           {activeTab === 'history' && (
@@ -138,33 +146,29 @@ export default function UnderReviewPage() {
           )}
         </div>
 
-        {/* Sidebar - Only show in overview tab */}
         {activeTab === 'overview' && (
           <div>
             <SubmissionSidebar
               status="Under Review"
-              category="Expedited"
+              category={submission?.classificationType || 'Pending'}
               details={{
-                submissionDate: 'July 24, 2025',
-                reviewersRequired: 2,
-                reviewersAssigned: 2,
+                submissionDate: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+                reviewersRequired: reviewsRequired || 0,
+                reviewersAssigned: reviewsRequired || 0,
               }}
               authorInfo={{
-                name: 'Juan Dela Cruz',
-                organization: 'Internal (UMAK)',
-                school: 'University of Makati',
-                college: 'College of Computing and Information Sciences',
-                email: 'jdelacruz.st2342@umak.edu.ph',
+                name: submission?.researcher?.fullName || 'Unknown',
+                organization: submission?.researcher?.organization || 'N/A',
+                school: submission?.researcher?.school || 'N/A',
+                college: submission?.researcher?.college || 'N/A',
+                email: submission?.researcher?.email || 'N/A',
               }}
               timeline={{
-                submitted: 'July 24, 2025',
-                reviewDue: 'August 5, 2025',
-                decisionTarget: 'August 10, 2025',
+                submitted: submission?.submittedAt ? new Date(submission.submittedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'N/A',
+                reviewDue: 'TBD',
+                decisionTarget: 'TBD',
               }}
-              assignedReviewers={[
-                'Prof. Juan Dela Cruz',
-                'Prof. Anton John Garcia',
-              ]}
+              assignedReviewers={assignedReviewers || []}
               statusMessage="This submission has been verified, consolidated, and classified. Now under review by assigned reviewers."
             />
           </div>

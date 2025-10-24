@@ -34,7 +34,7 @@ export async function submitReview(submissionId: string, answers: any, formVersi
     // Separate protocol and consent answers
     const protocolAnswers: any = {};
     const consentAnswers: any = {};
-    
+
     Object.keys(answers).forEach(key => {
       if (key.startsWith('icf_')) {
         consentAnswers[key] = answers[key];
@@ -56,15 +56,25 @@ export async function submitReview(submissionId: string, answers: any, formVersi
         form_version_id: formVersionId,
         protocol_answers: protocolAnswers,
         consent_answers: consentAnswers,
-        recommendation: answers.recommendation,
-        disapproval_reasons: answers.disapproval_reasons || null,
-        ethics_recommendation: answers.ethics_recommendation,
-        technical_suggestions: answers.technical_suggestions || null,
+
+        // Protocol Review fields
+        protocol_recommendation: answers.protocol_recommendation,
+        protocol_disapproval_reasons: answers.protocol_disapproval_reasons || null,
+        protocol_ethics_recommendation: answers.protocol_ethics_recommendation,
+        protocol_technical_suggestions: answers.protocol_technical_suggestions || null,
+
+        // ICF Review fields
+        icf_recommendation: answers.icf_recommendation,
+        icf_disapproval_reasons: answers.icf_disapproval_reasons || null,
+        icf_ethics_recommendation: answers.icf_ethics_recommendation,
+        icf_technical_suggestions: answers.icf_technical_suggestions || null,
+
         status: 'submitted',
         submitted_at: new Date().toISOString(),
       })
       .select()
       .single();
+
 
     if (reviewError) {
       console.error('❌ Review insert error:', reviewError);
@@ -76,7 +86,7 @@ export async function submitReview(submissionId: string, answers: any, formVersi
     // Update assignment status to completed
     const { error: updateError } = await supabase
       .from('reviewer_assignments')
-      .update({ 
+      .update({
         status: 'review_complete',
         completed_at: new Date().toISOString()
       })
@@ -96,24 +106,54 @@ export async function submitReview(submissionId: string, answers: any, formVersi
 
     console.log('📊 All assignments:', allAssignments);
 
-    const allCompleted = allAssignments?.every(a => a.status === 'completed');
+    const allCompleted = allAssignments?.every(a => a.status === 'review_complete');
     console.log('🔍 All completed?', allCompleted);
 
     if (allCompleted) {
-      console.log('✅ All reviewers completed - updating submission status');
-      
-      // ✅ ADD ERROR CHECKING HERE
+      console.log('✅ All reviewers completed - checking recommendations');
+
+      // ✅ Fetch all reviews to check recommendations
+      const { data: allReviews, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('protocol_recommendation, icf_recommendation')
+        .eq('submission_id', submissionId);
+
+      if (reviewsError) {
+        console.error('❌ Failed to fetch reviews:', reviewsError);
+        return {
+          success: true,
+          reviewId: review.id,
+          message: 'Review submitted successfully, but failed to determine final status',
+          warning: reviewsError.message
+        };
+      }
+
+      // ✅ Check if any review has "Major Revision" or "Disapproved"
+      const hasRevisionNeeded = allReviews?.some(r =>
+        r.protocol_recommendation === 'Major Revision' ||
+        r.protocol_recommendation === 'Disapproved' ||
+        r.icf_recommendation === 'Major Revision' ||
+        r.icf_recommendation === 'Disapproved'
+      );
+
+      // ✅ Determine final status
+      const finalStatus = hasRevisionNeeded ? 'needs_revision' : 'approved';
+
+      console.log('📊 All protocol recommendations:', allReviews?.map(r => r.protocol_recommendation));
+      console.log('📊 All ICF recommendations:', allReviews?.map(r => r.icf_recommendation));
+      console.log('🎯 Final status:', finalStatus);
+
+      // Update submission status
       const { data: updatedSubmission, error: submissionUpdateError } = await supabase
         .from('research_submissions')
-        .update({ status: 'reviewed' })
+        .update({ status: finalStatus })
         .eq('id', submissionId)
-        .select();  
+        .select();
 
       if (submissionUpdateError) {
         console.error('❌ Failed to update submission status:', submissionUpdateError);
         console.error('Error details:', JSON.stringify(submissionUpdateError, null, 2));
-        
-        // Return success for review but warn about status update failure
+
         return {
           success: true,
           reviewId: review.id,
@@ -122,13 +162,14 @@ export async function submitReview(submissionId: string, answers: any, formVersi
         };
       }
 
-      console.log('✅ Submission status updated:', updatedSubmission);
+      console.log(`✅ Submission status updated to: ${finalStatus}`, updatedSubmission);
     } else {
       console.log('⏳ Waiting for other reviewers to complete');
     }
 
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       reviewId: review.id,
       message: 'Review submitted successfully'
     };

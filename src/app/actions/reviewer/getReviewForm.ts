@@ -52,21 +52,49 @@ export async function getReviewForm() {
       return { success: false, error: sectionsError.message };
     }
 
-    // Format sections with ordered questions
-    const formattedSections = sections.map((section: any) => ({
-      title: section.title,
-      subtitle: section.subtitle,
-      questions: section.review_questions
-        .sort((a: any, b: any) => a.order_index - b.order_index)
-        .map((q: any) => ({
-          id: q.question_id,
-          question: q.question_text,
-          type: q.question_type,
-          options: q.options,
-          dependsOn: q.depends_on,
-          required: q.is_required,
-        })),
-    }));
+    const formattedSections = sections.map((section: any, index: number) => {
+      const title = section.title.toLowerCase();
+
+      // ✅ UPDATED: More specific matching
+      const isLastProtocol = title.includes('protocol') &&
+        title.includes('final') &&
+        title.includes('recommendation');
+
+      const isLastICF = title.includes('consent') &&
+        title.includes('final') &&
+        title.includes('recommendation');  // ✅ This prevents matching "Final Questions"
+
+      console.log(`📋 Section ${index + 1}/${sections.length}: "${section.title}"`, {
+        isProtocol: isLastProtocol,
+        isICF: isLastICF
+      });
+
+      return {
+        id: section.id,
+        title: section.title,
+        subtitle: section.subtitle,
+        isLastProtocolSection: isLastProtocol,
+        isLastICFSection: isLastICF,
+        questions: section.review_questions
+          .sort((a: any, b: any) => a.order_index - b.order_index)
+          .map((q: any) => ({
+            id: q.question_id,
+            question: q.question_text,
+            type: q.question_type,
+            options: q.options,
+            dependsOn: q.depends_on,
+            required: q.is_required,
+          })),
+      };
+    });
+
+
+    console.log('✅ Total sections:', formattedSections.length);
+    console.log('✅ Sections with flags:', formattedSections.map(s => ({
+      title: s.title,
+      isLastProtocol: s.isLastProtocolSection,
+      isLastICF: s.isLastICFSection
+    })));
 
     return {
       success: true,

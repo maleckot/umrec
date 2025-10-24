@@ -379,7 +379,7 @@ export default function ReviewDetailPage() {
 
             <div className="space-y-3">
               {submittedFiles.map((file) => (
-                <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="w-10 h-10 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
                       <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -404,16 +404,11 @@ export default function ReviewDetailPage() {
                         alert('Document URL not available');
                       }
                     }}
-                    className={`w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors ${file.status === 'viewed'
-                      ? 'bg-[#101C50] text-white hover:bg-[#0d1640]'
-                      : 'bg-[#7C1100] text-white hover:bg-[#5a0c00]'
-                      }`}
+                    className="w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors bg-[#101C50] text-white cursor-pointer hover:bg-[#0d1640]"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
-                    {file.status === 'viewed' ? 'View' : 'Review'}
+                    View
                   </button>
-
-
                 </div>
               ))}
             </div>
@@ -605,12 +600,6 @@ export default function ReviewDetailPage() {
         </div>
       </div>
 
-      <StartReviewModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onConfirm={handleConfirmReview}
-        submissionTitle={submissionData.title}
-      />
       {selectedDocument && (
         <DocumentViewerModal
           isOpen={viewerOpen}
@@ -630,9 +619,7 @@ export default function ReviewDetailPage() {
         submissionTitle={submissionData.title}
       />
 
-
       <Footer />
-
     </div>
   );
 }

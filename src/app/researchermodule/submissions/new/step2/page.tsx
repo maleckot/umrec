@@ -11,11 +11,12 @@ export default function Step2ApplicationForm() {
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   const [formData, setFormData] = useState({
     title: '',
     studySiteType: '',
-    studySite:'',
+    studySite: '',
     researcherFirstName: '',
     researcherMiddleName: '',
     researcherLastName: '',

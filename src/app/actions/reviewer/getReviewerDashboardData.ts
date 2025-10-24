@@ -93,7 +93,7 @@ export async function getReviewerDashboardData() {
       });
 
     // Calculate stats
-    const completedCount = (assignments || []).filter(a => a.status === 'completed').length;
+    const completedCount = (assignments || []).filter(a => a.status === 'review_complete').length;
 
     return {
       success: true,

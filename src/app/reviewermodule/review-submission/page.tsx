@@ -26,7 +26,7 @@ export default function ReviewSubmissionPage() {
   const [reviewAnswers, setReviewAnswers] = useState<any>({});
   const [submissionData, setSubmissionData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // ✅ NEW: State for review form from database
   const [reviewSections, setReviewSections] = useState<any[]>([]);
   const [formVersionId, setFormVersionId] = useState<string>('');
@@ -93,52 +93,52 @@ export default function ReviewSubmissionPage() {
     }
   };
 
-const handleNext = async () => {
-  // ✅ Simple validation: Check current section questions
-  const currentSection = reviewSections[currentStep];
-  
-  // Get all visible questions (excluding conditional ones that shouldn't show)
-  const visibleQuestions = currentSection.questions.filter((q: any) => {
-    // If question has dependsOn, check if it should be visible
-    if (q.dependsOn) {
-      const dependsOnValue = reviewAnswers[q.dependsOn.id];
-      return q.dependsOn.values.includes(dependsOnValue);
+  const handleNext = async () => {
+    // ✅ Simple validation: Check current section questions
+    const currentSection = reviewSections[currentStep];
+
+    // Get all visible questions (excluding conditional ones that shouldn't show)
+    const visibleQuestions = currentSection.questions.filter((q: any) => {
+      // If question has dependsOn, check if it should be visible
+      if (q.dependsOn) {
+        const dependsOnValue = reviewAnswers[q.dependsOn.id];
+        return q.dependsOn.values.includes(dependsOnValue);
+      }
+      return true; // Always visible if no dependency
+    });
+
+    // Check if all visible questions are answered
+    const unansweredQuestions = visibleQuestions.filter((q: any) => {
+      const answer = reviewAnswers[q.id];
+      return !answer || (typeof answer === 'string' && answer.trim() === '');
+    });
+
+    // ✅ Block if any questions are unanswered
+    if (unansweredQuestions.length > 0) {
+      alert('Please answer all questions before proceeding.');
+      return;
     }
-    return true; // Always visible if no dependency
-  });
 
-  // Check if all visible questions are answered
-  const unansweredQuestions = visibleQuestions.filter((q: any) => {
-    const answer = reviewAnswers[q.id];
-    return !answer || (typeof answer === 'string' && answer.trim() === '');
-  });
-
-  // ✅ Block if any questions are unanswered
-  if (unansweredQuestions.length > 0) {
-    alert('Please answer all questions before proceeding.');
-    return;
-  }
-
-  // Continue to next step or submit
-  if (currentStep < reviewSections.length - 1) {
-    setCurrentStep(currentStep + 1);
-  } else {
-    // Submit review
-    const result = await submitReview(submissionId!, reviewAnswers, formVersionId);
-    
-    if (result.success) {
-      const needsRevision =
-        reviewAnswers.recommendation === 'Approved with Minor revision/s' ||
-        reviewAnswers.recommendation === 'Major revision/s and resubmission required' ||
-        reviewAnswers.recommendation === 'Disapproved';
-      
-      setIsRevisionRequested(needsRevision);
-      setShowSuccessModal(true);
+    // Continue to next step or submit
+    if (currentStep < reviewSections.length - 1) {
+      setCurrentStep(currentStep + 1);
     } else {
-      alert('Failed to submit review: ' + result.error);
+      // Submit review
+      const result = await submitReview(submissionId!, reviewAnswers, formVersionId);
+
+      if (result.success) {
+        const needsRevision =
+          reviewAnswers.recommendation === 'Approved with Minor revision/s' ||
+          reviewAnswers.recommendation === 'Major revision/s and resubmission required' ||
+          reviewAnswers.recommendation === 'Disapproved';
+
+        setIsRevisionRequested(needsRevision);
+        setShowSuccessModal(true);
+      } else {
+        alert('Failed to submit review: ' + result.error);
+      }
     }
-  }
-};
+  };
 
 
   const handleModalClose = () => {
@@ -220,7 +220,10 @@ const handleNext = async () => {
                 subtitle={reviewSections[currentStep].subtitle}
                 questions={reviewSections[currentStep].questions}
                 onAnswersChange={handleAnswersChange}
+                isLastProtocolSection={reviewSections[currentStep].isLastProtocolSection}  // ✅ ADD
+                isLastICFSection={reviewSections[currentStep].isLastICFSection}            // ✅ ADD
               />
+
 
               <div className="flex justify-end gap-3 mt-6">
                 <button

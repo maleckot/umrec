@@ -151,7 +151,7 @@ export default function Step3ResearchProtocol() {
 
   const removeResearcher = (id: string) => {
     if (researchers.length > 1) {
-      setResearchers(researchers.filter(r => r.id !== id));
+      setResearchers(researchers.filter(r => r.id !== id)); 
     }
   };
 

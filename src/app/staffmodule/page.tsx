@@ -44,6 +44,12 @@ export default function StaffDashboard() {
     else if (submission.status === 'Under Review') {
       router.push(`/staffmodule/submissions/under-review?id=${submission.id}`);
     } 
+    else if (submission.status === 'Approved') {
+      router.push(`/staffmodule/submissions/approved?id=${submission.id}`);
+    } 
+    else if (submission.status === 'Review Complete') {
+      router.push(`/staffmodule/submissions/review-complete?id=${submission.id}`);
+    } 
     else {
       router.push(`/staffmodule/submissions/details?id=${submission.id}`);
     }

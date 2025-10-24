@@ -46,7 +46,7 @@ export default function ReviewerDashboard() {
   };
 
   const allNewAssignments = dashboardData?.newAssignments || [];
-  const allOverdueReviews = dashboardData?.overdueReviews || [];
+  const allOverdueReviews = dashboardData?.overdueReviews || [];  
 
   // Filter new assignments based on active tab
   const getFilteredAssignments = () => {
