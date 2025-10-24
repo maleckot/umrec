@@ -14,8 +14,9 @@ import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getSubmissionDetails } from '@/app/actions/admin/getAdminSubmissionDetails';
 import { deleteSubmission } from '@/app/actions/admin/deleteSubmission';
+import { Suspense } from 'react';
 
-export default function AdminSubmissionDetailsPage() {
+function AdminSubmissionDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
@@ -363,5 +364,21 @@ export default function AdminSubmissionDetailsPage() {
         </div>
       )}
     </DashboardLayout>
+  );
+}
+export default function AdminSubmissionDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="admin" roleTitle="Admin" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="ml-3 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Loading submission details...
+          </span>
+        </div>
+      </DashboardLayout>
+    }>
+      <AdminSubmissionDetailsContent />
+    </Suspense>
   );
 }

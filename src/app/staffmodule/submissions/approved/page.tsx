@@ -14,9 +14,9 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getApprovedDetails } from '@/app/actions/secretariat-staff/staff/getApprovedDetails';
 import { releaseApprovalDocuments } from '@/app/actions/secretariat-staff/staff/releaseApprovalDocuments';
-
-export default function StaffApprovedPage() {
-  const router = useRouter();
+import { Suspense } from 'react';
+function StaffApprovedContent() {
+   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -306,5 +306,18 @@ const handleReleaseDocuments = async () => {
         />
       )}
     </DashboardLayout>
+  );
+}
+export default function StaffApprovedPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Loading..." activeNav="submissions">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <StaffApprovedContent />
+    </Suspense>
   );
 }

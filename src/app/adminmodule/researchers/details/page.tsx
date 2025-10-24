@@ -1,6 +1,7 @@
 // app/adminmodule/researchers/details/page.tsx
 'use client';
 
+import { Suspense } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, User, Phone, Mail, Building2, GraduationCap, Calendar, BookOpen } from 'lucide-react';
@@ -10,7 +11,7 @@ import ResearcherSubmissionsTable from '@/components/admin/researchers/Researche
 import { getResearcherDetails } from '@/app/actions/admin/getAdminResearcherDetails';
 import { deleteResearcher } from '@/app/actions/admin/deleteResearcher';
 
-export default function ResearcherDetailsPage() {
+function ResearcherDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const researcherId = searchParams.get('id');
@@ -102,7 +103,6 @@ export default function ResearcherDetailsPage() {
 
   const { researcher, submissions } = researcherData;
 
-  // Extract co-authors from first submission if available
   const coAuthors = submissions.length > 0 && submissions[0].coAuthors 
     ? submissions[0].coAuthors 
     : 'N/A';
@@ -110,7 +110,6 @@ export default function ResearcherDetailsPage() {
   return (
     <>
       <DashboardLayout role="admin" roleTitle="UMREC Admin" pageTitle="Researcher Details" activeNav="researchers">
-        {/* Back Button */}
         <div className="mb-4 sm:mb-6">
           <button
             onClick={() => router.push('/adminmodule/researchers')}
@@ -122,7 +121,6 @@ export default function ResearcherDetailsPage() {
           </button>
         </div>
 
-        {/* Researcher Header */}
         <div className="bg-white rounded-xl p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
           <div className="flex flex-col sm:flex-row items-start gap-4">
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
@@ -168,14 +166,12 @@ export default function ResearcherDetailsPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
         <ResearcherStatsCards
           organization={researcher.organization}
           college={researcher.college}
           totalSubmissions={submissions.length}
         />
 
-        {/* University & Degree Info */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <div className="flex items-start gap-3">
@@ -206,7 +202,6 @@ export default function ResearcherDetailsPage() {
           </div>
         </div>
 
-        {/* Submission Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
           <div className="p-4 sm:p-6 border-b border-gray-200">
             <h2 className="text-lg font-bold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -222,7 +217,6 @@ export default function ResearcherDetailsPage() {
           </div>
         </div>
 
-        {/* Delete Button */}
         <div className="flex justify-end">
           <button
             onClick={handleDeleteClick}
@@ -237,7 +231,6 @@ export default function ResearcherDetailsPage() {
         </div>
       </DashboardLayout>
 
-      {/* Delete Confirmation Modal */}
       {showDeleteModal && (
         <div className="fixed inset-0 flex items-center justify-center z-[60] p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
           <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
@@ -277,5 +270,19 @@ export default function ResearcherDetailsPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function ResearcherDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="admin" roleTitle="UMREC Admin" pageTitle="Researcher Details" activeNav="researchers">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <ResearcherDetailsContent />
+    </Suspense>
   );
 }

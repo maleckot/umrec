@@ -14,9 +14,9 @@ import { useState, useEffect } from 'react';
 import { getSubmissionForReview } from '@/app/actions/reviewer/getSubmissionForReview';
 import { submitReview } from '@/app/actions/reviewer/submitReview';
 import { getReviewForm } from '@/app/actions/reviewer/getReviewForm';
-
-export default function ReviewSubmissionPage() {
-  const router = useRouter();
+import { Suspense } from 'react';
+function ReviewSubmissionContent() {
+   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -254,5 +254,20 @@ export default function ReviewSubmissionPage() {
       />
       <Footer />
     </div>
+);
+}
+export default function ReviewSubmissionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#E8EEF3'}}>
+        <NavbarRoles role="reviewer" />
+        <div className="flex-grow flex items-center justify-center mt-24">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <ReviewSubmissionContent />
+    </Suspense>
   );
 }

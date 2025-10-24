@@ -14,9 +14,9 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { getReviewers } from '@/app/actions/secretariat-staff/secretariat/getReviewers';
 import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/assignReviewers';
-
-export default function AssignReviewersPage() {
-  const router = useRouter();
+import { Suspense } from 'react';
+function AssignReviewersContent() {
+   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -321,5 +321,18 @@ export default function AssignReviewersPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function AssignReviewersPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <AssignReviewersContent />
+    </Suspense>
   );
 }

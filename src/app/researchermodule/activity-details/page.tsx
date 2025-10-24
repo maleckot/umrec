@@ -11,7 +11,7 @@ import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSubmissionActivity } from '@/app/actions/researcher/getSubmissionActivity';
-
+import{ Suspense } from 'react';
 interface Document {
   id: number;
   fileName: string;
@@ -29,8 +29,7 @@ interface Comment {
   commentText: string;
   createdAt: string;
 }
-
-export default function ActivityDetailsPage() {
+function ActivityDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activityId = searchParams.get('id');
@@ -362,5 +361,20 @@ export default function ActivityDetailsPage() {
 
       <Footer />
     </div>
+);
+}
+export default function ActivityDetailsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+        <NavbarRoles role="researcher" />
+        <div className="flex-grow flex items-center justify-center mt-24">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <ActivityDetailsContent />
+    </Suspense>
   );
 }

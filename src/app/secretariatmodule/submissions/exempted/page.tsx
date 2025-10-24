@@ -10,9 +10,9 @@ import TabNavigation from '@/components/staff-secretariat-admin/submission-detai
 import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-
-export default function SecretariatExemptedPage() {
-  const router = useRouter();
+import { Suspense } from 'react';
+function SecretariatExemptedContent() {
+const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -155,5 +155,18 @@ export default function SecretariatExemptedPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function SecretariatExemptedPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <SecretariatExemptedContent />
+    </Suspense>
   );
 }

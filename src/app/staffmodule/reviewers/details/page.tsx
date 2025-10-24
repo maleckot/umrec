@@ -10,11 +10,10 @@ import ReviewerReviewsTable from '@/components/staff-secretariat-admin/reviewers
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewerDetails } from '@/app/actions/secretariat-staff/getReviewerDetails';
 import { updateReviewerCode } from '@/app/actions/secretariat-staff/updateReviewerCode';
-
+import{ Suspense } from 'react';
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
-
-export default function ReviewerDetailsPage() {
-  const router = useRouter();
+function ReviewerDetailsContent() {
+   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewerId = searchParams.get('id');
 
@@ -552,3 +551,17 @@ export default function ReviewerDetailsPage() {
     </DashboardLayout>
   );
 }
+
+export default function ReviewerDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Reviewer Details" activeNav="reviewers">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <ReviewerDetailsContent />
+    </Suspense>
+  );
+} 

@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
-
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
+import { Suspense } from 'react';
+function LoginContent() {
+ const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
@@ -478,5 +478,16 @@ export default function LoginPage() {
         }
       `}</style>
     </div>
+);
+}
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#071139]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#F0E847]"></div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

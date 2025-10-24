@@ -14,9 +14,9 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
 import { saveRevisionComment } from '@/app/actions/secretariat-staff/saveRevisionComment';
-
-export default function SecretariatSubmissionDetailsPage() {
-  const router = useRouter();
+import { Suspense } from 'react';
+function SecretariatSubmissionDetailsContent() {
+ const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -459,5 +459,18 @@ const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
         )}
       </div>
     </DashboardLayout>
+);
+}
+export default function SecretariatSubmissionDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <SecretariatSubmissionDetailsContent />
+    </Suspense>
   );
 }

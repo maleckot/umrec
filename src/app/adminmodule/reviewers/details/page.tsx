@@ -10,10 +10,10 @@ import ReviewerReviewsTable from '@/components/admin/reviewers/ReviewerReviewsTa
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewerDetails } from '@/app/actions/admin/reviewer/getAdminReviewerDetails';
 import { deleteReviewer } from '@/app/actions/admin/reviewer/deleteReviewer';
+import { Suspense } from 'react';
 
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
-
-export default function ReviewerDetailsPage() {
+function ReviewerDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewerId = searchParams.get('id');
@@ -25,7 +25,7 @@ export default function ReviewerDetailsPage() {
   const [isEditingExpertise, setIsEditingExpertise] = useState(false);
   const [expertiseInput, setExpertiseInput] = useState('');
   const [expertiseAreas, setExpertiseAreas] = useState<string[]>([]);
-  
+
   // Document viewer state
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
@@ -38,22 +38,28 @@ export default function ReviewerDetailsPage() {
 
   const loadReviewerDetails = async () => {
     if (!reviewerId) return;
-    
+
     setLoading(true);
     const result = await getReviewerDetails(reviewerId);
-    
+
     if (result.success && result.reviewer) {
       setReviewerData(result);
-      
-      // Convert areasOfExpertise string to array for editing
+
+      // ✅ Safe type checking
       const areasString = result.reviewer.areasOfExpertise || '';
-      const areasArray = areasString ? areasString.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [];
+      const areasArray = typeof areasString === 'string' && areasString
+        ? areasString.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+        : Array.isArray(areasString)
+          ? areasString
+          : [];
+
       setExpertiseAreas(areasArray);
     } else {
       console.error('Failed to load reviewer:', result.error);
     }
     setLoading(false);
   };
+
 
   const handleReviewClick = (submissionId: string) => {
     router.push(`/adminmodule/submissions/details?id=${submissionId}`);
@@ -67,7 +73,7 @@ export default function ReviewerDetailsPage() {
     if (!reviewerId) return;
 
     const result = await deleteReviewer(reviewerId);
-    
+
     if (result.success) {
       router.push('/adminmodule/reviewers');
     } else {
@@ -195,13 +201,13 @@ export default function ReviewerDetailsPage() {
                   <Phone size={16} className="flex-shrink-0" />
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.phone}</span>
                 </div>
-                
+
                 {/* Email */}
                 <div className="flex items-center gap-2">
                   <Mail size={16} className="flex-shrink-0" />
                   <span className="break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.email}</span>
                 </div>
-                
+
                 {/* College */}
                 <div className="flex items-start gap-2 sm:col-span-2">
                   <Building2 size={16} className="flex-shrink-0 mt-0.5" />
@@ -229,33 +235,30 @@ export default function ReviewerDetailsPage() {
             <div className="flex min-w-max">
               <button
                 onClick={() => setActiveTab('current')}
-                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
-                  activeTab === 'current'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'current'
                     ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 Current Reviews ({currentReviews.length})
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
-                  activeTab === 'history'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'history'
                     ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 Review History ({reviewHistory.length})
               </button>
               <button
                 onClick={() => setActiveTab('expertise')}
-                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
-                  activeTab === 'expertise'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'expertise'
                     ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 <span className="flex items-center gap-2 justify-center">
@@ -265,11 +268,10 @@ export default function ReviewerDetailsPage() {
               </button>
               <button
                 onClick={() => setActiveTab('certificates')}
-                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
-                  activeTab === 'certificates'
+                className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'certificates'
                     ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
+                  }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 <span className="flex items-center gap-2 justify-center">
@@ -372,9 +374,12 @@ export default function ReviewerDetailsPage() {
                       </button>
                       <button
                         onClick={() => {
-                          // Convert back to array when cancelling
                           const areasString = reviewer.areasOfExpertise || '';
-                          const areasArray = areasString ? areasString.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0) : [];
+                          const areasArray = typeof areasString === 'string' && areasString
+                            ? areasString.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
+                            : Array.isArray(areasString)
+                              ? areasString
+                              : [];
                           setExpertiseAreas(areasArray);
                           setIsEditingExpertise(false);
                           setExpertiseInput('');
@@ -384,6 +389,7 @@ export default function ReviewerDetailsPage() {
                       >
                         Cancel
                       </button>
+
                     </div>
                   </div>
                 ) : (
@@ -512,7 +518,7 @@ export default function ReviewerDetailsPage() {
                 Are you sure you want to delete <strong>{reviewer.name}</strong>? This action cannot be undone and will permanently remove all associated data.
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={handleDeleteCancel}
@@ -546,5 +552,18 @@ export default function ReviewerDetailsPage() {
         />
       )}
     </>
+  );
+}
+export default function ReviewerDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="admin" roleTitle="UMREC Admin" pageTitle="Reviewer Details" activeNav="reviewers">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <ReviewerDetailsContent />
+    </Suspense>
   );
 }

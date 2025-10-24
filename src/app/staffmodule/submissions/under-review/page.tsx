@@ -12,9 +12,10 @@ import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-d
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getUnderReviewDetails } from '@/app/actions/secretariat-staff/getUnderReviewSubmission';
+import { Suspense } from 'react';
 
-export default function UnderReviewPage() {
-  const router = useRouter();
+function UnderReviewContent() {
+ const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -175,5 +176,18 @@ export default function UnderReviewPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function UnderReviewPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Loading..." activeNav="submissions">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <UnderReviewContent />
+    </Suspense>
   );
 }

@@ -9,6 +9,7 @@ import { ArrowLeft, MessageCircle } from 'lucide-react';
 import { getReviewerEvaluations } from '@/app/actions/reviewer/getReviewerEvaluations';
 import { postReviewReply } from '@/app/actions/reviewer/postReviewReply';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
+import { Suspense } from 'react';
 
 interface Reply {
   id: number;
@@ -34,9 +35,8 @@ interface Evaluation {
   technicalSuggestions: string;
   replies: Reply[];
 }
-
-export default function ReviewDetailPage() {
-  const router = useRouter();
+function ReviewDetailContent() {
+const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const [showModal, setShowModal] = useState(false);
@@ -625,5 +625,20 @@ export default function ReviewDetailPage() {
 
       <Footer />
     </div>
+);
+}
+export default function ReviewDetailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#E8EEF3]">
+        <NavbarRoles role="reviewer" />
+        <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+        </div>
+        <Footer />
+      </div>
+    }>
+      <ReviewDetailContent />
+    </Suspense>
   );
 }

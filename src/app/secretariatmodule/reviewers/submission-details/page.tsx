@@ -10,8 +10,8 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewerAssessmentCard from '@/components/staff-secretariat-admin/reviewers/ReviewerAssessmentCard';
 import RevisionHistoryCard from '@/components/staff-secretariat-admin/reviewers/RevisionHistoryCard';
-
-export default function SecretariatReviewerSubmissionDetailsPage() {
+import { Suspense } from 'react';
+function SecretariatReviewerSubmissionDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('submissionId');
@@ -182,5 +182,18 @@ export default function SecretariatReviewerSubmissionDetailsPage() {
         </div>
       </div>
     </DashboardLayout>
+);
+}
+export default function SecretariatReviewerSubmissionDetailsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Reviewer Activity" activeNav="reviewers">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <SecretariatReviewerSubmissionDetailsContent />
+    </Suspense>
   );
 }

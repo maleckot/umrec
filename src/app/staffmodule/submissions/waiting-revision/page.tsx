@@ -9,9 +9,10 @@ import TabNavigation from '@/components/staff-secretariat-admin/submission-detai
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
 import { getWaitingRevisionDetails } from '@/app/actions/secretariat-staff/getWaitingRevisionDetails';
+import { Suspense } from 'react';
 
-export default function WaitingRevisionPage() {
-  const router = useRouter();
+function WaitingRevisionContent() {
+const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -219,5 +220,18 @@ export default function WaitingRevisionPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function WaitingRevisionPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Loading..." activeNav="submissions">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <WaitingRevisionContent />
+    </Suspense>
   );
 }

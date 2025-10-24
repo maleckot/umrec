@@ -12,8 +12,9 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { generatePdfFromDatabase } from '@/app/actions/generatePdfFromDatabase';
 import { createClient } from '@/utils/supabase/client';
+import { Suspense } from 'react';
 
-export default function WaitingClassificationPage() {
+function WaitingClassificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
@@ -311,5 +312,18 @@ export default function WaitingClassificationPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+export default function WaitingClassificationPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <WaitingClassificationContent />
+    </Suspense>
   );
 }

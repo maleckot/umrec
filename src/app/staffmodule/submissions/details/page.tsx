@@ -14,6 +14,7 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import { getSubmissionDetails } from '@/app/actions/secretariat-staff/staff/getSubmissionDetails';
 import { verifySubmissionDocuments } from '@/app/actions/secretariat-staff/staff/verifySubmissionDocuments';
 import { completeVerification } from '@/app/actions/completeVerification';
+import { Suspense } from 'react';
 
 interface DocumentWithVerification {
   id: string;
@@ -26,9 +27,8 @@ interface DocumentWithVerification {
     comment: string;
   } | null;
 }
-
-export default function SubmissionVerificationPage() {
-  const router = useRouter();
+function SubmissionVerificationContent() {
+ const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -386,5 +386,19 @@ export default function SubmissionVerificationPage() {
         )}
       </div>
     </DashboardLayout>
+  );
+}
+
+export default function SubmissionVerificationPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+      </DashboardLayout>
+    }>
+      <SubmissionVerificationContent />
+    </Suspense>
   );
 }
