@@ -233,7 +233,13 @@ export default function Step1ResearcherDetails() {
     // Clear errors and proceed
     setErrors({});
     localStorage.setItem('step1Data', JSON.stringify(formData));
-    router.push('/researchermodule/submissions/new/step2');
+    
+    // Route based on organization type
+    if (formData.organization === 'external') {
+      router.push('/researchermodule/submissions/new/step2-external');
+    } else {
+      router.push('/researchermodule/submissions/new/step2');
+    }
   };
 
   const handleBack = () => {
