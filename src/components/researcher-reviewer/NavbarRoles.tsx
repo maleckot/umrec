@@ -53,7 +53,7 @@ const NAV_LINKS = {
     ] as NavLinkProps[],
     iconLinks: [
       { href: '/reviewermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },
-      { href: '/reviewermodule/account', icon: 'user', ariaLabel: 'Account' },
+      { href: '/reviewermodule/profile', icon: 'user', ariaLabel: 'Account' },
     ] as IconLinkProps[],
   },
 };

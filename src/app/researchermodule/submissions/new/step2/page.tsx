@@ -220,7 +220,7 @@ const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string;
     }
 
     if (fieldName !== 'Middle Name' && trimmedValue.length < 3) {
-      return `${fieldName} must be at least 3 characters`;
+      return `${fieldName} must be at least 5 characters`;
     }
 
     return null;
@@ -518,12 +518,12 @@ const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string;
     </div>
     <div>
       <label htmlFor="researcherMiddleName" className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        Middle Initial
+        Middle Name
       </label>
       <input
         id="researcherMiddleName"
         type="text"
-        placeholder="M."
+        placeholder="Reyes"
         value={formData.researcherMiddleName}
         onChange={(e) => handleInputChange('researcherMiddleName', e.target.value)}
         className="w-full px-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
@@ -873,7 +873,7 @@ style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500
   />
 </div>
 
-{/* Type of Study - FIXED */}
+{/* Type of Study - FIXED with nested input */}
 <div>
   <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
     <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md flex-shrink-0">
@@ -896,90 +896,43 @@ style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500
       { value: 'genetic', label: 'Genetic Research' },
       { value: 'others', label: 'Others (please specify)' }
     ].map((option) => (
-      <label key={option.value} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
-        <input
-          type="checkbox"
-          checked={formData.typeOfStudy.includes(option.value)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
-            } else {
-              setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
-            }
-          }}
-          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
-        />
-        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {option.label}
-        </span>
-      </label>
+      <div key={option.value}>
+        <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
+          <input
+            type="checkbox"
+            checked={formData.typeOfStudy.includes(option.value)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
+              } else {
+                setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
+              }
+            }}
+            className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+          />
+          <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {option.label}
+          </span>
+        </label>
+        
+        {/* MOVED INSIDE: Conditional input appears right below the checkbox when selected */}
+        {option.value === 'others' && formData.typeOfStudy.includes('others') && (
+          <div className="ml-11 mr-3 mb-2">
+            <input
+              type="text"
+              placeholder="Please specify other type of study"
+              value={formData.typeOfStudyOthers}
+              onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </div>
+        )}
+      </div>
     ))}
   </div>
-  {formData.typeOfStudy.includes('others') && (
-    <input
-      type="text"
-      placeholder="Please specify other type of study"
-      value={formData.typeOfStudyOthers}
-      onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
-      className="mt-3 w-full px-4 sm:px-5 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500"
-      style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500 }}
-      required
-    />
-  )}
-</div>{/* Type of Study - WITH FIELDSET */}
-<fieldset>
-  <legend className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md flex-shrink-0">
-      <FileText size={16} className="text-[#F7D117]" />
-    </div>
-    <span className="flex-1">Type of Study <span className="text-red-500">*</span></span>
-    <Tooltip text="Select all types that apply to your research study">
-      <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
-    </Tooltip>
-  </legend>
-  <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
-    {[
-      { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
-      { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
-      { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
-      { value: 'social_behavioral', label: 'Social / Behavioral Research' },
-      { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
-      { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
-      { value: 'stem_cell', label: 'Stem Cell Research' },
-      { value: 'genetic', label: 'Genetic Research' },
-      { value: 'others', label: 'Others (please specify)' }
-    ].map((option) => (
-      <label key={option.value} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors">
-        <input
-          type="checkbox"
-          checked={formData.typeOfStudy.includes(option.value)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
-            } else {
-              setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
-            }
-          }}
-          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
-        />
-        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {option.label}
-        </span>
-      </label>
-    ))}
-  </div>
-  {formData.typeOfStudy.includes('others') && (
-    <input
-      type="text"
-      placeholder="Please specify other type of study"
-      value={formData.typeOfStudyOthers}
-      onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
-      className="mt-3 w-full px-4 sm:px-5 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
-      style={{ fontFamily: 'Metropolis, sans-serif' }}
-      required
-    />
-  )}
-</fieldset>
+</div>
 
 
 {/* Study Site Type - FIXED */}
@@ -1037,48 +990,59 @@ style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500
       { value: 'institution', label: 'Institution-Funded' },
       { value: 'others', label: 'Others (please specify)' }
     ].map((option) => (
-      <label key={option.value} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
-        <input
-          type="checkbox"
-          checked={formData.sourceOfFunding.includes(option.value)}
-          onChange={(e) => {
-            if (e.target.checked) {
-              setFormData({ ...formData, sourceOfFunding: [...formData.sourceOfFunding, option.value] });
-            } else {
-              setFormData({ ...formData, sourceOfFunding: formData.sourceOfFunding.filter(v => v !== option.value) });
-            }
-          }}
-          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
-        />
-        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {option.label}
-        </span>
-      </label>
+      <div key={option.value}>
+        <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
+          <input
+            type="checkbox"
+            checked={formData.sourceOfFunding.includes(option.value)}
+            onChange={(e) => {
+              if (e.target.checked) {
+                setFormData({ ...formData, sourceOfFunding: [...formData.sourceOfFunding, option.value] });
+              } else {
+                setFormData({ ...formData, sourceOfFunding: formData.sourceOfFunding.filter(v => v !== option.value) });
+              }
+            }}
+            className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+          />
+          <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {option.label}
+          </span>
+        </label>
+        
+        {/* MOVED INSIDE: Pharmaceutical Company input appears right below its checkbox */}
+        {option.value === 'pharmaceutical' && formData.sourceOfFunding.includes('pharmaceutical') && (
+          <div className="ml-11 mr-3 mb-2">
+            <input
+              type="text"
+              placeholder="Specify Pharmaceutical Company"
+              value={formData.pharmaceuticalSponsor}
+              onChange={(e) => handleInputChange('pharmaceuticalSponsor', e.target.value)}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </div>
+        )}
+        
+        {/* MOVED INSIDE: Others input appears right below its checkbox */}
+        {option.value === 'others' && formData.sourceOfFunding.includes('others') && (
+          <div className="ml-11 mr-3 mb-2">
+            <input
+              type="text"
+              placeholder="Specify Other Funding Source"
+              value={formData.fundingOthers}
+              onChange={(e) => handleInputChange('fundingOthers', e.target.value)}
+              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+              required
+            />
+          </div>
+        )}
+      </div>
     ))}
   </div>
-  {formData.sourceOfFunding.includes('pharmaceutical') && (
-    <input
-      type="text"
-      placeholder="Specify Pharmaceutical Company"
-      value={formData.pharmaceuticalSponsor}
-      onChange={(e) => handleInputChange('pharmaceuticalSponsor', e.target.value)}
-      className="mt-3 w-full px-4 sm:px-5 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500"
-      style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500 }}
-      required
-    />
-  )}
-  {formData.sourceOfFunding.includes('others') && (
-    <input
-      type="text"
-      placeholder="Specify Other Funding Source"
-      value={formData.fundingOthers}
-      onChange={(e) => handleInputChange('fundingOthers', e.target.value)}
-      className="mt-3 w-full px-4 sm:px-5 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500"
-      style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500 }}
-      required
-    />
-  )}
 </div>
+
 
 
 {/* Duration of the Study - WITH PROPER LABELS */}

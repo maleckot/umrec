@@ -570,7 +570,7 @@ aria-required="true"
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
                     <FileText size={16} className="text-[#F7D117]" />
                   </div>
-                  II. Introduction (Highlights) <span className="text-red-500">*</span>
+                  II. Introduction <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs sm:text-sm text-gray-600 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Provide a brief introduction to the study which includes an overview of the study.
@@ -601,7 +601,7 @@ aria-required="true"
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
                     <FileText size={16} className="text-[#F7D117]" />
                   </div>
-                  III. Background of the Study (Highlights) <span className="text-red-500">*</span>
+                  III. Background of the Study <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs sm:text-sm text-gray-600 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Include the reason for embarking on the study, the historical background of the study, and the research gap.
