@@ -17,6 +17,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client'; // ✅ ADDED
 
 interface MenuItem {
   label: string;
@@ -34,8 +35,10 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
   const pathname = usePathname();
   const router = useRouter();
+  const supabase = createClient(); // ✅ ADDED
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // ✅ ADDED
 
   // Define menu items based on role
   const getMenuItems = (): MenuItem[] => {
@@ -136,10 +139,37 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
     setShowLogoutModal(true);
   };
 
-  const handleLogoutConfirm = () => {
-    router.push('/login');
-    setShowLogoutModal(false);
-    closeMobileMenu();
+  // ✅ UPDATED: Actually sign out from Supabase
+  const handleLogoutConfirm = async () => {
+    try {
+      setIsLoggingOut(true);
+      
+      // ✅ Sign out from Supabase (destroys session)
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+        // Still redirect even if there's an error
+      }
+      
+      // Close modal
+      setShowLogoutModal(false);
+      closeMobileMenu();
+      
+      // ✅ Redirect to login page
+      router.push('/login');
+      
+      // ✅ Optional: Force reload to clear any cached data
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 100);
+      
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+      // Still try to redirect
+      router.push('/login');
+    }
   };
 
   const handleLogoutCancel = () => {
@@ -302,17 +332,29 @@ const Sidebar: React.FC<SidebarProps> = ({ role, roleTitle, activeNav }) => {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleLogoutCancel}
-                      className="flex-1 px-4 py-3 bg-white/5 text-white rounded-lg font-semibold hover:bg-white/10 hover:scale-105 transition-all duration-300 text-sm sm:text-base border border-white/10"
+                      disabled={isLoggingOut}
+                      className="flex-1 px-4 py-3 bg-white/5 text-white rounded-lg font-semibold hover:bg-white/10 hover:scale-105 transition-all duration-300 text-sm sm:text-base border border-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleLogoutConfirm}
-                      className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold hover:from-red-700 hover:to-red-800 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg shadow-red-500/30"
+                      disabled={isLoggingOut}
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold hover:from-red-700 hover:to-red-800 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     >
-                      Log Out
+                      {isLoggingOut ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Logging Out...
+                        </>
+                      ) : (
+                        'Log Out'
+                      )}
                     </button>
                   </div>
                 </div>

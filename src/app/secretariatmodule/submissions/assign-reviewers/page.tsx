@@ -15,8 +15,9 @@ import { getClassificationDetails } from '@/app/actions/secretariat-staff/getCla
 import { getReviewers } from '@/app/actions/secretariat-staff/secretariat/getReviewers';
 import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/assignReviewers';
 import { Suspense } from 'react';
+
 function AssignReviewersContent() {
-   const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -24,12 +25,37 @@ function AssignReviewersContent() {
   const [data, setData] = useState<any>(null);
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
+  const [reviewDueDate, setReviewDueDate] = useState<string>('');
 
   useEffect(() => {
     if (submissionId) {
       loadData();
     }
   }, [submissionId]);
+
+  // Calculate suggested due date based on classification type
+  const getSuggestedDueDate = (classificationType: string) => {
+    const today = new Date();
+    let daysToAdd = 14; // Default 2 weeks
+    
+    switch (classificationType) {
+      case 'Exempted':
+        daysToAdd = 0; // No review needed
+        break;
+      case 'Expedited':
+        daysToAdd = 14; // 2 weeks
+        break;
+      case 'Full Review':
+        daysToAdd = 30; // 30 days
+        break;
+    }
+    
+    const dueDate = new Date(today);
+    dueDate.setDate(dueDate.getDate() + daysToAdd);
+    
+    // Format as YYYY-MM-DD for input type="date"
+    return dueDate.toISOString().split('T')[0];
+  };
 
   const loadData = async () => {
     if (!submissionId) return;
@@ -44,6 +70,12 @@ function AssignReviewersContent() {
 
       if (submissionResult.success) {
         setData(submissionResult);
+        
+        // Set suggested due date based on classification
+        const suggestedDate = getSuggestedDueDate(
+          submissionResult.submission?.classificationType || 'Expedited'
+        );
+        setReviewDueDate(suggestedDate);
       } else {
         alert(submissionResult.error || 'Failed to load submission');
         router.push('/secretariatmodule/submissions');
@@ -138,23 +170,32 @@ function AssignReviewersContent() {
     }
   };
 
-  const handleAssign = async (selectedReviewers: string[]) => {
-    console.log('Assigning reviewers:', selectedReviewers);
+const handleAssign = async (selectedReviewers: string[]) => {
+  console.log('Assigning reviewers:', selectedReviewers);
+  console.log('Review due date:', reviewDueDate);
+  
+  // Validate due date
+  if (!reviewDueDate && category !== 'Exempted') {
+    alert('Please select a review due date');
+    return;
+  }
+  
+  try {
+    const result = await assignReviewers(submissionId!, selectedReviewers);
     
-    try {
-      const result = await assignReviewers(submissionId!, selectedReviewers);
+    if (result.success) {
+      console.log('Review due date will be:', reviewDueDate);
       
-      if (result.success) {
-        alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
-        router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
-      } else {
-        alert(result.error || 'Failed to assign reviewers');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to assign reviewers');
+      alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
+      router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
+    } else {
+      alert(result.error || 'Failed to assign reviewers');
     }
-  };
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to assign reviewers');
+  }
+};
 
   const historyEvents = data ? [
     {
@@ -276,6 +317,8 @@ function AssignReviewersContent() {
                 category={category as any}
                 reviewers={reviewers}
                 maxReviewers={getMaxReviewers()}
+                reviewDueDate={reviewDueDate}
+                onDueDateChange={setReviewDueDate}
                 onAssign={handleAssign}
               />
             </>
@@ -312,7 +355,7 @@ function AssignReviewersContent() {
               }}
               timeline={{
                 submitted: formatDate(data.submission.submittedAt),
-                reviewDue: 'TBD',
+                reviewDue: reviewDueDate ? formatDate(reviewDueDate) : 'TBD',
                 decisionTarget: 'TBD',
               }}
               statusMessage="This submission has been verified, consolidated, and classified. Ready for reviewer assignment."
@@ -323,6 +366,7 @@ function AssignReviewersContent() {
     </DashboardLayout>
   );
 }
+
 export default function AssignReviewersPage() {
   return (
     <Suspense fallback={

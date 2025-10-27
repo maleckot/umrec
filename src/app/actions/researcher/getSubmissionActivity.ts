@@ -49,7 +49,7 @@ export async function getSubmissionActivity(submissionId: string) {
       .select('*')
       .eq('submission_id', submissionId);
 
-    // Fetch comments (anonymous for researchers)
+    // Fetch comments from submission_comments table
     const { data: commentsData } = await supabase
       .from('submission_comments')
       .select('id, comment_text, created_at')
@@ -85,8 +85,48 @@ export async function getSubmissionActivity(submissionId: string) {
     const rejectedDocs = verifications?.filter(v => v.is_approved === false) || [];
     const revisionCount = rejectedDocs.length;
 
-    const rejectedVerification = rejectedDocs[0];
-    const revisionMessage = rejectedVerification?.feedback_comment || submission.verification_feedback || '';
+    // ✅ COLLECT ALL FEEDBACK SOURCES
+    const allFeedback: Array<{ text: string; date: string; source: string }> = [];
+    
+    // Add document verification feedbacks
+    rejectedDocs.forEach(doc => {
+      if (doc.feedback_comment) {
+        allFeedback.push({
+          text: doc.feedback_comment,
+          date: doc.verified_at || doc.created_at,
+          source: 'document_verification'
+        });
+      }
+    });
+    
+    // Add submission comments
+    if (commentsData && commentsData.length > 0) {
+      commentsData.forEach(comment => {
+        allFeedback.push({
+          text: comment.comment_text,
+          date: comment.created_at,
+          source: 'submission_comment'
+        });
+      });
+    }
+    
+    // Add general submission feedback if exists
+    // if (submission.verification_feedback) {
+    //   allFeedback.push({
+    //     text: submission.verification_feedback,
+    //     date: submission.updated_at || submission.created_at,
+    //     source: 'submission_feedback'
+    //   });
+    // }
+    
+    // Sort by date (most recent first) and deduplicate
+    const sortedFeedback = allFeedback
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Deduplicate based on text content (case-insensitive)
+    const uniqueFeedback = sortedFeedback.filter((feedback, index, self) =>
+      index === self.findIndex(f => f.text.toLowerCase().trim() === feedback.text.toLowerCase().trim())
+    );
 
     return {
       success: true,
@@ -101,13 +141,13 @@ export async function getSubmissionActivity(submissionId: string) {
       revisionInfo: {
         needsRevision: submission.status === 'needs_revision',
         revisionCount: revisionCount,
-        message: revisionMessage, 
+        message: uniqueFeedback[0]?.text || '', // Most recent feedback
       },  
-      comments: commentsData?.map(c => ({
-        id: c.id,
-        commentText: c.comment_text,
-        createdAt: c.created_at,
-      })) || [],
+      comments: uniqueFeedback.map((f, index) => ({
+        id: `feedback-${index}`,
+        commentText: f.text,
+        createdAt: f.date,
+      })),
     };
 
   } catch (error) {

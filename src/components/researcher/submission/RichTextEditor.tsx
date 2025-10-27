@@ -253,7 +253,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       {/* Helper Text */}
       {helperText && (
-        <p className="text-xs text-[#64748B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <p className="text-xs text-[#64748B]" style={{ fontFamily: 'Metropolis, sans-serif' , whiteSpace: 'pre-line' }}>
           {helperText}
         </p>
       )}

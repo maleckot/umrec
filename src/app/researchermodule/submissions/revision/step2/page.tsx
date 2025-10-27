@@ -1,31 +1,194 @@
 // app/researchermodule/submissions/revision/step2/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import RevisionStepLayout from '@/components/researcher/revision/RevisionStepLayout';
-import FormField from '@/components/researcher/revision/FormField';
-import RevisionCommentBox from '@/components/researcher/revision/RevisionCommentBox';
-import { TextInput, TextArea, Select, CheckboxGroup, RadioGroup, FileUpload } from '@/components/researcher/submission/FormComponents';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
+import { ArrowLeft, User, Mail, Phone, Users, Building, AlertCircle, X, Info, Plus, Trash2, Calendar, FileText, CheckSquare, MessageSquare } from 'lucide-react';
 
-export default function RevisionStep2() {
+// Custom Error Modal Component
+const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: string[] }> = ({ isOpen, onClose, errors }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with gradient */}
+        <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 relative">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Validation Errors
+              </h3>
+              <p className="text-red-100 text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Please fix the following issues
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
+              aria-label="Close error dialog"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+
+        {/* Error List */}
+        <div className="p-6 max-h-96 overflow-y-auto">
+          <ul className="space-y-3">
+            {errors.map((error, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg"
+              >
+                <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-xs font-bold">{index + 1}</span>
+                </div>
+                <p className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {error}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Got it, I'll fix these
+          </button>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.3s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+};
+
+// Revision Comment Box Component
+const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
+  return (
+    <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+          <MessageSquare className="w-6 h-6 text-white" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-lg font-bold text-amber-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Reviewer Comments
+          </h3>
+          <p className="text-amber-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {comments}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Tooltip Component
+const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="relative inline-block">
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="p-1"
+        aria-label="Show information tooltip"
+      >
+        {children}
+      </button>
+      {show && (
+        <>
+          <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShow(false)} />
+          <div className="absolute z-50 right-0 top-full mt-2 md:right-auto md:top-auto md:bottom-full md:left-1/2 md:-translate-x-1/2 md:mb-2 w-56 sm:w-64 p-2.5 bg-[#071139] text-white text-xs rounded-lg shadow-2xl" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {text}
+            <button
+              onClick={() => setShow(false)}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold"
+              aria-label="Close tooltip"
+            >
+              ×
+            </button>
+            <div className="hidden md:block absolute w-2 h-2 bg-[#071139] rotate-45 left-1/2 -translate-x-1/2 -bottom-1"></div>
+            <div className="md:hidden absolute w-2 h-2 bg-[#071139] rotate-45 right-4 -top-1"></div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+interface DocumentChecklist {
+  hasApplicationForm?: boolean;
+  hasResearchProtocol?: boolean;
+  hasInformedConsent?: boolean;
+  hasInformedConsentOthers?: boolean;
+  informedConsentOthers?: string;
+  hasAssentForm?: boolean;
+  hasAssentFormOthers?: boolean;
+  assentFormOthers?: string;
+  hasEndorsementLetter?: boolean;
+  hasQuestionnaire?: boolean;
+  hasTechnicalReview?: boolean;
+  hasDataCollectionForms?: boolean;
+  hasProductBrochure?: boolean;
+  hasFDAAuthorization?: boolean;
+  hasCompanyPermit?: boolean;
+  hasSpecialPopulationPermit?: boolean;
+  specialPopulationPermitDetails?: string;
+  hasOtherDocs?: boolean;
+  otherDocsDetails?: string;
+}
+function RevisionStep2Content() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id');
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
-
+  const docId = searchParams.get('docId');
+  const docType = searchParams.get('docType');
   const [formData, setFormData] = useState({
+    // Research Information
     title: '',
     studySiteType: '',
     studySite: '',
     researcherFirstName: '',
     researcherMiddleName: '',
     researcherLastName: '',
+    project_leader_email: '',
+    project_leader_contact: '',
     telNo: '',
-    mobileNo: '',
-    email: '',
     faxNo: 'N/A',
-    coResearcher: '',
     college: '',
     institution: 'University of Makati',
     institutionAddress: '',
@@ -40,6 +203,8 @@ export default function RevisionStep2() {
     technicalReview: '',
     technicalReviewFile: null as File | null,
     submittedToOther: '',
+
+    // ✅ Basic Requirements Checkboxes
     hasApplicationForm: true,
     hasResearchProtocol: false,
     hasInformedConsent: false,
@@ -50,16 +215,32 @@ export default function RevisionStep2() {
     assentFormOthers: '',
     hasEndorsementLetter: false,
     hasQuestionnaire: false,
+
+    // ✅ Supplementary Documents Checkboxes
+    hasTechnicalReview: false,
     hasDataCollectionForms: false,
     hasProductBrochure: false,
     hasFDAAuthorization: false,
+    hasCompanyPermit: false,
     hasSpecialPopulationPermit: false,
     specialPopulationPermitDetails: '',
     hasOtherDocs: false,
     otherDocsDetails: '',
   });
 
-  // UMak Colleges/Departments
+  const [coResearchers, setCoResearchers] = useState<Array<{ name: string; contact: string; email: string }>>([
+    { name: '', contact: '', email: '' }
+  ]);
+
+  const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string; contact: string; email: string }>>([
+    { name: '', contact: '', email: '' }
+  ]);
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorList, setErrorList] = useState<string[]>([]);
+  const [revisionComments, setRevisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
+
   const umakColleges = [
     'College of Liberal Arts and Sciences (CLAS)',
     'College of Human Kinetics (CHK)',
@@ -83,95 +264,187 @@ export default function RevisionStep2() {
     'Institute of Disaster and Emergency Management (IDEM)',
   ];
 
-  // Check if institution is UMak
-  const isUMak = formData.institution.toLowerCase().includes('umak') || 
-                 formData.institution.toLowerCase().includes('university of makati');
+  const isUMak = formData.institution.toLowerCase().includes('umak') ||
+    formData.institution.toLowerCase().includes('university of makati');
 
-  const [revisionComments] = useState(
-    'Please update the study duration dates and ensure all required documents are properly indicated. The methodology section needs clarification regarding participant selection.'
-  );
+  const validateInput = (value: string, fieldName: string): string | null => {
+    const trimmedValue = value.trim().toLowerCase();
 
-  // Load data on mount
-  useEffect(() => {
-    console.log('🔍 Revision Step 2 useEffect triggered');
-    setIsClient(true);
-
-    const saved = localStorage.getItem('revisionStep2Data');
-    const revisionStep1Raw = localStorage.getItem('revisionStep1Data');
-
-    console.log('📦 Raw localStorage revisionStep1Data:', revisionStep1Raw);
-    console.log('📦 Raw localStorage revisionStep2Data:', saved);
-
-    if (saved) {
-      try {
-        const parsedData = JSON.parse(saved);
-
-        const isEmpty = !parsedData.title && !parsedData.email && !parsedData.mobileNo;
-
-        if (isEmpty && revisionStep1Raw) {
-          console.log('ℹ️ Revision Step 2 data exists but is empty, pre-filling from Revision Step 1...');
-          const revisionStep1Data = JSON.parse(revisionStep1Raw);
-
-          setFormData({
-            ...parsedData,
-            title: revisionStep1Data.title || parsedData.title,
-            researcherFirstName: revisionStep1Data.projectLeaderFirstName || parsedData.researcherFirstName,
-            researcherMiddleName: revisionStep1Data.projectLeaderMiddleName || parsedData.researcherMiddleName,
-            researcherLastName: revisionStep1Data.projectLeaderLastName || parsedData.researcherLastName,
-            mobileNo: revisionStep1Data.projectLeaderContact || parsedData.mobileNo,
-            email: revisionStep1Data.projectLeaderEmail || parsedData.email,
-            coResearcher: revisionStep1Data.coAuthors || parsedData.coResearcher,
-            institution:
-              revisionStep1Data.organization === 'internal'
-                ? 'University of Makati'
-                : revisionStep1Data.organization || parsedData.institution,
-            technicalReviewFile: null,
-          });
-        } else {
-          setFormData({ ...parsedData, technicalReviewFile: null });
-          console.log('✅ Loaded existing Revision Step 2 data');
-        }
-      } catch (error) {
-        console.error('❌ Error loading revisionStep2 data:', error);
-      }
-    } else {
-      console.log('⚠️ No Revision Step 2 data found, checking Revision Step 1...');
-
-      if (revisionStep1Raw) {
-        try {
-          const revisionStep1Data = JSON.parse(revisionStep1Raw);
-          console.log('📥 Revision Step 1 data parsed:', revisionStep1Data);
-
-          setFormData((prev) => ({
-            ...prev,
-            title: revisionStep1Data.title || '',
-            researcherFirstName: revisionStep1Data.projectLeaderFirstName || '',
-            researcherMiddleName: revisionStep1Data.projectLeaderMiddleName || '',
-            researcherLastName: revisionStep1Data.projectLeaderLastName || '',
-            mobileNo: revisionStep1Data.projectLeaderContact || '',
-            email: revisionStep1Data.projectLeaderEmail || '',
-            coResearcher: revisionStep1Data.coAuthors || '',
-            institution:
-              revisionStep1Data.organization === 'internal'
-                ? 'University of Makati'
-                : revisionStep1Data.organization || 'University of Makati',
-          }));
-          console.log('✅ Pre-filled from Revision Step 1');
-        } catch (error) {
-          console.error('❌ Error loading revisionStep1 data:', error);
-        }
-      } else {
-        console.log('⚠️ No Revision Step 1 data found in localStorage');
-      }
+    if (!trimmedValue) {
+      return `${fieldName} is required`;
     }
 
-    isInitialMount.current = false;
-  }, []);
+    const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
+    if (fieldName !== 'Fax No' && naVariations.includes(trimmedValue)) {
+      return `${fieldName} cannot be "N/A"`;
+    }
 
-  // Auto-save on data change
+    const irrelevantPhrases = [
+      'i dont know', "i don't know", 'idk', 'working in progress', 'work in progress',
+      'wip', 'tbd', 'to be determined', 'later', 'soon', 'testing', 'test',
+      'asdf', 'qwerty', '123', 'abc', 'unknown', 'temp', 'temporary'
+    ];
+
+    if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
+      return `${fieldName} contains invalid text`;
+    }
+
+    if (fieldName !== 'Middle Name' && trimmedValue.length < 3) {
+      return `${fieldName} must be at least 5 characters`;
+    }
+
+    return null;
+  };
+
   useEffect(() => {
-    if (isInitialMount.current) return;
-    if (!isClient) return;
+    if (!submissionId) {
+      alert('No submission ID found');
+      router.push('/researchermodule/submissions');
+      return;
+    }
+
+    const fetchSubmissionData = async () => {
+      const supabase = createClient();
+
+      try {
+        // Fetch from research_submissions
+        const { data, error } = await supabase
+          .from('research_submissions')
+          .select('*')
+          .eq('id', submissionId)
+          .single();
+
+        if (error) throw error;
+
+        // ✅ Fetch from application_forms with proper typing
+        let institutionAddressFromForm = '';
+        let studySiteTypeFromForm = ''; // ✅ ADD THIS
+        let documentChecklist: DocumentChecklist = {};
+
+        if (data) {
+          const { data: appFormData, error: appFormError } = await supabase
+            .from('application_forms')
+            .select('institution_address, study_site_type, document_checklist, co_researcher, technical_advisers') // ✅ ADD study_site_type
+            .eq('submission_id', submissionId)
+            .single();
+
+          if (!appFormError && appFormData) {
+            institutionAddressFromForm = appFormData.institution_address || '';
+            studySiteTypeFromForm = appFormData.study_site_type || ''; // ✅ ADD THIS
+            documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
+
+            console.log('📋 Document Checklist from application_forms:', documentChecklist);
+            console.log('🏢 Study Site Type from application_forms:', studySiteTypeFromForm); // ✅ ADD THIS LOG
+
+            // Load co-researchers from application_forms
+            if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
+              setCoResearchers(
+                appFormData.co_researcher.map((co: any) => ({
+                  name: co.name || '',
+                  contact: co.contact || '',
+                  email: co.email || '',
+                }))
+              );
+            }
+
+            // Load technical advisers from application_forms
+            if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
+              setTechnicalAdvisers(
+                appFormData.technical_advisers.map((ad: any) => ({
+                  name: ad.name || '',
+                  contact: ad.contact || '',
+                  email: ad.email || '',
+                }))
+              );
+            }
+          }
+        }
+
+        if (data) {
+          console.log('📊 Fetched from research_submissions:', data);
+
+          setFormData({
+            title: data.title || '',
+            studySiteType: studySiteTypeFromForm || data.study_site_type || '', // ✅ CHANGE THIS - prioritize application_forms
+            studySite: data.study_site || '',
+            researcherFirstName: data.project_leader_first_name || '',
+            researcherMiddleName: data.project_leader_middle_name || '',
+            researcherLastName: data.project_leader_last_name || '',
+            project_leader_email: data.project_leader_email || '',
+            faxNo: data.fax_no || 'N/A',
+            telNo: data.tel_no || '',
+            project_leader_contact: data.project_leader_contact || '',
+            college: data.college || '',
+            institution: data.institution || 'University of Makati',
+            institutionAddress: institutionAddressFromForm,
+            typeOfStudy: Array.isArray(data.type_of_study) ? data.type_of_study : [],
+            typeOfStudyOthers: data.type_of_study_others || '',
+            sourceOfFunding: Array.isArray(data.source_of_funding) ? data.source_of_funding : [],
+            pharmaceuticalSponsor: data.pharmaceutical_sponsor || '',
+            fundingOthers: data.funding_others || '',
+            startDate: data.start_date || '',
+            endDate: data.end_date || '',
+            numParticipants: data.num_participants || '',
+            technicalReview: data.technical_review || '',
+            submittedToOther: data.submitted_to_other_umrec || '',
+
+            // ✅ Load checkboxes from document_checklist JSON
+            hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
+            hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
+            hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
+            hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
+            informedConsentOthers: documentChecklist.informedConsentOthers || '',
+            hasAssentForm: documentChecklist.hasAssentForm ?? false,
+            hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
+            assentFormOthers: documentChecklist.assentFormOthers || '',
+            hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
+            hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
+            hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
+            hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
+            hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
+            hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
+            hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
+            hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
+            specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
+            hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
+            otherDocsDetails: documentChecklist.otherDocsDetails || '',
+
+            technicalReviewFile: null,
+          });
+
+          console.log('✅ FormData set successfully');
+
+          // Load revision comments
+          const commentsResult = await supabase
+            .from('submission_comments')
+            .select('comment_text')
+            .eq('submission_id', submissionId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (commentsResult.data && commentsResult.data.length > 0) {
+            setRevisionComments(commentsResult.data[0].comment_text);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching submission data:', error);
+        alert('Failed to load submission data');
+      } finally {
+        setLoading(false);
+        setIsClient(true);
+        isInitialMount.current = false;
+      }
+    };
+
+    fetchSubmissionData();
+  }, [submissionId, router]);
+
+
+
+
+
+  useEffect(() => {
+    if (isInitialMount.current || !isClient) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -181,7 +454,9 @@ export default function RevisionStep2() {
       const dataToSave = { ...formData };
       delete (dataToSave as any).technicalReviewFile;
       localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-      console.log('💾 Revision Step 2 data auto-saved');
+      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
+      console.log('💾 Revision Step 2 auto-saved');
     }, 1000);
 
     return () => {
@@ -189,699 +464,1587 @@ export default function RevisionStep2() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, isClient]);
+  }, [formData, coResearchers, technicalAdvisers, isClient]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+
+  useEffect(() => {
+    if (isInitialMount.current || !isClient) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).technicalReviewFile;
+      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
+      console.log('💾 Revision Step 2 auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, coResearchers, technicalAdvisers, isClient]);
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const dataToSave = { ...formData };
-    delete (dataToSave as any).technicalReviewFile;
-    localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-    router.push('/researchermodule/submissions/revision/step3');
+
+    const newErrors: Record<string, string> = {};
+
+    // ✅ Validation
+    const titleError = validateInput(formData.title, 'Title');
+    if (titleError) newErrors.title = titleError;
+
+    const firstNameError = validateInput(formData.researcherFirstName, 'First Name');
+    if (firstNameError) newErrors.researcherFirstName = firstNameError;
+
+    const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
+    if (lastNameError) newErrors.researcherLastName = lastNameError;
+
+    const emailError = validateInput(formData.project_leader_email, 'Email');
+    if (emailError) newErrors.email = emailError;
+
+    const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
+    if (mobileError) newErrors.mobileNo = mobileError;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setErrorList(Object.values(newErrors));
+      setShowErrorModal(true);
+      const firstErrorField = Object.keys(newErrors)[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+
+    const supabase = createClient();
+
+    try {
+      // ✅ 1. Handle Technical Review File Upload (if new file selected)
+      let technicalReviewPath = null;
+      if (formData.technicalReviewFile) {
+        const fileExtension = formData.technicalReviewFile.name.split('.').pop();
+        technicalReviewPath = `submissions/${submissionId}/technical_review.${fileExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('research-documents')
+          .upload(technicalReviewPath, formData.technicalReviewFile, {
+            upsert: true,
+            contentType: formData.technicalReviewFile.type
+          });
+
+        if (uploadError) {
+          throw new Error(`Failed to upload technical review: ${uploadError.message}`);
+        }
+      }
+
+      // ✅ 2. Update `application_forms` table with document_checklist
+      const applicationFormsUpdate: any = {
+        study_site: formData.studySite,
+        researcher_first_name: formData.researcherFirstName,
+        researcher_middle_name: formData.researcherMiddleName,
+        researcher_last_name: formData.researcherLastName,
+        contact_info: {
+          email: formData.project_leader_email,
+          mobile_no: formData.project_leader_contact,
+          tel_no: formData.telNo,
+          fax_no: formData.faxNo,
+        },
+        co_researcher: coResearchers,
+        technical_advisers: technicalAdvisers, // ✅ Don't forget technical advisers
+        college: formData.college,
+        institution: formData.institution,
+        institution_address: formData.institutionAddress,
+        type_of_study: formData.typeOfStudy,
+        type_of_study_others: formData.typeOfStudyOthers,
+        study_site_type: formData.studySiteType,
+        source_of_funding: formData.sourceOfFunding,
+        pharmaceutical_sponsor: formData.pharmaceuticalSponsor,
+        funding_others: formData.fundingOthers,
+        study_duration: {
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+        },
+        num_participants: parseInt(formData.numParticipants) || 0,
+        technical_review: formData.technicalReview,
+        submitted_to_other: formData.submittedToOther,
+
+        // ✅ Save all checkbox states to document_checklist JSONB column
+        document_checklist: {
+          hasApplicationForm: formData.hasApplicationForm,
+          hasResearchProtocol: formData.hasResearchProtocol,
+          hasInformedConsent: formData.hasInformedConsent,
+          hasInformedConsentOthers: formData.hasInformedConsentOthers,
+          informedConsentOthers: formData.informedConsentOthers,
+          hasAssentForm: formData.hasAssentForm,
+          hasAssentFormOthers: formData.hasAssentFormOthers,
+          assentFormOthers: formData.assentFormOthers,
+          hasEndorsementLetter: formData.hasEndorsementLetter,
+          hasQuestionnaire: formData.hasQuestionnaire,
+          hasTechnicalReview: formData.hasTechnicalReview,
+          hasDataCollectionForms: formData.hasDataCollectionForms,
+          hasProductBrochure: formData.hasProductBrochure,
+          hasFDAAuthorization: formData.hasFDAAuthorization,
+          hasCompanyPermit: formData.hasCompanyPermit,
+          hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
+          specialPopulationPermitDetails: formData.specialPopulationPermitDetails,
+          hasOtherDocs: formData.hasOtherDocs,
+          otherDocsDetails: formData.otherDocsDetails,
+        },
+      };
+
+      console.log('💾 Saving document_checklist:', applicationFormsUpdate.document_checklist);
+
+      const { error: appFormError } = await supabase
+        .from('application_forms')
+        .update(applicationFormsUpdate)
+        .eq('submission_id', submissionId);
+
+      if (appFormError) throw appFormError;
+
+      // ✅ 3. Reset verification for this specific document
+      if (docId) {
+        const { error: verificationError } = await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            verified_at: null,
+            feedback_comment: null,
+          })
+          .eq('document_id', docId);
+
+        if (verificationError) {
+          console.error('Error resetting verification:', verificationError);
+          // Don't throw - it's not critical if verification reset fails
+        }
+      } else {
+        console.warn('No docId provided - skipping verification reset');
+      }
+
+      // ✅ 4. CHECK ALL VERIFICATIONS FOR THIS SUBMISSION (after reset)
+      const { data: verificationData, error: verificationCheckError } = await supabase
+        .from('document_verifications')
+        .select('is_approved, document_id')
+        .eq('submission_id', submissionId);
+
+      if (verificationCheckError) {
+        throw new Error(`Failed to check verification status: ${verificationCheckError.message}`);
+      }
+
+      let newStatus = 'Resubmit';
+
+      if (!verificationData || verificationData.length === 0) {
+        // No verifications exist yet
+        newStatus = 'Pending';
+      } else {
+        // Check if ANY document is rejected (false) or not yet verified (null)
+        const hasRejected = verificationData.some(v => v.is_approved === false);
+        const hasUnverified = verificationData.some(v => v.is_approved === null);
+
+        if (!hasRejected && !hasUnverified) {
+          // All documents are approved (true)
+          newStatus = 'Pending';
+        } else if (hasRejected) {
+          // At least one document is rejected
+          newStatus = 'Resubmit';
+        } else if (hasUnverified) {
+          // Some documents not verified yet
+          newStatus = 'Pending';
+        }
+      }
+
+      // ✅ 5. Update `research_submissions` table with dynamic status
+      const researchSubmissionUpdate: any = {
+        title: formData.title,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        co_authors: coResearchers,
+      };
+
+      if (technicalReviewPath) {
+        researchSubmissionUpdate.technical_review_file = technicalReviewPath;
+      }
+
+      const { error: submissionError } = await supabase
+        .from('research_submissions')
+        .update(researchSubmissionUpdate)
+        .eq('id', submissionId);
+
+      if (submissionError) throw submissionError;
+
+      // ✅ 6. Clear localStorage
+      localStorage.removeItem('revisionStep2Data');
+      localStorage.removeItem('revisionStep2CoResearchers');
+      localStorage.removeItem('revisionStep2TechnicalAdvisers');
+
+      // ✅ 7. Success!
+      const statusMessage = newStatus === 'Pending'
+        ? '✅ Changes saved and resubmitted successfully!'
+        : '✅ Changes saved! Please address the verification issues before resubmitting.';
+
+      alert(statusMessage);
+      router.push(`/researchermodule`);
+
+    } catch (error: any) {
+      console.error('Error saving changes:', error);
+      alert(`Failed to save changes: ${error.message || 'Please try again.'}`);
+    }
   };
 
   const handleBack = () => {
-    router.push('/researchermodule/submissions/revision/step1');
+    router.push('/researchermodule/submissions');
   };
 
-  const typeOfStudyOptions = [
-    { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
-    { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
-    { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
-    { value: 'social_behavioral', label: 'Social / Behavioral Research' },
-    { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
-    { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
-    { value: 'stem_cell', label: 'Stem Cell Research' },
-    { value: 'genetic', label: 'Genetic Research' },
-    { value: 'others', label: 'Others (please specify)' },
-  ];
+  const handleInputChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: '' });
+    }
+  };
 
-  const fundingOptions = [
-    { value: 'self_funded', label: 'Self-funded' },
-    { value: 'government', label: 'Government-Funded' },
-    { value: 'scholarship', label: 'Scholarship/Research Grant' },
-    { value: 'pharmaceutical', label: 'Sponsored by Pharmaceutical Company' },
-    { value: 'institution', label: 'Institution-Funded' },
-    { value: 'others', label: 'Others (please specify)' },
-  ];
+  const handleCheckAll = () => {
+    setFormData({
+      ...formData,
+      hasResearchProtocol: true,
+      hasInformedConsent: true,
+      hasEndorsementLetter: true,
+      hasQuestionnaire: true,
+      hasTechnicalReview: true,
+      hasDataCollectionForms: true,
+      hasProductBrochure: true,
+      hasFDAAuthorization: true,
+      hasCompanyPermit: true,
+      hasSpecialPopulationPermit: true,
+      hasOtherDocs: true,
+    });
+  };
+
+  const handleUncheckAll = () => {
+    setFormData({
+      ...formData,
+      hasResearchProtocol: false,
+      hasInformedConsent: false,
+      hasEndorsementLetter: false,
+      hasQuestionnaire: false,
+      hasTechnicalReview: false,
+      hasDataCollectionForms: false,
+      hasProductBrochure: false,
+      hasFDAAuthorization: false,
+      hasCompanyPermit: false,
+      hasSpecialPopulationPermit: false,
+      hasOtherDocs: false,
+    });
+  };
 
   if (!isClient) {
     return (
-      <RevisionStepLayout
-        stepNumber={2}
-        title="Application for Ethics Review"
-        description="Review and update the requested information based on feedback."
-        onBack={handleBack}
-      >
-        <div className="flex items-center justify-center min-h-[400px]">
+      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <NavbarRoles role="researcher" />
+        <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading form...
-            </p>
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-[#071139] mx-auto mb-4"></div>
+            <p className="text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>Loading form...</p>
           </div>
         </div>
-      </RevisionStepLayout>
+        <Footer />
+      </div>
     );
   }
 
   return (
-    <RevisionStepLayout
-      stepNumber={2}
-      title="Application for Ethics Review"
-      description="Review and update the requested information based on feedback."
-      onBack={handleBack}
-    >
-      <RevisionCommentBox comments={revisionComments} />
+    <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+      <NavbarRoles role="researcher" />
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Section 1: General Information */}
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg mb-6">
-          <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            1. General Information
-          </h4>
-          <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Fields marked with * are required. Review and update information based on reviewer feedback.
-          </p>
-        </div>
-
-        {/* Title of Study */}
-        <FormField label="Title of Study" required>
-          <input
-            type="text"
-            value={formData.title}
-            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
-
-        {/* Study Site */}
-        <FormField label="Study Site" required>
-          <input
-            type="text"
-            value={formData.studySite}
-            onChange={(e) => setFormData({ ...formData, studySite: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
-
-        {/* Name of Researcher */}
-        <FormField label="Name of Researcher" required helperText="Format: First Name, MI, Last name">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            <input
-              type="text"
-              placeholder="First Name"
-              value={formData.researcherFirstName}
-              onChange={(e) => setFormData({ ...formData, researcherFirstName: e.target.value })}
-              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Middle Initial"
-              value={formData.researcherMiddleName}
-              onChange={(e) => setFormData({ ...formData, researcherMiddleName: e.target.value })}
-              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            />
-            <input
-              type="text"
-              placeholder="Last Name"
-              value={formData.researcherLastName}
-              onChange={(e) => setFormData({ ...formData, researcherLastName: e.target.value })}
-              className="px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </div>
-        </FormField>
-
-        {/* Contact Information */}
-        <div>
-          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Contact Information
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            <div>
-              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Tel No
-              </label>
-              <input
-                type="tel"
-                value={formData.telNo}
-                onChange={(e) => setFormData({ ...formData, telNo: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-            </div>
-            <div>
-              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Mobile No <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="tel"
-                value={formData.mobileNo}
-                onChange={(e) => setFormData({ ...formData, mobileNo: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Fax No
-              </label>
-              <input
-                type="text"
-                value={formData.faxNo}
-                onChange={(e) => setFormData({ ...formData, faxNo: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-              <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Default: N/A
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs sm:text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Email <span className="text-red-600">*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-                required
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Co-researcher */}
-        <FormField label="Co-researcher (if any)" helperText="If there are none, please write N/A">
-          <textarea
-            value={formData.coResearcher}
-            onChange={(e) => setFormData({ ...formData, coResearcher: e.target.value })}
-            placeholder="First Name MI, Last name (if multiple, separate with commas)"
-            rows={2}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none resize-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          />
-        </FormField>
-
-        {/* Institution */}
-        <FormField label="Institution" required>
-          <input
-            type="text"
-            value={formData.institution}
-            onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
-
-        {/* College/Department - Conditional Dropdown for UMak */}
-        <FormField label="College/Department" required>
-          {isUMak ? (
-            <>
-              <select
-                value={formData.college}
-                onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-                required
+      <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-28 pb-8">
+        <div className="max-w-[1400px] mx-auto">
+          {/* Enhanced Header Section */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+              <button
+                onClick={handleBack}
+                className="w-12 h-12 bg-white border-2 border-[#071139]/20 rounded-full flex items-center justify-center hover:bg-[#071139] hover:border-[#071139] hover:shadow-lg transition-all duration-300 group"
+                aria-label="Go back to previous page"
               >
-                <option value="">Select College/Department</option>
-                {umakColleges.map((college) => (
-                  <option key={college} value={college}>
-                    {college}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-[#64748B] mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Select from UMak colleges and institutes
-              </p>
-            </>
-          ) : (
-            <input
-              type="text"
-              value={formData.college}
-              onChange={(e) => setFormData({ ...formData, college: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              placeholder="Enter your college/department"
-              required
-            />
-          )}
-        </FormField>
+                <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
+              </button>
 
-        {/* Address of Institution */}
-        <FormField label="Address of Institution" required>
-          <input
-            type="text"
-            value={formData.institutionAddress}
-            onChange={(e) => setFormData({ ...formData, institutionAddress: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
+              <div className="flex items-center gap-4 flex-1">
+                {/* ORANGE STEP NUMBER CIRCLE */}
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
+                  <span style={{ fontFamily: 'Metropolis, sans-serif' }}>2</span>
+                </div>
 
-        {/* Type of Study */}
-        <CheckboxGroup
-          label="Type of Study"
-          options={typeOfStudyOptions}
-          selected={formData.typeOfStudy}
-          onChange={(val) => setFormData({ ...formData, typeOfStudy: val })}
-          required
-        />
-
-        {formData.typeOfStudy.includes('others') && (
-          <FormField label="Please specify other type of study" required>
-            <input
-              type="text"
-              value={formData.typeOfStudyOthers}
-              onChange={(e) => setFormData({ ...formData, typeOfStudyOthers: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </FormField>
-        )}
-
-        {/* Study Site Type */}
-        <RadioGroup
-          label="Study Site Type"
-          options={[
-            { value: 'Multicenter (International)', label: 'Multicenter (International)' },
-            { value: 'Multicenter (National)', label: 'Multicenter (National)' },
-            { value: 'Single Site', label: 'Single Site' },
-          ]}
-          selected={formData.studySiteType}
-          onChange={(val) => setFormData({ ...formData, studySiteType: val })}
-          required
-        />
-
-        {/* Source of Funding */}
-        <CheckboxGroup
-          label="Source of Funding"
-          options={fundingOptions}
-          selected={formData.sourceOfFunding}
-          onChange={(val) => setFormData({ ...formData, sourceOfFunding: val })}
-          required
-        />
-
-        {formData.sourceOfFunding.includes('pharmaceutical') && (
-          <FormField label="Specify Pharmaceutical Company" required>
-            <input
-              type="text"
-              value={formData.pharmaceuticalSponsor}
-              onChange={(e) => setFormData({ ...formData, pharmaceuticalSponsor: e.target.value })}
-              placeholder="Company name"
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </FormField>
-        )}
-
-        {formData.sourceOfFunding.includes('others') && (
-          <FormField label="Specify Other Funding Source" required>
-            <input
-              type="text"
-              value={formData.fundingOthers}
-              onChange={(e) => setFormData({ ...formData, fundingOthers: e.target.value })}
-              className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </FormField>
-        )}
-
-        {/* Duration of the Study */}
-        <div>
-          <label className="block text-sm font-semibold mb-3 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Duration of the Study <span className="text-red-600">*</span>
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Start date
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  required
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Application for Ethics Review - Revision
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Review and update the requested details based on feedback
+                  </p>
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-medium mb-2 text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                End date
-              </label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  required
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </div>
-              </div>
+            {/* ORANGE PROGRESS BAR */}
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+              <div
+                className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                style={{ width: '25%' }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Step 2 of 8
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                25% Complete
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Number of Participants */}
-        <FormField label="No. of study participants" required>
-          <input
-            type="number"
-            value={formData.numParticipants}
-            onChange={(e) => setFormData({ ...formData, numParticipants: e.target.value })}
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B]"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-            required
-          />
-        </FormField>
+          {/* Enhanced Content Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
+            {/* Revision Comment Box */}
+            <RevisionCommentBox comments={revisionComments} />
 
-        {/* Technical Review */}
-        <div>
-          <RadioGroup
-            label="Has the Research undergone a Technical Review?"
-            options={[
-              { value: 'yes', label: 'Yes (please attach technical review results)' },
-              { value: 'no', label: 'No' },
-            ]}
-            selected={formData.technicalReview}
-            onChange={(val) => setFormData({ ...formData, technicalReview: val })}
-            required
-          />
+            <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
 
-          {formData.technicalReview === 'yes' && (
-            <div className="mt-4 ml-4 sm:ml-8">
-              <FileUpload
-                label="Upload Technical Review Results"
-                value={formData.technicalReviewFile}
-                onChange={(file) => setFormData({ ...formData, technicalReviewFile: file })}
-                accept=".pdf"
-                helperText="PDF files only (max 10MB)"
-                required
-              />
-            </div>
-          )}
-        </div>
+              {/* Section 1 Header */}
+              <div className="bg-gradient-to-r from-[#071139]/10 to-[#003366]/10 border-l-4 border-[#071139] p-6 rounded-xl">
+                <h4 className="font-bold text-[#071139] text-lg mb-2 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <FileText size={20} />
+                  1. General Information
+                </h4>
+                <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Fields marked with <span className="text-red-500">*</span> are required. Some information pre-filled from Step 1.
+                </p>
+              </div>
 
-        {/* Submitted to Another UMREC */}
-        <RadioGroup
-          label="Has the Research been submitted to another UMREC?"
-          options={[
-            { value: 'yes', label: 'Yes' },
-            { value: 'no', label: 'No' },
-          ]}
-          selected={formData.submittedToOther}
-          onChange={(val) => setFormData({ ...formData, submittedToOther: val })}
-          required
-        />
-
-        {/* Section 2: Checklist of Documents */}
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg">
-          <h4 className="font-bold text-[#1E293B] text-base sm:text-lg mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            2. Checklist of Documents
-          </h4>
-          <p className="text-xs sm:text-sm text-[#475569]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Select all documents that apply to your submission.
-          </p>
-        </div>
-
-        {/* Basic Requirements */}
-        <div className="space-y-3 sm:space-y-4">
-          <h5 className="font-semibold text-sm sm:text-base text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Basic Requirements:
-          </h5>
-
-          <label className="flex items-start cursor-not-allowed opacity-75">
-            <input type="checkbox" checked={true} disabled className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded cursor-not-allowed flex-shrink-0" />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Application for Ethics Review of A New Protocol
-            </span>
-          </label>
-
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasResearchProtocol}
-              onChange={(e) => setFormData({ ...formData, hasResearchProtocol: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Research Protocol
-            </span>
-          </label>
-
-          {/* Informed Consent Form - Responsive nested checkbox with Others option */}
-          <div className="space-y-2">
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasInformedConsent}
-                onChange={(e) => setFormData({ ...formData, hasInformedConsent: e.target.checked })}
-                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-              />
-              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Informed Consent Form
-              </span>
-            </label>
-            
-            {formData.hasInformedConsent && (
-              <div className="ml-6 sm:ml-8 space-y-2">
-                <label className="flex items-start cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasInformedConsentOthers}
-                    onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
-                    className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-                  />
-                  <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Others (please specify)
-                  </span>
+              {/* Title - Pre-filled */}
+              <div>
+                <label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  Title of Study <span className="text-red-500">*</span>
                 </label>
-                {formData.hasInformedConsentOthers && (
-                  <input
-                    type="text"
-                    placeholder="Specify language (e.g., Spanish, Chinese)"
-                    value={formData.informedConsentOthers}
-                    onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
-                    className="ml-6 sm:ml-8 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  />
+                <input
+                  id="title"
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => handleInputChange('title', e.target.value)}
+                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                    }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                  aria-required="true"
+                  aria-invalid={!!errors.title}
+                />
+                {errors.title && (
+                  <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <AlertCircle size={16} /> {errors.title}
+                  </p>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Assent Form - Responsive nested checkbox with Others option */}
-          <div className="space-y-2">
-            <p className="text-xs sm:text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Assent Form (if applicable):
-            </p>
-            <div className="ml-6 sm:ml-8 space-y-2">
-              <label className="flex items-start cursor-pointer">
+              {/* Study Site */}
+              <div>
+                <label htmlFor="studySite" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Building size={16} className="text-[#F7D117]" />
+                  </div>
+                  Study Site <span className="text-red-500">*</span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={formData.hasAssentForm}
-                  onChange={(e) => setFormData({ ...formData, hasAssentForm: e.target.checked })}
-                  className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                  id="studySite"
+                  type="text"
+                  value={formData.studySite}
+                  onChange={(e) => handleInputChange('studySite', e.target.value)}
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                  aria-required="true"
                 />
-                <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Assent Form
-                </span>
-              </label>
-              
-              {formData.hasAssentForm && (
-                <div className="ml-6 sm:ml-8 space-y-2">
-                  <label className="flex items-start cursor-pointer">
+              </div>
+
+              {/* Name of Researcher */}
+              <div>
+                <div className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <User size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span>Name of Researcher <span className="text-red-500">*</span></span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div>
+                    <label htmlFor="researcherFirstName" className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      First Name
+                    </label>
                     <input
-                      type="checkbox"
-                      checked={formData.hasAssentFormOthers}
-                      onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
-                      className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
+                      id="researcherFirstName"
+                      type="text"
+                      placeholder="First Name"
+                      value={formData.researcherFirstName}
+                      onChange={(e) => handleInputChange('researcherFirstName', e.target.value)}
+                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.researcherFirstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                        }`}
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      required
+                      aria-required="true"
+                      aria-invalid={!!errors.researcherFirstName}
                     />
-                    <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Others (please specify)
+                    {errors.researcherFirstName && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        <AlertCircle size={12} /> {errors.researcherFirstName}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label htmlFor="researcherMiddleName" className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Middle Name
+                    </label>
+                    <input
+                      id="researcherMiddleName"
+                      type="text"
+                      placeholder="Reyes"
+                      value={formData.researcherMiddleName}
+                      onChange={(e) => handleInputChange('researcherMiddleName', e.target.value)}
+                      className="w-full px-4 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      aria-required="false"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="researcherLastName" className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Last Name
+                    </label>
+                    <input
+                      id="researcherLastName"
+                      type="text"
+                      placeholder="Last Name"
+                      value={formData.researcherLastName}
+                      onChange={(e) => handleInputChange('researcherLastName', e.target.value)}
+                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.researcherLastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                        }`}
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      required
+                      aria-required="true"
+                      aria-invalid={!!errors.researcherLastName}
+                    />
+                    {errors.researcherLastName && (
+                      <p className="text-red-500 text-xs mt-1 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        <AlertCircle size={12} /> {errors.researcherLastName}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="mobileNo" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                      <Phone size={16} className="text-[#F7D117]" />
+                    </div>
+                    Mobile No <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="mobileNo"
+                    type="tel"
+                    value={formData.project_leader_contact}
+                    onChange={(e) => handleInputChange('mobileNo', e.target.value)}
+                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.mobileNo ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                      }`}
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    required
+                    aria-required="true"
+                    aria-invalid={!!errors.mobileNo}
+                  />
+                  {errors.mobileNo && (
+                    <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      <AlertCircle size={16} /> {errors.mobileNo}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="email" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                      <Mail size={16} className="text-[#F7D117]" />
+                    </div>
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={formData.project_leader_email}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                      }`}
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    required
+                    aria-required="true"
+                    aria-invalid={!!errors.email}
+                  />
+                  {errors.email && (
+                    <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      <AlertCircle size={16} /> {errors.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Co-Researchers with Contact and Email */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="flex items-center gap-2 text-sm sm:text-base font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                      <Users size={16} className="text-[#F7D117]" />
+                    </div>
+                    Co-Researchers
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCoResearchers([...coResearchers, { name: '', contact: '', email: '' }])}
+                    className="flex items-center gap-1 px-3 py-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:bg-[#003366] transition-colors text-sm font-semibold"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    aria-label="Add new co-researcher"
+                  >
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+                {coResearchers.map((coResearcher, index) => (
+                  <div key={index} className="space-y-3 p-4 bg-gray-50 rounded-xl mb-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Co-Researcher #{index + 1}
+                      </span>
+                      {coResearchers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setCoResearchers(coResearchers.filter((_, i) => i !== index))}
+                          className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          aria-label={`Remove co-researcher ${index + 1}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor={`coResearcherName-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Full Name
+                      </label>
+                      <input
+                        id={`coResearcherName-${index}`}
+                        type="text"
+                        placeholder="Juan A. Dela Cruz"
+                        value={coResearcher.name}
+                        onChange={(e) => {
+                          const updated = [...coResearchers];
+                          updated[index].name = e.target.value;
+                          setCoResearchers(updated);
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor={`coResearcherContact-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Contact Number
+                        </label>
+                        <input
+                          id={`coResearcherContact-${index}`}
+                          type="tel"
+                          placeholder="+63 912 345 6789"
+                          value={coResearcher.contact}
+                          onChange={(e) => {
+                            const updated = [...coResearchers];
+                            updated[index].contact = e.target.value;
+                            setCoResearchers(updated);
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor={`coResearcherEmail-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Email Address
+                        </label>
+                        <input
+                          id={`coResearcherEmail-${index}`}
+                          type="email"
+                          placeholder="email@example.com"
+                          value={coResearcher.email}
+                          onChange={(e) => {
+                            const updated = [...coResearchers];
+                            updated[index].email = e.target.value;
+                            setCoResearchers(updated);
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Technical/Content Advisers */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="flex items-center gap-2 text-sm sm:text-base font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                      <Users size={16} className="text-[#F7D117]" />
+                    </div>
+                    Technical/Content Adviser/s
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTechnicalAdvisers([...technicalAdvisers, { name: '', contact: '', email: '' }])}
+                    className="flex items-center gap-1 px-3 py-2 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg hover:bg-[#003366] transition-colors text-sm font-semibold"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    aria-label="Add new technical adviser"
+                  >
+                    <Plus size={16} /> Add
+                  </button>
+                </div>
+                {technicalAdvisers.map((adviser, index) => (
+                  <div key={index} className="space-y-3 p-4 bg-gray-50 rounded-xl mb-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Adviser #{index + 1}
+                      </span>
+                      {technicalAdvisers.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setTechnicalAdvisers(technicalAdvisers.filter((_, i) => i !== index))}
+                          className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                          aria-label={`Remove adviser ${index + 1}`}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    <div>
+                      <label htmlFor={`adviserName-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Full Name
+                      </label>
+                      <input
+                        id={`adviserName-${index}`}
+                        type="text"
+                        placeholder="Dr. Maria Santos"
+                        value={adviser.name}
+                        onChange={(e) => {
+                          const updated = [...technicalAdvisers];
+                          updated[index].name = e.target.value;
+                          setTechnicalAdvisers(updated);
+                        }}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor={`adviserContact-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Contact Number
+                        </label>
+                        <input
+                          id={`adviserContact-${index}`}
+                          type="tel"
+                          placeholder="+63 912 345 6789"
+                          value={adviser.contact}
+                          onChange={(e) => {
+                            const updated = [...technicalAdvisers];
+                            updated[index].contact = e.target.value;
+                            setTechnicalAdvisers(updated);
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor={`adviserEmail-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Email Address
+                        </label>
+                        <input
+                          id={`adviserEmail-${index}`}
+                          type="email"
+                          placeholder="email@example.com"
+                          value={adviser.email}
+                          onChange={(e) => {
+                            const updated = [...technicalAdvisers];
+                            updated[index].email = e.target.value;
+                            setTechnicalAdvisers(updated);
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Institution */}
+              <div>
+                <label htmlFor="institution" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Building size={16} className="text-[#F7D117]" />
+                  </div>
+                  Institution <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="institution"
+                  type="text"
+                  value={formData.institution}
+                  onChange={(e) => handleInputChange('institution', e.target.value)}
+                  placeholder="University of Makati"
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                  aria-required="true"
+                />
+              </div>
+
+              {/* College/Department - Conditional Dropdown for UMak */}
+              <div>
+                <label htmlFor="college" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Building size={16} className="text-[#F7D117]" />
+                  </div>
+                  College/Department <span className="text-red-500">*</span>
+                </label>
+                {isUMak ? (
+                  <select
+                    id="college"
+                    value={formData.college}
+                    onChange={(e) => handleInputChange('college', e.target.value)}
+                    className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] cursor-pointer transition-all duration-300 hover:border-gray-400"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    required
+                    aria-required="true"
+                  >
+                    <option value="">Select College/Department</option>
+                    {umakColleges.map((college) => (
+                      <option key={college} value={college}>
+                        {college}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    id="college"
+                    type="text"
+                    value={formData.college}
+                    onChange={(e) => handleInputChange('college', e.target.value)}
+                    placeholder="Enter your college/department"
+                    className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    required
+                    aria-required="true"
+                  />
+                )}
+                {isUMak && (
+                  <p className="text-xs text-gray-500 mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Select from UMak colleges and institutes
+                  </p>
+                )}
+              </div>
+
+              {/* Address of Institution */}
+              <div>
+                <label htmlFor="institutionAddress" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Building size={16} className="text-[#F7D117]" />
+                  </div>
+                  Address of Institution <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="institutionAddress"
+                  type="text"
+                  value={formData.institutionAddress}
+                  onChange={(e) => handleInputChange('institutionAddress', e.target.value)}
+                  placeholder="J.P. Rizal Extension, West Rembo, Makati City"
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                  aria-required="true"
+                />
+              </div>
+
+              {/* Type of Study - WITH FIELDSET */}
+              <fieldset>
+                <legend className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span className="flex-1">Type of Study <span className="text-red-500">*</span></span>
+                  <Tooltip text="Select all types that apply to your research study">
+                    <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
+                  </Tooltip>
+                </legend>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {[
+                    { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
+                    { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
+                    { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
+                    { value: 'social_behavioral', label: 'Social / Behavioral Research' },
+                    { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
+                    { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
+                    { value: 'stem_cell', label: 'Stem Cell Research' },
+                    { value: 'genetic', label: 'Genetic Research' },
+                    { value: 'others', label: 'Others (please specify)' }
+                  ].map((option) => (
+                    <div key={option.value}>
+                      <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.typeOfStudy.includes(option.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
+                            } else {
+                              setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
+                            }
+                          }}
+                          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+                        />
+                        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {option.label}
+                        </span>
+                      </label>
+
+                      {/* MOVED INSIDE: Conditional input appears right below "Others" checkbox */}
+                      {option.value === 'others' && formData.typeOfStudy.includes('others') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Please specify other type of study"
+                            value={formData.typeOfStudyOthers}
+                            onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* Study Site Type - FIXED */}
+              <div>
+                <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <Building size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span className="flex-1">Study Site Type <span className="text-red-500">*</span></span>
+                  <Tooltip text="Select whether your study involves multiple locations or a single site">
+                    <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
+                  </Tooltip>
+                </label>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {[
+                    { value: 'Multicenter (International)', label: 'Multicenter (International)' },
+                    { value: 'Multicenter (National)', label: 'Multicenter (National)' },
+                    { value: 'Single Site', label: 'Single Site' }
+                  ].map((option) => (
+                    <label key={option.value} className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
+                      <input
+                        type="radio"
+                        name="studySiteType"
+                        value={option.value}
+                        checked={formData.studySiteType === option.value}
+                        onChange={(e) => handleInputChange('studySiteType', e.target.value)}
+                        className="w-5 h-5 min-w-[1.25rem] mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+                      />
+                      <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {option.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Source of Funding - FIXED */}
+              <div>
+                <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span className="flex-1">Source of Funding <span className="text-red-500">*</span></span>
+                  <Tooltip text="Select all funding sources that apply to your research">
+                    <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
+                  </Tooltip>
+                </label>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {[
+                    { value: 'self_funded', label: 'Self-funded' },
+                    { value: 'government', label: 'Government-Funded' },
+                    { value: 'scholarship', label: 'Scholarship/Research Grant' },
+                    { value: 'pharmaceutical', label: 'Sponsored by Pharmaceutical Company' },
+                    { value: 'institution', label: 'Institution-Funded' },
+                    { value: 'others', label: 'Others (please specify)' }
+                  ].map((option) => (
+                    <div key={option.value}>
+                      <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
+                        <input
+                          type="checkbox"
+                          checked={formData.sourceOfFunding.includes(option.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, sourceOfFunding: [...formData.sourceOfFunding, option.value] });
+                            } else {
+                              setFormData({ ...formData, sourceOfFunding: formData.sourceOfFunding.filter(v => v !== option.value) });
+                            }
+                          }}
+                          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+                        />
+                        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {option.label}
+                        </span>
+                      </label>
+
+                      {/* MOVED INSIDE: Pharmaceutical Company input appears right below its checkbox */}
+                      {option.value === 'pharmaceutical' && formData.sourceOfFunding.includes('pharmaceutical') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Specify Pharmaceutical Company"
+                            value={formData.pharmaceuticalSponsor}
+                            onChange={(e) => handleInputChange('pharmaceuticalSponsor', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {/* MOVED INSIDE: Others input appears right below its checkbox */}
+                      {option.value === 'others' && formData.sourceOfFunding.includes('others') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Specify Other Funding Source"
+                            value={formData.fundingOthers}
+                            onChange={(e) => handleInputChange('fundingOthers', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Duration of the Study - WITH PROPER LABELS */}
+              <div>
+                <div className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Calendar size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span>Duration of the Study <span className="text-red-500">*</span></span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="startDate" className="block text-xs font-medium mb-2 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Start date
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="startDate"
+                        type="date"
+                        value={formData.startDate}
+                        onChange={(e) => handleInputChange('startDate', e.target.value)}
+                        className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        required
+                      />
+                      <Calendar size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="endDate" className="block text-xs font-medium mb-2 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      End date
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="endDate"
+                        type="date"
+                        value={formData.endDate}
+                        onChange={(e) => handleInputChange('endDate', e.target.value)}
+                        className="w-full pl-4 pr-10 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        required
+                      />
+                      <Calendar size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Number of Participants */}
+              <div>
+                <label htmlFor="numParticipants" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <Users size={16} className="text-[#F7D117]" />
+                  </div>
+                  No. of study participants <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="numParticipants"
+                  type="number"
+                  value={formData.numParticipants}
+                  onChange={(e) => handleInputChange('numParticipants', e.target.value)}
+                  placeholder="e.g., 100"
+                  className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  required
+                  aria-required="true"
+                />
+              </div>
+
+              {/* Technical Review */}
+              <div>
+                <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  Has the Research undergone a Technical Review? <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors">
+                    <input
+                      type="radio"
+                      name="technicalReview"
+                      value="yes"
+                      checked={formData.technicalReview === 'yes'}
+                      onChange={(e) => handleInputChange('technicalReview', e.target.value)}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Yes (please attach technical review results)
                     </span>
                   </label>
-                  {formData.hasAssentFormOthers && (
+                  <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors">
+                    <input
+                      type="radio"
+                      name="technicalReview"
+                      value="no"
+                      checked={formData.technicalReview === 'no'}
+                      onChange={(e) => handleInputChange('technicalReview', e.target.value)}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      No
+                    </span>
+                  </label>
+                </div>
+
+                {/* File Upload appears when "Yes" is selected */}
+                {formData.technicalReview === 'yes' && (
+                  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <label className="block text-sm font-semibold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Upload Technical Review Results <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert('File size must be less than 10MB');
+                              e.target.value = '';
+                              return;
+                            }
+                            setFormData({ ...formData, technicalReviewFile: file });
+                          }
+                        }}
+                        className="hidden"
+                        id="technicalReviewFile"
+                        required
+                      />
+                      <label
+                        htmlFor="technicalReviewFile"
+                        className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-[#071139] rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300 group"
+                      >
+                        <svg className="w-8 h-8 text-[#071139] group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {formData.technicalReviewFile ? formData.technicalReviewFile.name : 'Click to upload file'}
+                          </p>
+                          <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            PDF, DOC, DOCX (max 10MB)
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {/* Show selected file info */}
+                    {formData.technicalReviewFile && (
+                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <div>
+                            <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {formData.technicalReviewFile.name}
+                            </p>
+                            <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {(formData.technicalReviewFile.size / 1024 / 1024).toFixed(2)} MB
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, technicalReviewFile: null });
+                            const fileInput = document.getElementById('technicalReviewFile') as HTMLInputElement;
+                            if (fileInput) fileInput.value = '';
+                          }}
+                          className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
+                          aria-label="Remove file"
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Submitted to Another UMREC */}
+              <div>
+                <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  Has the Research been submitted to another UMREC? <span className="text-red-500">*</span>
+                </label>
+                <div className="space-y-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors">
+                    <input
+                      type="radio"
+                      name="submittedToOther"
+                      value="yes"
+                      checked={formData.submittedToOther === 'yes'}
+                      onChange={(e) => handleInputChange('submittedToOther', e.target.value)}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Yes
+                    </span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-white rounded-lg transition-colors">
+                    <input
+                      type="radio"
+                      name="submittedToOther"
+                      value="no"
+                      checked={formData.submittedToOther === 'no'}
+                      onChange={(e) => handleInputChange('submittedToOther', e.target.value)}
+                      className="w-5 h-5"
+                    />
+                    <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      No
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Checklist Section Header */}
+              <div className="bg-gradient-to-r from-[#F7D117]/10 to-[#B8860B]/10 border-l-4 border-[#F7D117] p-6 rounded-xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                  <h3 className="font-bold text-[#071139] text-lg flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <CheckSquare size={20} />
+                    2. Checklist of Documents
+                  </h3>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCheckAll}
+                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-semibold"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      aria-label="Check all document options"
+                    >
+                      Check All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleUncheckAll}
+                      className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-semibold"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      aria-label="Uncheck all document options"
+                    >
+                      Uncheck All
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Requirements - WITH FIELDSET */}
+              <fieldset>
+                <legend className="font-semibold text-[#071139] text-lg mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Basic Requirements:
+                </legend>
+                <div className="space-y-4">
+                  <label className="flex items-center gap-3 cursor-not-allowed opacity-75 p-3 bg-gray-50 rounded-lg">
+                    <input type="checkbox" checked={true} disabled className="w-5 h-5 rounded cursor-not-allowed" />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Application for Ethics Review
+                    </span>
+                    <Tooltip text="This form is automatically included with your submission">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasResearchProtocol}
+                      onChange={(e) => setFormData({ ...formData, hasResearchProtocol: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Research Protocol
+                    </span>
+                    <Tooltip text="Detailed plan describing research objectives, methodology, and procedures">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formData.hasInformedConsent}
+                        onChange={(e) => setFormData({ ...formData, hasInformedConsent: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                      />
+                      <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Informed Consent Form
+                      </span>
+                      <Tooltip text="Document explaining research to participants and obtaining their voluntary agreement">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                      </Tooltip>
+                    </label>
+
+                    {formData.hasInformedConsent && (
+                      <div className="ml-8 sm:ml-11 space-y-2">
+                        <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={formData.hasInformedConsentOthers}
+                            onChange={(e) => setFormData({ ...formData, hasInformedConsentOthers: e.target.checked })}
+                            className="w-5 h-5 rounded"
+                          />
+                          <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            Others (please specify)
+                          </span>
+                        </label>
+                        {formData.hasInformedConsentOthers && (
+                          <input
+                            type="text"
+                            placeholder="Specify here"
+                            value={formData.informedConsentOthers}
+                            onChange={(e) => setFormData({ ...formData, informedConsentOthers: e.target.value })}
+                            className="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            aria-label="Specify other informed consent documents"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="p-3 bg-blue-50 border-l-4 border-blue-500 rounded-lg">
+                      <p className="text-sm font-semibold text-[#071139] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Assent Form (if applicable):
+                      </p>
+                      <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Required when research involves minors or vulnerable populations
+                      </p>
+                    </div>
+
+                    <div className="ml-4 sm:ml-6 space-y-2">
+                      <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.hasAssentForm}
+                          onChange={(e) => setFormData({ ...formData, hasAssentForm: e.target.checked })}
+                          className="w-5 h-5 rounded"
+                        />
+                        <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Assent Form
+                        </span>
+                        <Tooltip text="Simplified consent form for minors or individuals unable to provide full informed consent">
+                          <Info size={18} className="text-gray-400 cursor-help" />
+                        </Tooltip>
+                      </label>
+
+                      {formData.hasAssentForm && (
+                        <div className="ml-8 sm:ml-11 space-y-2">
+                          <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={formData.hasAssentFormOthers}
+                              onChange={(e) => setFormData({ ...formData, hasAssentFormOthers: e.target.checked })}
+                              className="w-5 h-5 rounded"
+                            />
+                            <span className="text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              Others (please specify)
+                            </span>
+                          </label>
+                          {formData.hasAssentFormOthers && (
+                            <input
+                              type="text"
+                              placeholder="Specify here"
+                              value={formData.assentFormOthers}
+                              onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
+                              className="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                              style={{ fontFamily: 'Metropolis, sans-serif' }}
+                              aria-label="Specify other assent form documents"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasEndorsementLetter}
+                      onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Endorsement Letter
+                    </span>
+                    <Tooltip text="Official letter from your institution or adviser supporting your research">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasQuestionnaire}
+                      onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Questionnaire (if applicable)
+                    </span>
+                    <Tooltip text="Survey instrument or interview guide for data collection">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+                </div>
+              </fieldset>
+
+              {/* Supplementary Documents - UPDATED LIST */}
+              <div className="space-y-4">
+                <h5 className="font-semibold text-[#071139] text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Supplementary Documents:
+                </h5>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasTechnicalReview}
+                    onChange={(e) => setFormData({ ...formData, hasTechnicalReview: e.target.checked })}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Technical review/pre-oral defense (Any documentary proof)
+                  </span>
+                  <Tooltip text="Evidence of technical evaluation or preliminary defense of your research proposal">
+                    <Info size={18} className="text-gray-400 cursor-help" />
+                  </Tooltip>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasDataCollectionForms}
+                    onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Data Collection Forms (if applicable)
+                  </span>
+                  <Tooltip text="Forms used to systematically gather research data from participants">
+                    <Info size={18} className="text-gray-400 cursor-help" />
+                  </Tooltip>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasProductBrochure}
+                    onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Product Brochure (if applicable)
+                  </span>
+                  <Tooltip text="Informational materials about products being studied in the research">
+                    <Info size={18} className="text-gray-400 cursor-help" />
+                  </Tooltip>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasFDAAuthorization}
+                    onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Philippine FDA Marketing Authorization or Import License (if applicable)
+                  </span>
+                  <Tooltip text="Official permit from FDA for pharmaceutical or medical products used in research">
+                    <Info size={18} className="text-gray-400 cursor-help" />
+                  </Tooltip>
+                </label>
+
+                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={formData.hasCompanyPermit}
+                    onChange={(e) => setFormData({ ...formData, hasCompanyPermit: e.target.checked })}
+                    className="w-5 h-5 rounded"
+                  />
+                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Permit/s for the use of company name
+                  </span>
+                  <Tooltip text="Authorization to reference or use a company's name in your research">
+                    <Info size={18} className="text-gray-400 cursor-help" />
+                  </Tooltip>
+                </label>
+
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasSpecialPopulationPermit}
+                      onChange={(e) => setFormData({ ...formData, hasSpecialPopulationPermit: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Permit/s for special populations (please specify)
+                    </span>
+                    <Tooltip text="Special approval for research involving vulnerable groups (minors, pregnant women, prisoners, etc.)">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+                  {formData.hasSpecialPopulationPermit && (
                     <input
                       type="text"
-                      placeholder="Specify language (e.g., Spanish, Chinese)"
-                      value={formData.assentFormOthers}
-                      onChange={(e) => setFormData({ ...formData, assentFormOthers: e.target.value })}
-                      className="ml-6 sm:ml-8 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 sm:px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
+                      placeholder="Specify special population details"
+                      value={formData.specialPopulationPermitDetails}
+                      onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
+                      className="ml-11 w-[calc(100%-2.75rem)] px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                     />
                   )}
                 </div>
-              )}
-            </div>
-          </div>
 
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasEndorsementLetter}
-              onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Endorsement Letter from Research Adviser
-            </span>
-          </label>
-        </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={formData.hasOtherDocs}
+                      onChange={(e) => setFormData({ ...formData, hasOtherDocs: e.target.checked })}
+                      className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Others (please specify)
+                    </span>
+                    <Tooltip text="Any additional relevant documents not listed above">
+                      <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                  </label>
+                  {formData.hasOtherDocs && (
+                    <textarea
+                      placeholder="Specify other documents (e.g., The researcher is the participant because the study is a narrative inquiry)"
+                      value={formData.otherDocsDetails}
+                      onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    />
+                  )}
+                </div>
+              </div>
 
-        {/* Supplementary Documents */}
-        <div className="space-y-3 sm:space-y-4 mt-6">
-          <h5 className="font-semibold text-sm sm:text-base text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Supplementary Documents:
-          </h5>
-
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasQuestionnaire}
-              onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Questionnaire (if applicable)
-            </span>
-          </label>
-
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasDataCollectionForms}
-              onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Data Collection Forms (if applicable)
-            </span>
-          </label>
-
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasProductBrochure}
-              onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Product Brochure (if applicable)
-            </span>
-          </label>
-
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={formData.hasFDAAuthorization}
-              onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
-              className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-            />
-            <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Philippine FDA Marketing Authorization or Import License (if applicable)
-            </span>
-          </label>
-
-          <div>
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasSpecialPopulationPermit}
-                onChange={(e) => setFormData({ ...formData, hasSpecialPopulationPermit: e.target.checked })}
-                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-              />
-              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Permit/s for special populations (please specify)
-              </span>
-            </label>
-            {formData.hasSpecialPopulationPermit && (
-              <input
-                type="text"
-                placeholder="Specify details"
-                value={formData.specialPopulationPermitDetails}
-                onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
-                className="ml-6 sm:ml-8 mt-2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-            )}
-          </div>
-
-          <div>
-            <label className="flex items-start cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.hasOtherDocs}
-                onChange={(e) => setFormData({ ...formData, hasOtherDocs: e.target.checked })}
-                className="w-5 h-5 mt-0.5 text-amber-600 border-2 border-gray-300 rounded focus:ring-2 focus:ring-amber-500 cursor-pointer flex-shrink-0"
-              />
-              <span className="ml-3 text-xs sm:text-sm text-[#1E293B] leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Others (please specify)
-              </span>
-            </label>
-            {formData.hasOtherDocs && (
-              <input
-                type="text"
-                placeholder="Specify other documents"
-                value={formData.otherDocsDetails}
-                onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
-                className="ml-6 sm:ml-8 mt-2 w-[calc(100%-1.5rem)] sm:w-[calc(100%-2rem)] px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-amber-500 focus:outline-none text-[#1E293B] text-sm"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              />
-            )}
+              {/* SINGLE ORANGE SAVE BUTTON */}
+              <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
+                <button
+                  type="submit"
+                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  aria-label="Save changes"
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Save Changes
+                  </span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
+      </div>
 
-        {/* Navigation Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 sm:pt-8 mt-6 sm:mt-8 border-t-2 border-gray-200">
-          <button
-            type="button"
-            onClick={handleBack}
-            className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold order-2 sm:order-1"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            Back
-          </button>
-          <button
-            type="submit"
-            className="w-full sm:w-auto px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors font-semibold cursor-pointer order-1 sm:order-2"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            Next
-          </button>
-        </div>
-      </form>
-    </RevisionStepLayout>
+      <Footer />
+
+      {/* Custom Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        errors={errorList}
+      />
+    </div>
+  );
+
+}
+export default function RevisionStep2() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    }>
+      <RevisionStep2Content />
+    </Suspense>
   );
 }

@@ -6,16 +6,114 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+
 function LoginContent() {
- const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true); // ✅ NEW
   const router = useRouter();
   const supabase = createClient();
   const searchParams = useSearchParams();
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      console.log('🚀 Starting auth check...');
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+      console.log('👤 User:', user);
+      console.log('❗ User Error:', userError);
+
+      if (userError || !user) {
+        console.log('❌ No user found, showing login form');
+        setCheckingAuth(false);
+        return;
+      }
+
+      console.log('✅ User authenticated, fetching profile...');
+
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      console.log('📋 Profile data:', profile);
+      console.log('❗ Profile error:', profileError);
+
+      if (!profile) {
+        console.error('❌ Profile not found');
+        setCheckingAuth(false);
+        setError('User profile not found');
+        return;
+      }
+
+      if (!profile.role) {
+        console.error('❌ No role in profile');
+        setCheckingAuth(false);
+        setError('User role not set');
+        return;
+      }
+
+      console.log('✅ Found role:', profile.role);
+      redirectToRolePage(profile.role);
+    } catch (error) {
+      console.error('💥 Auth check error:', error);
+      setCheckingAuth(false);
+    }
+  };
+
+const redirectToRolePage = (role: string | null | undefined) => {
+  console.log('🔍 Redirecting with role:', role);
+
+  if (!role) {
+    console.error('❌ No role provided!');
+    setError('Your account does not have a role assigned. Please contact support.');
+    setCheckingAuth(false);
+    return;
+  }
+
+  const normalizedRole = role.toLowerCase().trim();
+  console.log('🔍 Normalized role:', normalizedRole);
+
+  // ✅ ACTUALLY REDIRECT (not just log)
+  switch (normalizedRole) {
+    case 'admin':
+      console.log('✅ Redirecting to /adminmodule');
+      router.replace('/adminmodule');  // ✅ ACTUAL REDIRECT
+      break;
+    case 'staff':
+      console.log('✅ Redirecting to /staffmodule');
+      router.replace('/staffmodule');  // ✅ ACTUAL REDIRECT
+      break;
+    case 'researcher':
+      console.log('✅ Redirecting to /researchermodule');
+      router.replace('/researchermodule');  // ✅ ACTUAL REDIRECT
+      break;
+    case 'reviewer':
+      console.log('✅ Redirecting to /reviewermodule');
+      router.replace('/reviewermodule');  // ✅ ACTUAL REDIRECT
+      break;
+    case 'secretariat':
+      console.log('✅ Redirecting to /secretariatmodule');
+      router.replace('/secretariatmodule');  // ✅ ACTUAL REDIRECT
+      break;
+    default:
+      console.error('❌ Unknown role:', role);
+      setError(`Invalid role: "${role}". Please contact support.`);
+      setCheckingAuth(false);
+  }
+};
+
+
 
   useEffect(() => {
     if (searchParams.get('verified') === 'true') {
@@ -36,60 +134,55 @@ function LoginContent() {
     if (error) {
       setError(error.message);
       setLoading(false);
-    } else {
-      console.log('Login data:', data);
-      console.log('User ID:', data.user.id);
-      console.log('Session:', data.session);
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Current session after login:', session);
-
-      const authenticatedSupabase = createClient();
-      await authenticatedSupabase.auth.setSession(data.session!);
-
-      const { data: profile, error: profileError } = await authenticatedSupabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-
-      console.log('Profile result:', profile, profileError);
-
-      if (profileError || !profile) {
-        setError('Failed to fetch user role: ' + (profileError?.message || 'Profile not found'));
-        setLoading(false);
-        return;
-      }
-
-      switch (profile.role) {
-        case 'admin':
-          router.push('/adminmodule');
-          break;
-        case 'staff':
-          router.push('/staffmodule');
-          break;
-        case 'researcher':
-          router.push('/researchermodule');
-          break;
-        case 'reviewer':
-          router.push('/reviewermodule');
-          break;
-        case 'secretariat':
-          router.push('/secretariatmodule');
-          break;
-        default:
-          router.push('/dashboard');
-      }
+      return;
     }
+
+    // ✅ Use getUser() for secure authentication
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setError('Authentication failed');
+      setLoading(false);
+      return;
+    }
+
+    // Get user role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    console.log('Profile result:', profile, profileError);
+
+    if (profileError || !profile) {
+      setError('Failed to fetch user role: ' + (profileError?.message || 'Profile not found'));
+      setLoading(false);
+      return;
+    }
+
+    redirectToRolePage(profile.role);
   };
+
+  // ✅ SHOW LOADING WHILE CHECKING AUTH
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#071139]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#F0E847] mx-auto mb-4"></div>
+          <p className="text-white text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Checking authentication...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 overflow-hidden">
       {/* Background Image with Overlay */}
       <div className="absolute inset-0 z-0">
-        <Image 
+        <Image
           src="/img/login.png"
           alt="Login Background"
           fill
@@ -112,25 +205,24 @@ function LoginContent() {
         <div className="particle particle-5"></div>
       </div>
 
-    {/* Login Container - Enhanced Glassmorphism */}
-<div className="relative z-10 w-full max-w-xl sm:max-w-2xl mx-auto animate-fade-in-up">
-  <div className="relative rounded-2xl sm:rounded-3xl p-1 sm:p-1.5 overflow-hidden">
-    {/* Animated rotating border glow - 120 degrees - ONLY OUTSIDE */}
-    <div className="absolute inset-0 rounded-2xl sm:rounded-3xl animate-spin-slow pointer-events-none" style={{
-      background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
-      filter: 'blur(8px)'
-    }}></div>
-    
-    
-    {<div className="absolute inset-0 rounded-2xl sm:rounded-3xl" style={{
-      boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2), 0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3), 0 8px 32px 0 rgba(240, 232, 71, 0.15)'
-    }}></div> }
+      {/* Login Container - Enhanced Glassmorphism */}
+      <div className="relative z-10 w-full max-w-xl sm:max-w-2xl mx-auto animate-fade-in-up">
+        <div className="relative rounded-2xl sm:rounded-3xl p-1 sm:p-1.5 overflow-hidden">
+          {/* Animated rotating border glow - 120 degrees - ONLY OUTSIDE */}
+          <div className="absolute inset-0 rounded-2xl sm:rounded-3xl animate-spin-slow pointer-events-none" style={{
+            background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
+            filter: 'blur(8px)'
+          }}></div>
 
-    {/* Main content with glassmorphism */}
-    <div className="relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 backdrop-blur-xl" style={{ 
-      backgroundColor: 'rgba(7, 17, 57, 0.95)',
-      borderRadius: 'inherit'
-    }}>
+          <div className="absolute inset-0 rounded-2xl sm:rounded-3xl" style={{
+            boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2), 0 0 60px rgba(240, 232, 71, 0.6), inset 0 0 30px rgba(240, 232, 71, 0.3), 0 8px 32px 0 rgba(240, 232, 71, 0.15)'
+          }}></div>
+
+          {/* Main content with glassmorphism */}
+          <div className="relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-12 backdrop-blur-xl" style={{
+            backgroundColor: 'rgba(7, 17, 57, 0.95)',
+            borderRadius: 'inherit'
+          }}>
 
             {/* Logo with pulse animation */}
             <div className="flex justify-center mb-6 sm:mb-8">
@@ -138,7 +230,7 @@ function LoginContent() {
                 {/* Glow ring behind logo */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#F0E847]/20 to-[#D3CC50]/20 blur-xl animate-pulse-slow"></div>
                 <div className="relative bg-white/5 backdrop-blur-sm rounded-full p-4 sm:p-5 border border-[#F0E847]/20 hover:scale-110 transition-transform duration-300">
-                  <Image 
+                  <Image
                     src="/img/umreclogonobg.png"
                     alt="UMREC Logo"
                     width={80}
@@ -173,9 +265,9 @@ function LoginContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-5 sm:px-6 md:px-7 py-3.5 sm:py-4 md:py-5 rounded-2xl text-sm sm:text-base text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847] transition-all duration-300 backdrop-blur-sm border border-white/10 hover:border-[#F0E847]/30"
-                  style={{ 
-                    fontFamily: 'Metropolis, sans-serif', 
-                    fontWeight: 400, 
+                  style={{
+                    fontFamily: 'Metropolis, sans-serif',
+                    fontWeight: 400,
                     backgroundColor: 'rgba(200, 211, 224, 0.95)',
                     boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
                   }}
@@ -193,9 +285,9 @@ function LoginContent() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full px-5 sm:px-6 md:px-7 py-3.5 sm:py-4 md:py-5 pr-14 sm:pr-16 md:pr-18 rounded-2xl text-sm sm:text-base text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#F0E847] transition-all duration-300 backdrop-blur-sm border border-white/10 hover:border-[#F0E847]/30"
-                  style={{ 
-                    fontFamily: 'Metropolis, sans-serif', 
-                    fontWeight: 400, 
+                  style={{
+                    fontFamily: 'Metropolis, sans-serif',
+                    fontWeight: 400,
                     backgroundColor: 'rgba(200, 211, 224, 0.95)',
                     boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
                   }}
@@ -262,8 +354,8 @@ function LoginContent() {
 
               {/* Forgot Password Link - Enhanced */}
               <div className="flex justify-end">
-                <Link 
-                  href="/forgot-password" 
+                <Link
+                  href="/forgot-password"
                   className="text-[#F0E847] hover:text-[#D3CC50] text-xs sm:text-sm transition-all duration-300 relative group inline-block"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}
                 >
@@ -277,8 +369,8 @@ function LoginContent() {
                 type="submit"
                 disabled={loading}
                 className="w-full py-3.5 sm:py-4 md:py-5 rounded-2xl text-sm sm:text-base font-bold transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group shadow-xl hover:shadow-2xl"
-                style={{ 
-                  fontFamily: 'Metropolis, sans-serif', 
+                style={{
+                  fontFamily: 'Metropolis, sans-serif',
                   fontWeight: 700,
                   background: 'linear-gradient(135deg, #F0E847 0%, #D3CC50 100%)',
                   color: '#000000',
@@ -312,8 +404,8 @@ function LoginContent() {
             <div className="mt-6 sm:mt-8 text-center">
               <p className="text-white text-xs sm:text-sm" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
                 Don't have an account?{' '}
-                <Link 
-                  href="/register" 
+                <Link
+                  href="/register"
                   className="text-[#F0E847] hover:text-[#D3CC50] font-semibold transition-all duration-300 relative group inline-flex items-center gap-1"
                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                 >
@@ -478,8 +570,9 @@ function LoginContent() {
         }
       `}</style>
     </div>
-);
+  );
 }
+
 export default function LoginPage() {
   return (
     <Suspense fallback={

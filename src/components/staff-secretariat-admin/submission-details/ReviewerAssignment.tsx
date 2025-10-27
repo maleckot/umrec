@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Calendar } from 'lucide-react';
 
 interface Reviewer {
   id: string;
@@ -17,6 +17,8 @@ interface ReviewerAssignmentProps {
   category: 'Exempted' | 'Expedited' | 'Full Review';
   reviewers: Reviewer[];
   maxReviewers: number;
+  reviewDueDate: string;
+  onDueDateChange: (date: string) => void;
   onAssign: (selectedReviewers: string[]) => void;
 }
 
@@ -28,11 +30,21 @@ const PANEL_DESCRIPTIONS: Record<string, string> = {
   'Panel 4': 'Panel 4 - UMREC Officers',
 };
 
-export default function ReviewerAssignment({ category, reviewers, maxReviewers, onAssign }: ReviewerAssignmentProps) {
+export default function ReviewerAssignment({ 
+  category, 
+  reviewers, 
+  maxReviewers, 
+  reviewDueDate,
+  onDueDateChange,
+  onAssign 
+}: ReviewerAssignmentProps) {
   const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'panel' | 'individual'>('individual');
+
+  // Calculate minimum date (today)
+  const today = new Date().toISOString().split('T')[0];
 
   // ✅ Dynamically extract unique panels from reviewers
   const uniquePanels = Array.from(new Set(reviewers.map(r => r.panel)))
@@ -109,9 +121,17 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
   };
 
   const handleSaveClick = () => {
-    if (selectedReviewers.length > 0) {
-      setShowConfirmModal(true);
+    if (selectedReviewers.length === 0) {
+      alert('Please select at least one reviewer');
+      return;
     }
+    
+    if (!reviewDueDate) {
+      alert('Please select a review due date');
+      return;
+    }
+
+    setShowConfirmModal(true);
   };
 
   const handleConfirm = () => {
@@ -153,6 +173,30 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             Assign Reviewers ({category})
           </h3>
           
+          {/* ✅ Due Date Section - Responsive */}
+          <div className="mb-4 p-3 sm:p-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg">
+            <label 
+              htmlFor="reviewDueDate" 
+              className="flex items-center gap-2 text-sm font-semibold text-white mb-2" 
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            >
+              <Calendar size={16} />
+              Review Due Date <span className="text-yellow-300">*</span>
+            </label>
+            <input
+              type="date"
+              id="reviewDueDate"
+              value={reviewDueDate}
+              onChange={(e) => onDueDateChange(e.target.value)}
+              min={today}
+              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 text-sm sm:text-base text-gray-900 bg-white border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 transition-all"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            />
+            <p className="text-xs sm:text-sm text-white/80 mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Suggested: <span className="font-semibold text-yellow-300">{category === 'Expedited' ? '14 days' : '30 days'}</span> from today
+            </p>
+          </div>
+
           <p className="text-white text-sm mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Select reviewers to assign this submission (Maximum: {maxReviewers} reviewers):
           </p>
@@ -234,19 +278,19 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
                         type="checkbox"
                         checked={selectedReviewers.includes(reviewer.id)}
                         onChange={() => {}}
-                        className="mr-3 cursor-pointer"
+                        className="mr-3 cursor-pointer h-4 w-4 sm:h-5 sm:w-5"
                         disabled={!selectedReviewers.includes(reviewer.id) && selectedReviewers.length >= maxReviewers}
                       />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {reviewer.name}
                         </p>
-                        <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {PANEL_DESCRIPTIONS[reviewer.panel] || reviewer.panel} {/* ✅ Show full description */}
+                        <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {PANEL_DESCRIPTIONS[reviewer.panel] || reviewer.panel}
                         </p>
                       </div>
                     </div>
-                    <span className="text-xs text-gray-500 ml-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <span className="text-xs text-gray-500 ml-3 flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {reviewer.code}
                     </span>
                   </div>
@@ -263,14 +307,14 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
 
           {/* ✅ Panel Assignment Mode - DYNAMIC with descriptions */}
           {assignmentMode === 'panel' && (
-            <div className="space-y-4 mb-4">
+            <div className="space-y-4 mb-4 max-h-96 overflow-y-auto">
               {uniquePanels.length > 0 ? (
                 uniquePanels.map(panelCode => {
                   const panelReviewers = reviewersByPanel[panelCode] || [];
-                  const panelDescription = PANEL_DESCRIPTIONS[panelCode] || panelCode; // ✅ Map to full description
+                  const panelDescription = PANEL_DESCRIPTIONS[panelCode] || panelCode;
                   
                   return (
-                    <div key={panelCode} className="border-2 border-gray-300 rounded-lg p-4">
+                    <div key={panelCode} className="border-2 border-gray-300 rounded-lg p-3 sm:p-4">
                       <div
                         className="flex items-start gap-3 mb-3 cursor-pointer"
                         onClick={() => handlePanelToggle(panelCode)}
@@ -279,11 +323,11 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
                           type="checkbox"
                           checked={isPanelFullySelected(panelCode)}
                           onChange={() => {}}
-                          className="mt-1 cursor-pointer"
+                          className="mt-1 cursor-pointer h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
                         />
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <h4 className="font-bold text-gray-900 text-sm mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {panelDescription} {/* ✅ Show full description */}
+                            {panelDescription}
                           </h4>
                           <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                             {panelReviewers.length} reviewer(s) available
@@ -295,10 +339,10 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
                         <div className="ml-7 space-y-1 border-t border-gray-200 pt-2">
                           {panelReviewers.map(reviewer => (
                             <div key={reviewer.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
-                              <span className="text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <span className="text-gray-700 truncate flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {reviewer.name}
                               </span>
-                              <span className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <span className="text-gray-500 ml-2 flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {reviewer.code}
                               </span>
                             </div>
@@ -318,7 +362,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             </div>
           )}
 
-          <p className="text-xs text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <p className="text-xs sm:text-sm text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {selectedReviewers.length} reviewer{selectedReviewers.length !== 1 ? 's' : ''} selected (Maximum: {maxReviewers})
           </p>
 
@@ -333,7 +377,7 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
             </button>
             <button
               onClick={handleSaveClick}
-              disabled={selectedReviewers.length === 0}
+              disabled={selectedReviewers.length === 0 || !reviewDueDate}
               className="px-4 py-2 bg-[#101C50] text-white text-sm font-semibold rounded-lg hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
@@ -346,14 +390,14 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
       {/* Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <h3 className="text-base sm:text-lg font-bold text-gray-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Confirm Reviewer Assignment
               </h3>
               <button
                 onClick={() => setShowConfirmModal(false)}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
               >
                 <X size={20} className="text-gray-600" />
               </button>
@@ -363,15 +407,30 @@ export default function ReviewerAssignment({ category, reviewers, maxReviewers, 
               You are about to assign the following reviewers to this submission:
             </p>
 
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6 max-h-60 overflow-y-auto">
+            {/* ✅ Due Date Display in Modal */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="text-xs font-semibold text-blue-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Review Due Date:
+              </p>
+              <p className="text-sm font-bold text-blue-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {new Date(reviewDueDate).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 sm:p-4 mb-6 max-h-48 sm:max-h-60 overflow-y-auto">
               <ul className="space-y-2">
                 {getSelectedReviewerDetails().map((reviewer) => (
                   <li key={reviewer.id} className="text-sm font-medium text-gray-800 flex items-center justify-between gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                      {reviewer.name}
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
+                      <span className="truncate">{reviewer.name}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{reviewer.code}</span>
+                    <span className="text-xs text-gray-500 flex-shrink-0">{reviewer.code}</span>
                   </li>
                 ))}
               </ul>

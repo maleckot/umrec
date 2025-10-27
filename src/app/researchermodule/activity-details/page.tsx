@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSubmissionActivity } from '@/app/actions/researcher/getSubmissionActivity';
 import{ Suspense } from 'react';
+
 interface Document {
   id: number;
   fileName: string;
@@ -29,6 +30,7 @@ interface Comment {
   commentText: string;
   createdAt: string;
 }
+
 function ActivityDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -156,8 +158,10 @@ function ActivityDetailsContent() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
+  // ✅ SMART REVISION ROUTING
   const handleResubmit = () => {
     const documentTypeToStep: { [key: string]: string } = {
+      'consolidated_application': 'step1',  // Multi-step flow
       'application_form': 'step2',
       'research_protocol': 'step3',
       'consent_form': 'step4',
@@ -166,20 +170,36 @@ function ActivityDetailsContent() {
       'endorsement_letter': 'step7',
     };
 
-    // If viewing a specific document that needs revision, go to that step
+    // ✅ If viewing a specific document that needs revision
     if (selectedDocument && selectedDocument.needsRevision) {
       const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
-      router.push(`/researchermodule/submissions/new/${step}?mode=revision&id=${activityId}`);
+      
+      // ✅ CHECK: Is it consolidated_application?
+      if (selectedDocument.fileType === 'consolidated_application') {
+        // Go through full 1-8 flow (NO docId = multi-step mode)
+        router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
+      } else {
+        // Single document revision (WITH docId = quick submit mode)
+        router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${selectedDocument.id}&docType=${selectedDocument.fileType}`);
+      }
     } 
     // Otherwise, go to the first document that needs revision
     else {
       const firstRejectedDoc = documents.find(doc => doc.needsRevision);
       if (firstRejectedDoc) {
         const step = documentTypeToStep[firstRejectedDoc.fileType] || 'step1';
-        router.push(`/researchermodule/submissions/new/${step}?mode=revision&id=${activityId}`);
+        
+        // ✅ CHECK: Is it consolidated_application?
+        if (firstRejectedDoc.fileType === 'consolidated_application') {
+          // Go through full 1-8 flow
+          router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
+        } else {
+          // Single document revision
+          router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${firstRejectedDoc.id}&docType=${firstRejectedDoc.fileType}`);
+        }
       } else {
         // If no specific doc rejected (general comment), start from beginning
-        router.push(`/researchermodule/submissions/new/step1?mode=revision&id=${activityId}`);
+        router.push(`/researchermodule/submissions/revision/step1?mode=revision&id=${activityId}`);
       }
     }
   };
@@ -361,8 +381,9 @@ function ActivityDetailsContent() {
 
       <Footer />
     </div>
-);
+  );
 }
+
 export default function ActivityDetailsPage() {
   return (
     <Suspense fallback={
