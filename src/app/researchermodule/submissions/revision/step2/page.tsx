@@ -1,8 +1,9 @@
 // app/researchermodule/submissions/revision/step2/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; 
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, User, Mail, Phone, Users, Building, AlertCircle, X, Info, Plus, Trash2, Calendar, FileText, CheckSquare, MessageSquare } from 'lucide-react';
@@ -12,11 +13,11 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: strin
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -48,8 +49,8 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: strin
         <div className="p-6 max-h-96 overflow-y-auto">
           <ul className="space-y-3">
             {errors.map((error, index) => (
-              <li 
-                key={index} 
+              <li
+                key={index}
                 className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg"
               >
                 <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -112,15 +113,15 @@ const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
 // Tooltip Component
 const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
   const [show, setShow] = useState(false);
-  
+
   return (
     <div className="relative inline-block">
-      <button 
-        type="button" 
-        onMouseEnter={() => setShow(true)} 
-        onMouseLeave={() => setShow(false)} 
-        onClick={() => setShow(!show)} 
-        className="p-1" 
+      <button
+        type="button"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        onClick={() => setShow(!show)}
+        className="p-1"
         aria-label="Show information tooltip"
       >
         {children}
@@ -130,9 +131,9 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
           <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShow(false)} />
           <div className="absolute z-50 right-0 top-full mt-2 md:right-auto md:top-auto md:bottom-full md:left-1/2 md:-translate-x-1/2 md:mb-2 w-56 sm:w-64 p-2.5 bg-[#071139] text-white text-xs rounded-lg shadow-2xl" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {text}
-            <button 
-              onClick={() => setShow(false)} 
-              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold" 
+            <button
+              onClick={() => setShow(false)}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold"
               aria-label="Close tooltip"
             >
               ×
@@ -145,30 +146,55 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
     </div>
   );
 };
-
-export default function RevisionStep2() {
+interface DocumentChecklist {
+  hasApplicationForm?: boolean;
+  hasResearchProtocol?: boolean;
+  hasInformedConsent?: boolean;
+  hasInformedConsentOthers?: boolean;
+  informedConsentOthers?: string;
+  hasAssentForm?: boolean;
+  hasAssentFormOthers?: boolean;
+  assentFormOthers?: string;
+  hasEndorsementLetter?: boolean;
+  hasQuestionnaire?: boolean;
+  hasTechnicalReview?: boolean;
+  hasDataCollectionForms?: boolean;
+  hasProductBrochure?: boolean;
+  hasFDAAuthorization?: boolean;
+  hasCompanyPermit?: boolean;
+  hasSpecialPopulationPermit?: boolean;
+  specialPopulationPermitDetails?: string;
+  hasOtherDocs?: boolean;
+  otherDocsDetails?: string;
+}
+function RevisionStep2Content() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id');
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
-
+  const docId = searchParams.get('docId');
+  const docType = searchParams.get('docType');
   const [formData, setFormData] = useState({
+    // Research Information
     title: '',
     studySiteType: '',
     studySite: '',
     researcherFirstName: '',
     researcherMiddleName: '',
     researcherLastName: '',
+    project_leader_email: '',
+    project_leader_contact: '',
     telNo: '',
-    mobileNo: '',
-    email: '',
     faxNo: 'N/A',
     college: '',
     institution: 'University of Makati',
     institutionAddress: '',
-    typeOfStudy: [] as string[], // FIXED: Initialize as empty array
+    typeOfStudy: [] as string[],
     typeOfStudyOthers: '',
-    sourceOfFunding: [] as string[], // FIXED: Initialize as empty array
+    sourceOfFunding: [] as string[],
     pharmaceuticalSponsor: '',
     fundingOthers: '',
     startDate: '',
@@ -177,6 +203,8 @@ export default function RevisionStep2() {
     technicalReview: '',
     technicalReviewFile: null as File | null,
     submittedToOther: '',
+
+    // ✅ Basic Requirements Checkboxes
     hasApplicationForm: true,
     hasResearchProtocol: false,
     hasInformedConsent: false,
@@ -187,6 +215,8 @@ export default function RevisionStep2() {
     assentFormOthers: '',
     hasEndorsementLetter: false,
     hasQuestionnaire: false,
+
+    // ✅ Supplementary Documents Checkboxes
     hasTechnicalReview: false,
     hasDataCollectionForms: false,
     hasProductBrochure: false,
@@ -209,7 +239,7 @@ export default function RevisionStep2() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorList, setErrorList] = useState<string[]>([]);
-  const [revisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
+  const [revisionComments, setRevisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
 
   const umakColleges = [
     'College of Liberal Arts and Sciences (CLAS)',
@@ -234,12 +264,12 @@ export default function RevisionStep2() {
     'Institute of Disaster and Emergency Management (IDEM)',
   ];
 
-  const isUMak = formData.institution.toLowerCase().includes('umak') || 
-                 formData.institution.toLowerCase().includes('university of makati');
+  const isUMak = formData.institution.toLowerCase().includes('umak') ||
+    formData.institution.toLowerCase().includes('university of makati');
 
   const validateInput = (value: string, fieldName: string): string | null => {
     const trimmedValue = value.trim().toLowerCase();
-    
+
     if (!trimmedValue) {
       return `${fieldName} is required`;
     }
@@ -267,82 +297,151 @@ export default function RevisionStep2() {
   };
 
   useEffect(() => {
-    setIsClient(true);
-    const saved = localStorage.getItem('revisionStep2Data');
-    const step1Raw = localStorage.getItem('revisionStep1Data');
-    
-    if (saved) {
+    if (!submissionId) {
+      alert('No submission ID found');
+      router.push('/researchermodule/submissions');
+      return;
+    }
+
+    const fetchSubmissionData = async () => {
+      const supabase = createClient();
+
       try {
-        const parsedData = JSON.parse(saved);
-        const isEmpty = !parsedData.title && !parsedData.email;
-        
-        if (isEmpty && step1Raw) {
-          const step1Data = JSON.parse(step1Raw);
+        // Fetch from research_submissions
+        const { data, error } = await supabase
+          .from('research_submissions')
+          .select('*')
+          .eq('id', submissionId)
+          .single();
+
+        if (error) throw error;
+
+        // ✅ Fetch from application_forms with proper typing
+        let institutionAddressFromForm = '';
+        let studySiteTypeFromForm = ''; // ✅ ADD THIS
+        let documentChecklist: DocumentChecklist = {};
+
+        if (data) {
+          const { data: appFormData, error: appFormError } = await supabase
+            .from('application_forms')
+            .select('institution_address, study_site_type, document_checklist, co_researcher, technical_advisers') // ✅ ADD study_site_type
+            .eq('submission_id', submissionId)
+            .single();
+
+          if (!appFormError && appFormData) {
+            institutionAddressFromForm = appFormData.institution_address || '';
+            studySiteTypeFromForm = appFormData.study_site_type || ''; // ✅ ADD THIS
+            documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
+
+            console.log('📋 Document Checklist from application_forms:', documentChecklist);
+            console.log('🏢 Study Site Type from application_forms:', studySiteTypeFromForm); // ✅ ADD THIS LOG
+
+            // Load co-researchers from application_forms
+            if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
+              setCoResearchers(
+                appFormData.co_researcher.map((co: any) => ({
+                  name: co.name || '',
+                  contact: co.contact || '',
+                  email: co.email || '',
+                }))
+              );
+            }
+
+            // Load technical advisers from application_forms
+            if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
+              setTechnicalAdvisers(
+                appFormData.technical_advisers.map((ad: any) => ({
+                  name: ad.name || '',
+                  contact: ad.contact || '',
+                  email: ad.email || '',
+                }))
+              );
+            }
+          }
+        }
+
+        if (data) {
+          console.log('📊 Fetched from research_submissions:', data);
+
           setFormData({
-            ...parsedData,
-            // FIXED: Ensure arrays are always arrays
-            typeOfStudy: Array.isArray(parsedData.typeOfStudy) ? parsedData.typeOfStudy : [],
-            sourceOfFunding: Array.isArray(parsedData.sourceOfFunding) ? parsedData.sourceOfFunding : [],
-            title: step1Data.title || '',
-            researcherFirstName: step1Data.projectLeaderFirstName || '',
-            researcherMiddleName: step1Data.projectLeaderMiddleName || '',
-            researcherLastName: step1Data.projectLeaderLastName || '',
-            mobileNo: step1Data.projectLeaderContact || '',
-            email: step1Data.projectLeaderEmail || '',
-            institution: step1Data.organization === 'internal' ? 'University of Makati' : '',
+            title: data.title || '',
+            studySiteType: studySiteTypeFromForm || data.study_site_type || '', // ✅ CHANGE THIS - prioritize application_forms
+            studySite: data.study_site || '',
+            researcherFirstName: data.project_leader_first_name || '',
+            researcherMiddleName: data.project_leader_middle_name || '',
+            researcherLastName: data.project_leader_last_name || '',
+            project_leader_email: data.project_leader_email || '',
+            faxNo: data.fax_no || 'N/A',
+            telNo: data.tel_no || '',
+            project_leader_contact: data.project_leader_contact || '',
+            college: data.college || '',
+            institution: data.institution || 'University of Makati',
+            institutionAddress: institutionAddressFromForm,
+            typeOfStudy: Array.isArray(data.type_of_study) ? data.type_of_study : [],
+            typeOfStudyOthers: data.type_of_study_others || '',
+            sourceOfFunding: Array.isArray(data.source_of_funding) ? data.source_of_funding : [],
+            pharmaceuticalSponsor: data.pharmaceutical_sponsor || '',
+            fundingOthers: data.funding_others || '',
+            startDate: data.start_date || '',
+            endDate: data.end_date || '',
+            numParticipants: data.num_participants || '',
+            technicalReview: data.technical_review || '',
+            submittedToOther: data.submitted_to_other_umrec || '',
+
+            // ✅ Load checkboxes from document_checklist JSON
+            hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
+            hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
+            hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
+            hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
+            informedConsentOthers: documentChecklist.informedConsentOthers || '',
+            hasAssentForm: documentChecklist.hasAssentForm ?? false,
+            hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
+            assentFormOthers: documentChecklist.assentFormOthers || '',
+            hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
+            hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
+            hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
+            hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
+            hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
+            hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
+            hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
+            hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
+            specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
+            hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
+            otherDocsDetails: documentChecklist.otherDocsDetails || '',
+
+            technicalReviewFile: null,
           });
-        } else {
-          setFormData({ 
-            ...parsedData, 
-            // FIXED: Ensure arrays are always arrays
-            typeOfStudy: Array.isArray(parsedData.typeOfStudy) ? parsedData.typeOfStudy : [],
-            sourceOfFunding: Array.isArray(parsedData.sourceOfFunding) ? parsedData.sourceOfFunding : [],
-            technicalReviewFile: null 
-          });
+
+          console.log('✅ FormData set successfully');
+
+          // Load revision comments
+          const commentsResult = await supabase
+            .from('submission_comments')
+            .select('comment_text')
+            .eq('submission_id', submissionId)
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (commentsResult.data && commentsResult.data.length > 0) {
+            setRevisionComments(commentsResult.data[0].comment_text);
+          }
         }
       } catch (error) {
-        console.error('Error loading revision step2 data:', error);
+        console.error('Error fetching submission data:', error);
+        alert('Failed to load submission data');
+      } finally {
+        setLoading(false);
+        setIsClient(true);
+        isInitialMount.current = false;
       }
-    } else if (step1Raw) {
-      try {
-        const step1Data = JSON.parse(step1Raw);
-        setFormData(prev => ({
-          ...prev,
-          title: step1Data.title || '',
-          researcherFirstName: step1Data.projectLeaderFirstName || '',
-          researcherMiddleName: step1Data.projectLeaderMiddleName || '',
-          researcherLastName: step1Data.projectLeaderLastName || '',
-          mobileNo: step1Data.projectLeaderContact || '',
-          email: step1Data.projectLeaderEmail || '',
-          institution: step1Data.organization === 'internal' ? 'University of Makati' : '',
-        }));
-      } catch (error) {
-        console.error('Error loading revision step1 data:', error);
-      }
-    }
-    
-    // Load co-researchers and advisers
-    const savedCoResearchers = localStorage.getItem('revisionStep2CoResearchers');
-    const savedTechnicalAdvisers = localStorage.getItem('revisionStep2TechnicalAdvisers');
-    
-    if (savedCoResearchers) {
-      try {
-        setCoResearchers(JSON.parse(savedCoResearchers));
-      } catch (error) {
-        console.error('Error loading co-researchers:', error);
-      }
-    }
-    
-    if (savedTechnicalAdvisers) {
-      try {
-        setTechnicalAdvisers(JSON.parse(savedTechnicalAdvisers));
-      } catch (error) {
-        console.error('Error loading technical advisers:', error);
-      }
-    }
-    
-    isInitialMount.current = false;
-  }, []);
+    };
+
+    fetchSubmissionData();
+  }, [submissionId, router]);
+
+
+
+
 
   useEffect(() => {
     if (isInitialMount.current || !isClient) return;
@@ -367,12 +466,38 @@ export default function RevisionStep2() {
     };
   }, [formData, coResearchers, technicalAdvisers, isClient]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+
+
+  useEffect(() => {
+    if (isInitialMount.current || !isClient) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).technicalReviewFile;
+      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
+      console.log('💾 Revision Step 2 auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, coResearchers, technicalAdvisers, isClient]);
+
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: Record<string, string> = {};
 
-    // Validate required fields
+    // ✅ Validation
     const titleError = validateInput(formData.title, 'Title');
     if (titleError) newErrors.title = titleError;
 
@@ -382,17 +507,16 @@ export default function RevisionStep2() {
     const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
     if (lastNameError) newErrors.researcherLastName = lastNameError;
 
-    const emailError = validateInput(formData.email, 'Email');
+    const emailError = validateInput(formData.project_leader_email, 'Email');
     if (emailError) newErrors.email = emailError;
 
-    const mobileError = validateInput(formData.mobileNo, 'Mobile Number');
+    const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
     if (mobileError) newErrors.mobileNo = mobileError;
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       setErrorList(Object.values(newErrors));
       setShowErrorModal(true);
-      
       const firstErrorField = Object.keys(newErrors)[0];
       const element = document.getElementById(firstErrorField);
       if (element) {
@@ -401,17 +525,178 @@ export default function RevisionStep2() {
       return;
     }
 
-    // Clear errors and save
-    setErrors({});
-    const dataToSave = { ...formData };
-    delete (dataToSave as any).technicalReviewFile;
-    localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-    localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
-    localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
-    
-    // Show success feedback
-    alert('Changes saved successfully!');
-    router.push('/researchermodule/submissions');
+    const supabase = createClient();
+
+    try {
+      // ✅ 1. Handle Technical Review File Upload (if new file selected)
+      let technicalReviewPath = null;
+      if (formData.technicalReviewFile) {
+        const fileExtension = formData.technicalReviewFile.name.split('.').pop();
+        technicalReviewPath = `submissions/${submissionId}/technical_review.${fileExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('research-documents')
+          .upload(technicalReviewPath, formData.technicalReviewFile, {
+            upsert: true,
+            contentType: formData.technicalReviewFile.type
+          });
+
+        if (uploadError) {
+          throw new Error(`Failed to upload technical review: ${uploadError.message}`);
+        }
+      }
+
+      // ✅ 2. Update `application_forms` table with document_checklist
+      const applicationFormsUpdate: any = {
+        study_site: formData.studySite,
+        researcher_first_name: formData.researcherFirstName,
+        researcher_middle_name: formData.researcherMiddleName,
+        researcher_last_name: formData.researcherLastName,
+        contact_info: {
+          email: formData.project_leader_email,
+          mobile_no: formData.project_leader_contact,
+          tel_no: formData.telNo,
+          fax_no: formData.faxNo,
+        },
+        co_researcher: coResearchers,
+        technical_advisers: technicalAdvisers, // ✅ Don't forget technical advisers
+        college: formData.college,
+        institution: formData.institution,
+        institution_address: formData.institutionAddress,
+        type_of_study: formData.typeOfStudy,
+        type_of_study_others: formData.typeOfStudyOthers,
+        study_site_type: formData.studySiteType,
+        source_of_funding: formData.sourceOfFunding,
+        pharmaceutical_sponsor: formData.pharmaceuticalSponsor,
+        funding_others: formData.fundingOthers,
+        study_duration: {
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+        },
+        num_participants: parseInt(formData.numParticipants) || 0,
+        technical_review: formData.technicalReview,
+        submitted_to_other: formData.submittedToOther,
+
+        // ✅ Save all checkbox states to document_checklist JSONB column
+        document_checklist: {
+          hasApplicationForm: formData.hasApplicationForm,
+          hasResearchProtocol: formData.hasResearchProtocol,
+          hasInformedConsent: formData.hasInformedConsent,
+          hasInformedConsentOthers: formData.hasInformedConsentOthers,
+          informedConsentOthers: formData.informedConsentOthers,
+          hasAssentForm: formData.hasAssentForm,
+          hasAssentFormOthers: formData.hasAssentFormOthers,
+          assentFormOthers: formData.assentFormOthers,
+          hasEndorsementLetter: formData.hasEndorsementLetter,
+          hasQuestionnaire: formData.hasQuestionnaire,
+          hasTechnicalReview: formData.hasTechnicalReview,
+          hasDataCollectionForms: formData.hasDataCollectionForms,
+          hasProductBrochure: formData.hasProductBrochure,
+          hasFDAAuthorization: formData.hasFDAAuthorization,
+          hasCompanyPermit: formData.hasCompanyPermit,
+          hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
+          specialPopulationPermitDetails: formData.specialPopulationPermitDetails,
+          hasOtherDocs: formData.hasOtherDocs,
+          otherDocsDetails: formData.otherDocsDetails,
+        },
+      };
+
+      console.log('💾 Saving document_checklist:', applicationFormsUpdate.document_checklist);
+
+      const { error: appFormError } = await supabase
+        .from('application_forms')
+        .update(applicationFormsUpdate)
+        .eq('submission_id', submissionId);
+
+      if (appFormError) throw appFormError;
+
+      // ✅ 3. Reset verification for this specific document
+      if (docId) {
+        const { error: verificationError } = await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            verified_at: null,
+            feedback_comment: null,
+          })
+          .eq('document_id', docId);
+
+        if (verificationError) {
+          console.error('Error resetting verification:', verificationError);
+          // Don't throw - it's not critical if verification reset fails
+        }
+      } else {
+        console.warn('No docId provided - skipping verification reset');
+      }
+
+      // ✅ 4. CHECK ALL VERIFICATIONS FOR THIS SUBMISSION (after reset)
+      const { data: verificationData, error: verificationCheckError } = await supabase
+        .from('document_verifications')
+        .select('is_approved, document_id')
+        .eq('submission_id', submissionId);
+
+      if (verificationCheckError) {
+        throw new Error(`Failed to check verification status: ${verificationCheckError.message}`);
+      }
+
+      let newStatus = 'Resubmit';
+
+      if (!verificationData || verificationData.length === 0) {
+        // No verifications exist yet
+        newStatus = 'Pending';
+      } else {
+        // Check if ANY document is rejected (false) or not yet verified (null)
+        const hasRejected = verificationData.some(v => v.is_approved === false);
+        const hasUnverified = verificationData.some(v => v.is_approved === null);
+
+        if (!hasRejected && !hasUnverified) {
+          // All documents are approved (true)
+          newStatus = 'Pending';
+        } else if (hasRejected) {
+          // At least one document is rejected
+          newStatus = 'Resubmit';
+        } else if (hasUnverified) {
+          // Some documents not verified yet
+          newStatus = 'Pending';
+        }
+      }
+
+      // ✅ 5. Update `research_submissions` table with dynamic status
+      const researchSubmissionUpdate: any = {
+        title: formData.title,
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+        co_authors: coResearchers,
+      };
+
+      if (technicalReviewPath) {
+        researchSubmissionUpdate.technical_review_file = technicalReviewPath;
+      }
+
+      const { error: submissionError } = await supabase
+        .from('research_submissions')
+        .update(researchSubmissionUpdate)
+        .eq('id', submissionId);
+
+      if (submissionError) throw submissionError;
+
+      // ✅ 6. Clear localStorage
+      localStorage.removeItem('revisionStep2Data');
+      localStorage.removeItem('revisionStep2CoResearchers');
+      localStorage.removeItem('revisionStep2TechnicalAdvisers');
+
+      // ✅ 7. Success!
+      const statusMessage = newStatus === 'Pending'
+        ? '✅ Changes saved and resubmitted successfully!'
+        : '✅ Changes saved! Please address the verification issues before resubmitting.';
+
+      alert(statusMessage);
+      router.push(`/researchermodule`);
+
+    } catch (error: any) {
+      console.error('Error saving changes:', error);
+      alert(`Failed to save changes: ${error.message || 'Please try again.'}`);
+    }
   };
 
   const handleBack = () => {
@@ -419,9 +704,9 @@ export default function RevisionStep2() {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData({...formData, [field]: value});
+    setFormData({ ...formData, [field]: value });
     if (errors[field]) {
-      setErrors({...errors, [field]: ''});
+      setErrors({ ...errors, [field]: '' });
     }
   };
 
@@ -477,7 +762,7 @@ export default function RevisionStep2() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
       <NavbarRoles role="researcher" />
-      
+
       <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-28 pb-8">
         <div className="max-w-[1400px] mx-auto">
           {/* Enhanced Header Section */}
@@ -490,13 +775,13 @@ export default function RevisionStep2() {
               >
                 <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
               </button>
-              
+
               <div className="flex items-center gap-4 flex-1">
                 {/* ORANGE STEP NUMBER CIRCLE */}
                 <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>2</span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Application for Ethics Review - Revision
@@ -510,7 +795,7 @@ export default function RevisionStep2() {
 
             {/* ORANGE PROGRESS BAR */}
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
+              <div
                 className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
                 style={{ width: '25%' }}
               />
@@ -531,7 +816,7 @@ export default function RevisionStep2() {
             <RevisionCommentBox comments={revisionComments} />
 
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
-              
+
               {/* Section 1 Header */}
               <div className="bg-gradient-to-r from-[#071139]/10 to-[#003366]/10 border-l-4 border-[#071139] p-6 rounded-xl">
                 <h4 className="font-bold text-[#071139] text-lg mb-2 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -556,9 +841,8 @@ export default function RevisionStep2() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
-                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                    errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                  }`}
+                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   required
                   aria-required="true"
@@ -610,9 +894,8 @@ export default function RevisionStep2() {
                       placeholder="First Name"
                       value={formData.researcherFirstName}
                       onChange={(e) => handleInputChange('researcherFirstName', e.target.value)}
-                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                        errors.researcherFirstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                      }`}
+                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.researcherFirstName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                        }`}
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                       required
                       aria-required="true"
@@ -649,9 +932,8 @@ export default function RevisionStep2() {
                       placeholder="Last Name"
                       value={formData.researcherLastName}
                       onChange={(e) => handleInputChange('researcherLastName', e.target.value)}
-                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                        errors.researcherLastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                      }`}
+                      className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.researcherLastName ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                        }`}
                       style={{ fontFamily: 'Metropolis, sans-serif' }}
                       required
                       aria-required="true"
@@ -678,11 +960,10 @@ export default function RevisionStep2() {
                   <input
                     id="mobileNo"
                     type="tel"
-                    value={formData.mobileNo}
+                    value={formData.project_leader_contact}
                     onChange={(e) => handleInputChange('mobileNo', e.target.value)}
-                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                      errors.mobileNo ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                    }`}
+                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.mobileNo ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                      }`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                     required
                     aria-required="true"
@@ -704,11 +985,10 @@ export default function RevisionStep2() {
                   <input
                     id="email"
                     type="email"
-                    value={formData.email}
+                    value={formData.project_leader_email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                      errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                    }`}
+                    className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                      }`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                     required
                     aria-required="true"
@@ -721,7 +1001,7 @@ export default function RevisionStep2() {
                   )}
                 </div>
               </div>
-              
+
               {/* Co-Researchers with Contact and Email */}
               <div>
                 <div className="flex items-center justify-between mb-3">
@@ -758,7 +1038,7 @@ export default function RevisionStep2() {
                         </button>
                       )}
                     </div>
-                    
+
                     <div>
                       <label htmlFor={`coResearcherName-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         Full Name
@@ -777,7 +1057,7 @@ export default function RevisionStep2() {
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label htmlFor={`coResearcherContact-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -797,7 +1077,7 @@ export default function RevisionStep2() {
                           style={{ fontFamily: 'Metropolis, sans-serif' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label htmlFor={`coResearcherEmail-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           Email Address
@@ -857,7 +1137,7 @@ export default function RevisionStep2() {
                         </button>
                       )}
                     </div>
-                    
+
                     <div>
                       <label htmlFor={`adviserName-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         Full Name
@@ -876,7 +1156,7 @@ export default function RevisionStep2() {
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       />
                     </div>
-                    
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label htmlFor={`adviserContact-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -896,7 +1176,7 @@ export default function RevisionStep2() {
                           style={{ fontFamily: 'Metropolis, sans-serif' }}
                         />
                       </div>
-                      
+
                       <div>
                         <label htmlFor={`adviserEmail-${index}`} className="block text-xs font-medium mb-1 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           Email Address
@@ -1007,66 +1287,66 @@ export default function RevisionStep2() {
                 />
               </div>
 
-                              {/* Type of Study - WITH FIELDSET */}
-                <fieldset>
-                  <legend className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
-                      <FileText size={16} className="text-[#F7D117]" />
-                    </div>
-                    <span className="flex-1">Type of Study <span className="text-red-500">*</span></span>
-                    <Tooltip text="Select all types that apply to your research study">
-                      <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
-                    </Tooltip>
-                  </legend>
-                  <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    {[
-                      { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
-                      { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
-                      { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
-                      { value: 'social_behavioral', label: 'Social / Behavioral Research' },
-                      { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
-                      { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
-                      { value: 'stem_cell', label: 'Stem Cell Research' },
-                      { value: 'genetic', label: 'Genetic Research' },
-                      { value: 'others', label: 'Others (please specify)' }
-                    ].map((option) => (
-                      <div key={option.value}>
-                        <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={formData.typeOfStudy.includes(option.value)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
-                              } else {
-                                setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
-                              }
-                            }}
-                            className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
-                          />
-                          <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {option.label}
-                          </span>
-                        </label>
-                        
-                        {/* MOVED INSIDE: Conditional input appears right below "Others" checkbox */}
-                        {option.value === 'others' && formData.typeOfStudy.includes('others') && (
-                          <div className="ml-11 mr-3 mb-2">
-                            <input
-                              type="text"
-                              placeholder="Please specify other type of study"
-                              value={formData.typeOfStudyOthers}
-                              onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
-                              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                              required
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+              {/* Type of Study - WITH FIELDSET */}
+              <fieldset>
+                <legend className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <FileText size={16} className="text-[#F7D117]" />
                   </div>
-                </fieldset>
+                  <span className="flex-1">Type of Study <span className="text-red-500">*</span></span>
+                  <Tooltip text="Select all types that apply to your research study">
+                    <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
+                  </Tooltip>
+                </legend>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {[
+                    { value: 'clinical_trial_sponsored', label: 'Clinical Trial (Sponsored)' },
+                    { value: 'clinical_trial_researcher', label: 'Clinical Trials (Researcher-initiated)' },
+                    { value: 'health_operations', label: 'Health Operations Research (Health Programs and Policies)' },
+                    { value: 'social_behavioral', label: 'Social / Behavioral Research' },
+                    { value: 'public_health', label: 'Public Health / Epidemiologic Research' },
+                    { value: 'biomedical', label: 'Biomedical research (Retrospective, Prospective, and diagnostic studies)' },
+                    { value: 'stem_cell', label: 'Stem Cell Research' },
+                    { value: 'genetic', label: 'Genetic Research' },
+                    { value: 'others', label: 'Others (please specify)' }
+                  ].map((option) => (
+                    <div key={option.value}>
+                      <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={formData.typeOfStudy.includes(option.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, typeOfStudy: [...formData.typeOfStudy, option.value] });
+                            } else {
+                              setFormData({ ...formData, typeOfStudy: formData.typeOfStudy.filter(v => v !== option.value) });
+                            }
+                          }}
+                          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+                        />
+                        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {option.label}
+                        </span>
+                      </label>
+
+                      {/* MOVED INSIDE: Conditional input appears right below "Others" checkbox */}
+                      {option.value === 'others' && formData.typeOfStudy.includes('others') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Please specify other type of study"
+                            value={formData.typeOfStudyOthers}
+                            onChange={(e) => handleInputChange('typeOfStudyOthers', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
 
               {/* Study Site Type - FIXED */}
               <div>
@@ -1103,77 +1383,77 @@ export default function RevisionStep2() {
               </div>
 
               {/* Source of Funding - FIXED */}
-<div>
-  <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
-      <FileText size={16} className="text-[#F7D117]" />
-    </div>
-    <span className="flex-1">Source of Funding <span className="text-red-500">*</span></span>
-    <Tooltip text="Select all funding sources that apply to your research">
-      <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
-    </Tooltip>
-  </label>
-  <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
-    {[
-      { value: 'self_funded', label: 'Self-funded' },
-      { value: 'government', label: 'Government-Funded' },
-      { value: 'scholarship', label: 'Scholarship/Research Grant' },
-      { value: 'pharmaceutical', label: 'Sponsored by Pharmaceutical Company' },
-      { value: 'institution', label: 'Institution-Funded' },
-      { value: 'others', label: 'Others (please specify)' }
-    ].map((option) => (
-      <div key={option.value}>
-        <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
-          <input
-            type="checkbox"
-            checked={formData.sourceOfFunding.includes(option.value)}
-            onChange={(e) => {
-              if (e.target.checked) {
-                setFormData({ ...formData, sourceOfFunding: [...formData.sourceOfFunding, option.value] });
-              } else {
-                setFormData({ ...formData, sourceOfFunding: formData.sourceOfFunding.filter(v => v !== option.value) });
-              }
-            }}
-            className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
-          />
-          <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {option.label}
-          </span>
-        </label>
-        
-        {/* MOVED INSIDE: Pharmaceutical Company input appears right below its checkbox */}
-        {option.value === 'pharmaceutical' && formData.sourceOfFunding.includes('pharmaceutical') && (
-          <div className="ml-11 mr-3 mb-2">
-            <input
-              type="text"
-              placeholder="Specify Pharmaceutical Company"
-              value={formData.pharmaceuticalSponsor}
-              onChange={(e) => handleInputChange('pharmaceuticalSponsor', e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </div>
-        )}
-        
-        {/* MOVED INSIDE: Others input appears right below its checkbox */}
-        {option.value === 'others' && formData.sourceOfFunding.includes('others') && (
-          <div className="ml-11 mr-3 mb-2">
-            <input
-              type="text"
-              placeholder="Specify Other Funding Source"
-              value={formData.fundingOthers}
-              onChange={(e) => handleInputChange('fundingOthers', e.target.value)}
-              className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-              required
-            />
-          </div>
-        )}
-      </div>
-    ))}
-  </div>
-</div>
+              <div>
+                <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md flex-shrink-0">
+                    <FileText size={16} className="text-[#F7D117]" />
+                  </div>
+                  <span className="flex-1">Source of Funding <span className="text-red-500">*</span></span>
+                  <Tooltip text="Select all funding sources that apply to your research">
+                    <Info size={18} className="text-gray-400 cursor-help flex-shrink-0" />
+                  </Tooltip>
+                </label>
+                <div className="space-y-2 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                  {[
+                    { value: 'self_funded', label: 'Self-funded' },
+                    { value: 'government', label: 'Government-Funded' },
+                    { value: 'scholarship', label: 'Scholarship/Research Grant' },
+                    { value: 'pharmaceutical', label: 'Sponsored by Pharmaceutical Company' },
+                    { value: 'institution', label: 'Institution-Funded' },
+                    { value: 'others', label: 'Others (please specify)' }
+                  ].map((option) => (
+                    <div key={option.value}>
+                      <label className="flex items-start gap-3 cursor-pointer p-3 hover:bg-white rounded-lg transition-colors group">
+                        <input
+                          type="checkbox"
+                          checked={formData.sourceOfFunding.includes(option.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setFormData({ ...formData, sourceOfFunding: [...formData.sourceOfFunding, option.value] });
+                            } else {
+                              setFormData({ ...formData, sourceOfFunding: formData.sourceOfFunding.filter(v => v !== option.value) });
+                            }
+                          }}
+                          className="w-5 h-5 min-w-[1.25rem] rounded mt-0.5 text-[#071139] focus:ring-2 focus:ring-[#071139] border-gray-300 cursor-pointer"
+                        />
+                        <span className="text-sm text-[#071139] leading-snug flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {option.label}
+                        </span>
+                      </label>
+
+                      {/* MOVED INSIDE: Pharmaceutical Company input appears right below its checkbox */}
+                      {option.value === 'pharmaceutical' && formData.sourceOfFunding.includes('pharmaceutical') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Specify Pharmaceutical Company"
+                            value={formData.pharmaceuticalSponsor}
+                            onChange={(e) => handleInputChange('pharmaceuticalSponsor', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      {/* MOVED INSIDE: Others input appears right below its checkbox */}
+                      {option.value === 'others' && formData.sourceOfFunding.includes('others') && (
+                        <div className="ml-11 mr-3 mb-2">
+                          <input
+                            type="text"
+                            placeholder="Specify Other Funding Source"
+                            value={formData.fundingOthers}
+                            onChange={(e) => handleInputChange('fundingOthers', e.target.value)}
+                            className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-400 bg-white"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                            required
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Duration of the Study - WITH PROPER LABELS */}
               <div>
@@ -1201,7 +1481,7 @@ export default function RevisionStep2() {
                       <Calendar size={18} className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400" />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label htmlFor="endDate" className="block text-xs font-medium mb-2 text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       End date
@@ -1279,7 +1559,7 @@ export default function RevisionStep2() {
                     </span>
                   </label>
                 </div>
-                
+
                 {/* File Upload appears when "Yes" is selected */}
                 {formData.technicalReview === 'yes' && (
                   <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
@@ -1322,7 +1602,7 @@ export default function RevisionStep2() {
                         </div>
                       </label>
                     </div>
-                    
+
                     {/* Show selected file info */}
                     {formData.technicalReviewFile && (
                       <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
@@ -1471,7 +1751,7 @@ export default function RevisionStep2() {
                         <Info size={18} className="text-gray-400 cursor-help" />
                       </Tooltip>
                     </label>
-                    
+
                     {formData.hasInformedConsent && (
                       <div className="ml-8 sm:ml-11 space-y-2">
                         <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
@@ -1509,7 +1789,7 @@ export default function RevisionStep2() {
                         Required when research involves minors or vulnerable populations
                       </p>
                     </div>
-                    
+
                     <div className="ml-4 sm:ml-6 space-y-2">
                       <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
                         <input
@@ -1525,7 +1805,7 @@ export default function RevisionStep2() {
                           <Info size={18} className="text-gray-400 cursor-help" />
                         </Tooltip>
                       </label>
-                      
+
                       {formData.hasAssentForm && (
                         <div className="ml-8 sm:ml-11 space-y-2">
                           <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
@@ -1748,11 +2028,23 @@ export default function RevisionStep2() {
       <Footer />
 
       {/* Custom Error Modal */}
-      <ErrorModal 
-        isOpen={showErrorModal} 
-        onClose={() => setShowErrorModal(false)} 
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
         errors={errorList}
       />
     </div>
+  );
+
+}
+export default function RevisionStep2() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    }>
+      <RevisionStep2Content />
+    </Suspense>
   );
 }

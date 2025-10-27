@@ -222,16 +222,16 @@ export default function Step3ResearchProtocol() {
       return `${fieldName} cannot be "N/A". Please provide actual content or research details`;
     }
 
-    const irrelevantPhrases = [
-      'i dont know', "i don't know", 'idk', 'working in progress',
-      'work in progress', 'wip', 'tbd', 'to be determined',
-      'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
-      '123', 'abc', 'unknown', 'temp', 'temporary'
-    ];
+    // const irrelevantPhrases = [
+    //   'i dont know', "i don't know", 'idk', 'working in progress',
+    //   'work in progress', 'wip', 'tbd', 'to be determined',
+    //   'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
+    //   '123', 'abc', 'unknown', 'temp', 'temporary'
+    // ];
 
-    if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
-      return `${fieldName} contains invalid text. Please provide accurate information`;
-    }
+    // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
+    //   return `${fieldName} contains invalid text. Please provide accurate information`;
+    // }
 
     if (trimmedValue.length < 10) {
       return `${fieldName} must be at least 10 characters`;

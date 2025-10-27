@@ -106,6 +106,7 @@ export default function Step4InformedConsent() {
   const [formData, setFormData] = useState({
   // Header Information
   participantGroupIdentity: '',
+  informedConsentFor: '',
   // Adult Consent Form
   introductionEnglish: '',
   introductionTagalog: '',
@@ -673,73 +674,67 @@ export default function Step4InformedConsent() {
                       </div>
 
                       {/* Participant Group Identity */}
-                      <div>
-                        <label 
-                          htmlFor="participantGroupIdentity"
-                          className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
-                            <FileText size={16} className="text-[#F7D117]" />
-                          </div>
-                          Informed Consent Form for: <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id="participantGroupIdentity"
-                          type="text"
-                          value={formData.participantGroupIdentity}
-                          onChange={(e) => setFormData({...formData, participantGroupIdentity: e.target.value})}
-                          placeholder="e.g., clients, patients, community leaders, service providers"
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                          required
-                        />
-                        <p className="text-xs text-gray-600 mt-2 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-blue-500" />
-                          Identity of the particular group of individuals in the project for whom this consent is intended
-                        </p>
-                      </div>
+                  <div>
+  <label 
+    htmlFor="participantGroupIdentity"
+    className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+    style={{ fontFamily: 'Metropolis, sans-serif' }}
+  >
+    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
+      <FileText size={16} className="text-[#F7D117]" />
+    </div>
+    Informed Consent Form for: <span className="text-red-500">*</span>
+  </label>
+  <input
+    id="participantGroupIdentity"
+    type="text"
+    value={formData.participantGroupIdentity}
+    onChange={(e) => setFormData({...formData, participantGroupIdentity: e.target.value})}
+    placeholder="e.g., clients, patients, community leaders, service providers"
+    className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+    style={{ fontFamily: 'Metropolis, sans-serif' }}
+    required
+  />
+  <p className="text-xs text-gray-600 mt-2 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+    <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-blue-500" />
+    Identity of the particular group of individuals in the project for whom this consent is intended
+  </p>
+</div>
 
-                      {/* Display Project and Researcher Information from Step 2 */}
-                      {step2Data && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6">
-                          <h6 className="font-bold text-[#071139] text-sm mb-4 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            <FileText size={18} className="text-[#071139]" />
-                            Project and Researcher Information (from Step 2)
-                          </h6>
-                          <div className="space-y-4 text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {step2Data.authors && step2Data.authors.length > 0 && (
-                              <div className="space-y-4">
-                                {step2Data.authors.map((author: any, index: number) => (
-                                  <div key={index} className="border-b border-gray-300 pb-4 last:border-b-0">
-                                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                                      <div className="mb-2"><strong className="text-[#071139]">[Name of {index === 0 ? 'Principal' : 'Co-'}Investigator/Author]</strong></div>
-                                      <div className="mb-3 text-[#071139]">{author.name}</div>
-                                      <div className="mb-2"><strong className="text-[#071139]">[Name of Organization]</strong></div>
-                                      <div className="mb-3 text-[#071139]">{author.organization || 'N/A'}</div>
-                                      <div className="mb-2"><strong className="text-[#071139]">[Contact Number and Email]</strong></div>
-                                      <div className="text-[#071139]">{author.phone || 'N/A'} | {author.email || 'N/A'}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            <div className="mt-4 pt-4 border-t border-gray-300">
-                              <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <strong className="text-[#071139]">[Name of Project and Research]</strong>
-                                <div className="mt-2 text-[#071139]">{step2Data.projectTitle || 'Not provided'}</div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                            <p className="text-xs text-blue-700 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                              This information will automatically appear at the top of your consent form.
-                            </p>
-                          </div>
-                        </div>
-                      )}
+{/* Display Project and Researcher Information from Step 2 */}
+{step2Data && (
+  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 sm:p-6">
+    <h6 className="font-bold text-[#071139] text-sm mb-4 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+      <FileText size={18} className="text-[#071139]" />
+      Project and Researcher Information (from Step 2)
+    </h6>
+    <div className="space-y-4 text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+      {/* Principal Investigator */}
+      <div className="bg-white p-4 rounded-lg shadow-sm">
+        <div className="mb-2"><strong className="text-[#071139]">[Name of Principal Investigator]</strong></div>
+        <div className="mb-3 text-[#071139]">
+          {step2Data.researcherFirstName} {step2Data.researcherMiddleName} {step2Data.researcherLastName}
+        </div>
+        <div className="mb-2"><strong className="text-[#071139]">[Name of Organization]</strong></div>
+        <div className="mb-3 text-[#071139]">{step2Data.institution || 'N/A'}</div>
+        <div className="mb-2"><strong className="text-[#071139]">[Contact Number and Email]</strong></div>
+        <div className="text-[#071139]">{step2Data.mobileNo || 'N/A'} | {step2Data.email || 'N/A'}</div>
+      </div>
+      
+      {/* Project Title */}
+      <div className="bg-white p-4 rounded-lg shadow-sm">
+        <strong className="text-[#071139]">[Name of Project and Research]</strong>
+        <div className="mt-2 text-[#071139]">{step2Data.title || 'Not provided'}</div>
+      </div>
+    </div>
+    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <p className="text-xs text-blue-700 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
+        This information will automatically appear at the top of your consent form.
+      </p>
+    </div>
+  </div>
+)}
 
                       {/* PART I: INFORMATION SHEET Header */}
                       <div className="bg-gradient-to-r from-[#071139]/10 to-blue-100/50 border-l-4 border-[#071139] p-4 sm:p-5 rounded-r-lg mt-8">

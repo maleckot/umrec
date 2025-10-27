@@ -9,9 +9,9 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { updateReviewerAvailability, getReviewerAvailability } from '@/app/actions/reviewer/updateAvailability';
 import { createPortal } from 'react-dom';
+import { createClient } from '@/utils/supabase/client'; // ✅ ADDED
 
-
-// Keep all your interfaces the same...
+// ... (all your interfaces stay the same)
 interface NavLinkProps {
   href: string;
   text: string;
@@ -123,14 +123,11 @@ const NotificationDropdown: React.FC<{ isOpen: boolean }> = ({ isOpen }) => {
   );
 };
 
-// FIXED: Properly Centered Logout Modal using Portal
-const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void }> = ({ isOpen, onClose, onConfirm }) => {
+const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: () => void; isLoading?: boolean }> = ({ isOpen, onClose, onConfirm, isLoading = false }) => {
   if (!isOpen) return null;
 
-  // Use portal to render at document body level, bypassing any positioning context
   return createPortal(
     <>
-      {/* Full screen centered backdrop */}
       <div 
         className="fixed top-0 left-0 right-0 bottom-0 z-[99999] flex items-center justify-center p-4 animate-fade-in"
         style={{ 
@@ -139,26 +136,21 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
         }}
         onClick={onClose}
       >
-        {/* Centered modal container */}
         <div 
           className="relative w-full max-w-md mx-auto my-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative rounded-2xl p-1 sm:p-1.5 overflow-hidden">
-            {/* Animated light beam */}
             <div className="absolute inset-0 rounded-2xl animate-spin-slow" style={{
               background: 'conic-gradient(from 0deg, transparent 0deg, transparent 240deg, #AFA127 280deg, #F0E847 320deg, #AFA127 360deg)',
               filter: 'blur(20px)'
             }}></div>
             
-            {/* Glow effect */}
             <div className="absolute inset-0 rounded-2xl" style={{
               boxShadow: '0 0 40px rgba(240, 232, 71, 0.4), inset 0 0 20px rgba(240, 232, 71, 0.2)'
             }}></div>
 
-            {/* Modal Content */}
             <div className="relative rounded-2xl overflow-hidden" style={{ backgroundColor: '#050C2D' }}>
-              {/* Logo Section */}
               <div className="py-6 flex justify-center">
                 <Image 
                   src="/img/umreclogonobg.png" 
@@ -169,7 +161,6 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
                 />
               </div>
 
-              {/* Content Section */}
               <div className="px-6 sm:px-8 pb-6 sm:pb-8">
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-3 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Confirm Logout
@@ -178,23 +169,33 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
                   Are you sure you want to log out of your account?
                 </p>
 
-                {/* Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                   <button
+                  <button
                     onClick={onConfirm}
-                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold hover:from-red-700 hover:to-red-800 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg shadow-red-500/50"
+                    disabled={isLoading}
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-lg font-semibold hover:from-red-700 hover:to-red-800 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg shadow-red-500/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
-                    Logout
+                    {isLoading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Logging Out...
+                      </>
+                    ) : (
+                      'Logout'
+                    )}
                   </button>
                   <button
                     onClick={onClose}
-                    className="flex-1 px-4 py-3 bg-gray-600/80 backdrop-blur-sm text-white rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg"
+                    disabled={isLoading}
+                    className="flex-1 px-4 py-3 bg-gray-600/80 backdrop-blur-sm text-white rounded-lg font-semibold hover:bg-gray-700 hover:scale-105 transition-all duration-300 text-sm sm:text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Cancel
                   </button>
-                 
                 </div>
               </div>
             </div>
@@ -235,11 +236,12 @@ const LogoutModal: React.FC<{ isOpen: boolean; onClose: () => void; onConfirm: (
   );
 };
 
-
 const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: keyof typeof NAV_LINKS }> = ({ isOpen, onClose, role }) => {
   const [availability, setAvailability] = useState<'available' | 'unavailable'>('available');
   const [loading, setLoading] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false); // ✅ ADDED
+  const supabase = createClient(); // ✅ ADDED
   
   useEffect(() => {
     if (isOpen && role === 'reviewer') {
@@ -286,10 +288,30 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
     setShowLogoutModal(true);
   };
 
-  const handleLogoutConfirm = () => {
-    setShowLogoutModal(false);
-    onClose();
-    window.location.href = '/login';
+  // ✅ UPDATED: Actually sign out from Supabase
+  const handleLogoutConfirm = async () => {
+    try {
+      setIsLoggingOut(true);
+      
+      // ✅ Sign out from Supabase (destroys session)
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Logout error:', error);
+      }
+      
+      setShowLogoutModal(false);
+      onClose();
+      
+      // ✅ Redirect to login page
+      window.location.href = '/login';
+      
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setIsLoggingOut(false);
+      // Still try to redirect
+      window.location.href = '/login';
+    }
   };
   
   return (
@@ -350,6 +372,7 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
         isOpen={showLogoutModal} 
         onClose={() => setShowLogoutModal(false)} 
         onConfirm={handleLogoutConfirm}
+        isLoading={isLoggingOut}
       />
 
       <style jsx>{`
@@ -418,7 +441,6 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
     <>
       <nav className={`${getBackgroundClass()} py-3 md:py-4 px-4 md:px-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
         <div className="flex items-center gap-3 md:gap-4">
-          {/* ENHANCED: Burger Menu Button */}
           {!isMainRole && (
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -444,7 +466,6 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
           </div>
         </div>
 
-        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
           <div className="flex space-x-4">
             {mainLinks.map((link) => (

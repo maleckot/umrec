@@ -4,30 +4,27 @@
 import { createClient } from '@/utils/supabase/server';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
-export type PdfGenerationResult = 
+export type PdfGenerationResult =
   | {
-      success: true;
-      pdfData: string;
-      fileName: string;
-      pageCount: number;
-    }
+    success: true;
+    pdfData: string;
+    fileName: string;
+    pageCount: number;
+  }
   | {
-      success: false;
-      error: string;
-    };
-// Add this export to your generatePdfFromDatabase.ts file
+    success: false;
+    error: string;
+  };
 
 export async function generatePdfFromDatabase(submissionId: string): Promise<PdfGenerationResult> {
   try {
     const supabase = await createClient();
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return { success: false, error: 'User not authenticated' };
     }
 
-    // 1. Fetch submission data from database
     const { data: submission, error: submissionError } = await supabase
       .from('research_submissions')
       .select('*')
@@ -38,7 +35,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       return { success: false, error: 'Submission not found' };
     }
 
-    // 2. Fetch related data
     const { data: applicationForm } = await supabase
       .from('application_forms')
       .select('*')
@@ -62,7 +58,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       .select('*')
       .eq('submission_id', submissionId);
 
-    // 3. Download uploaded files from Supabase Storage
     const uploadedFiles: { [key: string]: string } = {};
     if (documents && documents.length > 0) {
       for (const doc of documents) {
@@ -82,7 +77,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       }
     }
 
-    // 4. Format data for PDF generation
     const formattedData = {
       step1: {
         title: submission.title,
@@ -113,6 +107,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
         researcherLastName: applicationForm?.researcher_last_name,
         contactInfo: applicationForm?.contact_info,
         coResearcher: applicationForm?.co_researcher,
+        technicalAdvisers: applicationForm?.technical_advisers, // ✅ NEW
         college: applicationForm?.college,
         institution: applicationForm?.institution,
         institutionAddress: applicationForm?.institution_address,
@@ -125,6 +120,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
         faxNo: applicationForm?.contact_info?.faxNo,
         startDate: applicationForm?.study_duration?.startDate,
         endDate: applicationForm?.study_duration?.endDate,
+        title: applicationForm?.title,
       },
       step3: {
         formData: {
@@ -138,15 +134,17 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
           population: protocol?.population,
           samplingTechnique: protocol?.sampling_technique,
           researchInstrument: protocol?.research_instrument,
-          statisticalTreatment: protocol?.statistical_treatment,
+          ethicalConsideration: protocol?.ethical_consideration, // ✅ NEW
+          statisticalTreatment: protocol?.statistical_treatment, // ✅ NEW
           references: protocol?.research_references,
         },
         researchers: protocol?.researchers || [],
       },
       step4: {
         consentType: consentForm?.consent_type,
+        informedConsentFor: consentForm?.informed_consent_for, // ✅ NEW
         formData: {
-          // Adult consent fields
+          participantGroupIdentity: consentForm?.informed_consent_for, // ✅ NEW
           purposeEnglish: consentForm?.adult_consent?.purposeEnglish,
           purposeTagalog: consentForm?.adult_consent?.purposeTagalog,
           risksEnglish: consentForm?.adult_consent?.risksEnglish,
@@ -159,7 +157,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
           voluntarinessTagalog: consentForm?.adult_consent?.voluntarinessTagalog,
           confidentialityEnglish: consentForm?.adult_consent?.confidentialityEnglish,
           confidentialityTagalog: consentForm?.adult_consent?.confidentialityTagalog,
-          // Minor assent fields
           introduction: consentForm?.minor_assent?.introduction,
           purpose: consentForm?.minor_assent?.purpose,
           choiceOfParticipants: consentForm?.minor_assent?.choiceOfParticipants,
@@ -170,22 +167,18 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
           confidentiality: consentForm?.minor_assent?.confidentiality,
           sharingFindings: consentForm?.minor_assent?.sharingFindings,
           certificateAssent: consentForm?.minor_assent?.certificateAssent,
-          // Contact info
           contactPerson: consentForm?.contact_person,
           contactNumber: consentForm?.contact_number,
         },
       },
     };
 
-    // 5. Generate consolidated PDF using the three separate functions
     const appFormPdf = await generateApplicationFormPdf(formattedData);
     const protocolPdf = await generateResearchProtocolPdf(formattedData);
     const consentPdf = await generateConsentFormPdf(formattedData);
 
-    // Merge all PDFs together
     const consolidatedDoc = await PDFDocument.create();
 
-    // Add Application Form pages
     if (appFormPdf.success && appFormPdf.pdfData) {
       const appPdfBytes = Buffer.from(appFormPdf.pdfData.split(',')[1], 'base64');
       const appPdf = await PDFDocument.load(appPdfBytes);
@@ -193,7 +186,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       appPages.forEach(page => consolidatedDoc.addPage(page));
     }
 
-    // Add Research Protocol pages
     if (protocolPdf.success && protocolPdf.pdfData) {
       const protoPdfBytes = Buffer.from(protocolPdf.pdfData.split(',')[1], 'base64');
       const protoPdf = await PDFDocument.load(protoPdfBytes);
@@ -201,7 +193,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       protoPages.forEach(page => consolidatedDoc.addPage(page));
     }
 
-    // Add Consent Form pages
     if (consentPdf.success && consentPdf.pdfData) {
       const consentPdfBytes = Buffer.from(consentPdf.pdfData.split(',')[1], 'base64');
       const consPdf = await PDFDocument.load(consentPdfBytes);
@@ -209,7 +200,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       consPages.forEach(page => consolidatedDoc.addPage(page));
     }
 
-    // Merge uploaded PDFs if they exist
     const mergePdf = async (base64Data: string, title: string) => {
       try {
         if (!base64Data) return;
@@ -218,8 +208,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
         const uploadedPdf = await PDFDocument.load(pdfBytes);
 
         const helveticaBold = await consolidatedDoc.embedFont(StandardFonts.HelveticaBold);
-        
-        // Add separator page
+
         const separatorPage = consolidatedDoc.addPage([612, 792]);
         separatorPage.drawRectangle({
           x: 30,
@@ -271,7 +260,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
   }
 }
 
-// ========== 1. APPLICATION FORM (UMREC Template Design) ==========
+// ========== 1. APPLICATION FORM ==========
 export async function generateApplicationFormPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
@@ -283,34 +272,52 @@ export async function generateApplicationFormPdf(
     const pageWidth = 612;
     const pageHeight = 792;
     const margin = 50;
-    
-    // Use simple text-based checkboxes instead of Unicode
+
     const checkbox = (checked: boolean) => checked ? '[X]' : '[ ]';
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
-      if (!text) return [];
-      const words = text.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
+      if (!text || text.trim() === '') return [];
 
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+      // ✅ FIX: Handle newlines first
+      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const paragraphs = sanitizedText.split('\n');
+      const allLines: string[] = [];
 
-        if (width > maxWidth) {
-          if (currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
+      for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) {
+          allLines.push(''); // Preserve empty lines
+          continue;
+        }
+
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+          // ✅ Safe to measure - no newlines
+          const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+
+          if (width > maxWidth) {
+            if (currentLine) {
+              allLines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
           } else {
             currentLine = testLine;
           }
-        } else {
-          currentLine = testLine;
+        }
+
+        if (currentLine) {
+          allLines.push(currentLine);
         }
       }
-      if (currentLine) lines.push(currentLine);
-      return lines;
+
+      return allLines;
     };
+
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -339,16 +346,14 @@ export async function generateApplicationFormPdf(
       font: helveticaBold,
     });
 
-    // Form metadata (right side)
     page.drawText('UMREC Form No.', { x: pageWidth - 180, y: yPos - 60, size: 9, font: helvetica });
     page.drawText('0013-1', { x: pageWidth - 80, y: yPos - 60, size: 9, font: helveticaBold });
-    
+
     page.drawText('Version No.', { x: pageWidth - 180, y: yPos - 72, size: 9, font: helvetica });
     page.drawText('4', { x: pageWidth - 80, y: yPos - 72, size: 9, font: helvetica });
 
     yPos -= 95;
 
-    // Instructions
     page.drawText('Instructions to the Researcher:', { x: margin, y: yPos, size: 10, font: helveticaBold });
     yPos -= 15;
     const instructions = wrapText(
@@ -363,7 +368,6 @@ export async function generateApplicationFormPdf(
 
     yPos -= 15;
 
-    // General Information Header
     page.drawRectangle({
       x: margin,
       y: yPos - 12,
@@ -377,7 +381,6 @@ export async function generateApplicationFormPdf(
     const step1 = submissionData.step1;
     const step2 = submissionData.step2;
 
-    // Title of Study
     page.drawText('Title of Study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     const titleLines = wrapText(step1?.title || 'N/A', pageWidth - 2 * margin - 10, 9);
@@ -392,7 +395,6 @@ export async function generateApplicationFormPdf(
 
     yPos -= 10;
 
-    // UMREC Code and Study Site (side by side)
     page.drawText('UMREC Code', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     page.drawText('Study Site', { x: pageWidth / 2, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
@@ -400,26 +402,22 @@ export async function generateApplicationFormPdf(
     page.drawText(step1?.studySiteType || step2?.studySite || 'N/A', { x: pageWidth / 2, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Type of Review
     page.drawText('Type of Review', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    page.drawText('Full Board Review', { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    yPos -= 20;
+    // page.drawText('Full Board Review', { x: margin + 5, y: yPos, size: 9, font: helvetica });
+    // yPos -= 20;
 
-    // Researchers table header
     page.drawText('Name of Researchers', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     page.drawText('Contact Number', { x: margin + 200, y: yPos, size: 9, font: helveticaBold });
     page.drawText('Email Address', { x: margin + 330, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
 
-    // Lead researcher
     const leadName = `${step1?.projectLeaderFirstName || ''} ${step1?.projectLeaderMiddleName || ''} ${step1?.projectLeaderLastName || ''}`.trim();
     page.drawText(leadName, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     page.drawText(step1?.projectLeaderContact || '', { x: margin + 200, y: yPos, size: 9, font: helvetica });
     page.drawText(step1?.projectLeaderEmail || '', { x: margin + 330, y: yPos, size: 9, font: helvetica });
     yPos -= 15;
 
-    // Co-authors if any
     if (step1?.coAuthors) {
       page.drawText('Members:', { x: margin + 5, y: yPos, size: 9, font: helvetica, color: rgb(0.5, 0.5, 0.5) });
       yPos -= 12;
@@ -436,19 +434,16 @@ export async function generateApplicationFormPdf(
 
     yPos -= 15;
 
-    // College/Department
     page.drawText('College/Department', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     page.drawText(step1?.college || step2?.college || 'N/A', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Institution
     page.drawText('Institution', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     page.drawText(step1?.organization || step2?.institution || 'University of Makati', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Address
     page.drawText('Address of Institution', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     page.drawText(step2?.institutionAddress || 'J.P. Rizal Ext., West Rembo, Makati City', { x: margin + 5, y: yPos, size: 9, font: helvetica });
@@ -459,7 +454,6 @@ export async function generateApplicationFormPdf(
       yPos = pageHeight - margin;
     }
 
-    // Type of Study
     page.drawText('Type of Study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     const typeOfStudy = step1?.typeOfStudy || step2?.typeOfStudy || [];
@@ -470,12 +464,10 @@ export async function generateApplicationFormPdf(
     });
     yPos -= 10;
 
-    // Site Type
     const siteType = step1?.studySiteType || step2?.studySiteType || 'Single Site';
     page.drawText(`${checkbox(true)} ${siteType}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Source of Funding
     page.drawText('Source of Funding', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     const funding = step1?.sourceOfFunding || step2?.sourceOfFunding || [];
@@ -490,7 +482,6 @@ export async function generateApplicationFormPdf(
     }
     yPos -= 15;
 
-    // Duration and Participants
     page.drawText('Duration of the study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     page.drawText('No. of study participants', { x: pageWidth / 2, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
@@ -502,14 +493,12 @@ export async function generateApplicationFormPdf(
     page.drawText(`End date: ${endDate}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Technical Review
     page.drawText('*Has the Research undergone a Technical Review/pre-oral defense?', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 12;
     const hasTechReview = step1?.technicalReview === 'Yes' || step1?.technicalReview === true;
     page.drawText(`${checkbox(hasTechReview)} Yes    ${checkbox(!hasTechReview)} No`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
-    // Submitted to Other UMREC
     page.drawText('*Has the Research been submitted to another UMREC?', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 12;
     const submittedOther = step1?.submittedToOtherUMREC === 'Yes' || step1?.submittedToOtherUMREC === true;
@@ -521,7 +510,6 @@ export async function generateApplicationFormPdf(
       yPos = pageHeight - margin;
     }
 
-    // Checklist Header
     page.drawRectangle({
       x: margin,
       y: yPos - 12,
@@ -534,13 +522,11 @@ export async function generateApplicationFormPdf(
 
     const docChecklist = step2?.documentChecklist || {};
 
-    // Two-column checklist
     const leftX = margin + 5;
     const rightX = pageWidth / 2;
     let leftY = yPos;
     let rightY = yPos;
 
-    // Left column
     page.drawText('Basic requirements:', { x: leftX, y: leftY, size: 9, font: helveticaBold });
     leftY -= 12;
     page.drawText(`${checkbox(docChecklist.hasApplicationForm || true)} Application for Ethics Review`, { x: leftX, y: leftY, size: 8, font: helvetica });
@@ -561,7 +547,6 @@ export async function generateApplicationFormPdf(
     leftY -= 11;
     page.drawText(`${checkbox(false)} Questionnaire`, { x: leftX, y: leftY, size: 8, font: helvetica });
 
-    // Right column
     page.drawText('Supplementary Documents:', { x: rightX, y: rightY, size: 9, font: helveticaBold });
     rightY -= 12;
     page.drawText(`${checkbox(false)} Technical review/pre-oral defense proof`, { x: rightX, y: rightY, size: 8, font: helvetica });
@@ -578,7 +563,6 @@ export async function generateApplicationFormPdf(
 
     yPos = Math.min(leftY, rightY) - 20;
 
-    // Signature
     page.drawText('Accomplished by:', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 30;
     page.drawLine({
@@ -624,7 +608,6 @@ export async function generateApplicationFormPdf(
 export async function generateResearchProtocolPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
-  // Same as before - no checkboxes used in this one
   try {
     const pdfDoc = await PDFDocument.create();
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -635,29 +618,48 @@ export async function generateResearchProtocolPdf(
     const margin = 50;
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
-      if (!text) return [];
-      const words = text.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
+      if (!text || text.trim() === '') return [];
 
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+      // ✅ FIX: Handle newlines first
+      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const paragraphs = sanitizedText.split('\n');
+      const allLines: string[] = [];
 
-        if (width > maxWidth) {
-          if (currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
+      for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) {
+          allLines.push(''); // Preserve empty lines
+          continue;
+        }
+
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+          // ✅ Now safe to measure - no newlines in testLine
+          const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+
+          if (width > maxWidth) {
+            if (currentLine) {
+              allLines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
           } else {
             currentLine = testLine;
           }
-        } else {
-          currentLine = testLine;
+        }
+
+        if (currentLine) {
+          allLines.push(currentLine);
         }
       }
-      if (currentLine) lines.push(currentLine);
-      return lines;
+
+      return allLines;
     };
+
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -701,7 +703,6 @@ export async function generateResearchProtocolPdf(
         yPos = pageHeight - margin;
       }
 
-      // Section header with gray background
       page.drawRectangle({
         x: margin,
         y: yPos - 12,
@@ -712,7 +713,6 @@ export async function generateResearchProtocolPdf(
       page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
       yPos -= 20;
 
-      // Content
       const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
       lines.forEach(line => {
         if (yPos < 80) {
@@ -736,11 +736,10 @@ export async function generateResearchProtocolPdf(
     addSection('VIII. Population, Respondents, and Sample Size', step3?.population || 'N/A');
     addSection('IX. Sampling Technique', step3?.samplingTechnique || 'N/A');
     addSection('X. Research Instrument and Validation', step3?.researchInstrument || 'N/A');
-    addSection('XI. Ethical Consideration', 'The research will ensure participant confidentiality, informed consent, and data protection.');
+    addSection('XI. Ethical Consideration', step3?.ethicalConsideration || 'The research will ensure participant confidentiality, informed consent, and data protection.');
     addSection('XII. Statistical Treatment of Data', step3?.statisticalTreatment || 'N/A');
     addSection('XIII. References (Main Themes Only)', step3?.references || 'N/A');
 
-    // Signature
     if (yPos < 100) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
       yPos = pageHeight - margin;
@@ -794,7 +793,6 @@ export async function generateResearchProtocolPdf(
 export async function generateConsentFormPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
-  // Same as before - no checkboxes used
   try {
     const pdfDoc = await PDFDocument.create();
     const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -805,29 +803,48 @@ export async function generateConsentFormPdf(
     const margin = 50;
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
-      if (!text) return [];
-      const words = text.split(' ');
-      const lines: string[] = [];
-      let currentLine = '';
+      if (!text || text.trim() === '') return [];
 
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+      // ✅ FIX: Handle newlines first
+      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const paragraphs = sanitizedText.split('\n');
+      const allLines: string[] = [];
 
-        if (width > maxWidth) {
-          if (currentLine) {
-            lines.push(currentLine);
-            currentLine = word;
+      for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) {
+          allLines.push(''); // Preserve empty lines
+          continue;
+        }
+
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+
+          // ✅ Now safe to measure - no newlines in testLine
+          const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+
+          if (width > maxWidth) {
+            if (currentLine) {
+              allLines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
           } else {
             currentLine = testLine;
           }
-        } else {
-          currentLine = testLine;
+        }
+
+        if (currentLine) {
+          allLines.push(currentLine);
         }
       }
-      if (currentLine) lines.push(currentLine);
-      return lines;
+
+      return allLines;
     };
+
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -849,8 +866,8 @@ export async function generateConsentFormPdf(
       consentType === 'minor'
         ? 'INFORMED ASSENT FORM (MINOR)'
         : consentType === 'both'
-        ? 'INFORMED CONSENT/ASSENT FORM'
-        : 'INFORMED CONSENT FORM';
+          ? 'INFORMED CONSENT/ASSENT FORM'
+          : 'INFORMED CONSENT FORM';
 
     page.drawText(consentTitle, {
       x: pageWidth / 2 - helveticaBold.widthOfTextAtSize(consentTitle, 12) / 2,
@@ -860,6 +877,95 @@ export async function generateConsentFormPdf(
     });
 
     yPos -= 70;
+
+    // PARTICIPANT GROUP
+    const informedConsentFor = submissionData.step4?.informedConsentFor || step4?.participantGroupIdentity;
+    if (informedConsentFor) {
+      page.drawText('Informed Consent Form for:', {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+      });
+      yPos -= 15;
+      page.drawText(informedConsentFor, {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: helvetica,
+      });
+      yPos -= 25;
+    }
+
+    // PROJECT AND RESEARCHER INFO
+    const step1 = submissionData.step1;
+    const step2 = submissionData.step2;
+    if (step1 || step2) {
+      page.drawText('PROJECT AND RESEARCHER INFORMATION', {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+      });
+      yPos -= 15;
+
+      const leadName = `${step1?.projectLeaderFirstName || step2?.researcherFirstName || ''} ${step1?.projectLeaderMiddleName || step2?.researcherMiddleName || ''} ${step1?.projectLeaderLastName || step2?.researcherLastName || ''}`.trim();
+      if (leadName) {
+        page.drawText(`Principal Investigator: ${leadName}`, {
+          x: margin,
+          y: yPos,
+          size: 9,
+          font: helvetica,
+        });
+        yPos -= 12;
+
+        const institution = step2?.institution || step1?.organization || 'University of Makati';
+        page.drawText(`Organization: ${institution}`, {
+          x: margin,
+          y: yPos,
+          size: 9,
+          font: helvetica,
+        });
+        yPos -= 12;
+
+        const contact = step1?.projectLeaderContact || step2?.mobileNo || '';
+        const email = step1?.projectLeaderEmail || step2?.email || '';
+        if (contact || email) {
+          page.drawText(`Contact: ${contact} | ${email}`, {
+            x: margin,
+            y: yPos,
+            size: 9,
+            font: helvetica,
+          });
+          yPos -= 12;
+        }
+      }
+
+      const projectTitle = step1?.title || step2?.title || '';
+      if (projectTitle) {
+        yPos -= 5;
+        page.drawText('Project Title:', {
+          x: margin,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+        });
+        yPos -= 12;
+
+        const titleLines = wrapText(projectTitle, pageWidth - 2 * margin, 9);
+        titleLines.forEach(line => {
+          page.drawText(line, {
+            x: margin,
+            y: yPos,
+            size: 9,
+            font: helvetica,
+          });
+          yPos -= 12;
+        });
+      }
+
+      yPos -= 15;
+    }
 
     const addConsentSection = (title: string, content: string) => {
       if (!content) return;
@@ -885,7 +991,7 @@ export async function generateConsentFormPdf(
       yPos -= 15;
     };
 
-    // Adult consent (English)
+    // ADULT CONSENT ENGLISH
     if (step4?.purposeEnglish) {
       addConsentSection('PURPOSE OF THE STUDY', step4.purposeEnglish);
       addConsentSection('RISKS AND INCONVENIENCES', step4.risksEnglish);
@@ -895,7 +1001,7 @@ export async function generateConsentFormPdf(
       addConsentSection('CONFIDENTIALITY', step4.confidentialityEnglish);
     }
 
-    // Adult consent (Tagalog)
+    // ADULT CONSENT TAGALOG
     if (step4?.purposeTagalog) {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -918,7 +1024,7 @@ export async function generateConsentFormPdf(
       addConsentSection('PAGIGING KUMPIDENSYAL', step4.confidentialityTagalog);
     }
 
-    // Minor assent
+    // MINOR ASSENT
     if (step4?.introduction) {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -947,7 +1053,6 @@ export async function generateConsentFormPdf(
       }
     }
 
-    // Contact info
     if (step4?.contactPerson || step4?.contactNumber) {
       if (yPos < 80) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);

@@ -20,6 +20,14 @@ export default function Step8ReviewSubmit() {
     
     const step1 = JSON.parse(localStorage.getItem('step1Data') || '{}');
     const step2 = JSON.parse(localStorage.getItem('step2Data') || '{}');
+
+    const coResearchers = JSON.parse(localStorage.getItem('step2CoResearchers') || '[{"name":"","contact":"","email":""}]');
+    const technicalAdvisers = JSON.parse(localStorage.getItem('step2TechnicalAdvisers') || '[{"name":"","contact":"","email":""}]');
+    
+  // ✅ Merge them into step2
+    step2.coResearchers = coResearchers;
+    step2.technicalAdvisers = technicalAdvisers;
+
     const step3 = JSON.parse(localStorage.getItem('step3Data') || '{}');
     const step4 = JSON.parse(localStorage.getItem('step4Data') || '{}');
     const step5 = JSON.parse(localStorage.getItem('step5Data') || '{}');

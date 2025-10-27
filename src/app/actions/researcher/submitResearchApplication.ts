@@ -93,7 +93,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         submitted_to_other_umrec: safeString(formData.step2?.submittedToOther),
         status: 'new_submission',
         submitted_at: new Date().toISOString(),
-        study_site: safeString(formData.step2?.studySiteType),
+        study_site: safeString(formData.step2?.studySite),
       })
       .select()
       .single();
@@ -102,77 +102,86 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       throw submissionError;
     }
 
-    // 2. Insert application form
-    if (formData.step2 && Object.keys(formData.step2).length > 0) {
-      const { error: appFormError } = await supabase
-        .from('application_forms')
-        .insert({
-          submission_id: submission.id,
-          study_site: safeString(formData.step2?.study_site),
-          researcher_first_name: safeString(formData.step2?.researcherFirstName),
-          researcher_middle_name: safeString(formData.step2?.researcherMiddleName),
-          researcher_last_name: safeString(formData.step2?.researcherLastName),
-          contact_info: {
-            telNo: formData.step2?.telNo || '',
-            mobileNo: formData.step2?.mobileNo || '',
-            email: formData.step2?.email || '',
-            faxNo: formData.step2?.faxNo || 'N/A',
-          },
-          co_researcher: safeString(formData.step2?.coResearcher),
-          college: safeString(formData.step2?.college),
-          institution: formData.step2?.institution || 'University of Makati',
-          institution_address: safeString(formData.step2?.institutionAddress),
-          type_of_study: formData.step2?.typeOfStudy || [],
-          type_of_study_others: safeString(formData.step2?.typeOfStudyOthers),
-          study_site_type: safeString(formData.step2?.studySiteType),
-          source_of_funding: formData.step2?.sourceOfFunding || [],
-          pharmaceutical_sponsor: safeString(formData.step2?.pharmaceuticalSponsor),
-          funding_others: safeString(formData.step2?.fundingOthers),
-          study_duration: {
-            startDate: formData.step2?.startDate || null,
-            endDate: formData.step2?.endDate || null,
-          },
-          num_participants: parseNumber(formData.step2?.numParticipants),
-          technical_review: safeString(formData.step2?.technicalReview),
-          submitted_to_other: safeString(formData.step2?.submittedToOther),
-          document_checklist: {
-            hasApplicationForm: formData.step2?.hasApplicationForm || false,
-            hasResearchProtocol: formData.step2?.hasResearchProtocol || false,
-            hasInformedConsentEnglish: formData.step2?.hasInformedConsentEnglish || false,
-            hasInformedConsentFilipino: formData.step2?.hasInformedConsentFilipino || false,
-            hasEndorsementLetter: formData.step2?.hasEndorsementLetter || false,
-          },
-        });
+// 2. Insert application form
+if (formData.step2 && Object.keys(formData.step2).length > 0) {
+  const { error: appFormError } = await supabase
+    .from('application_forms')
+    .insert({
+      submission_id: submission.id,
+      study_site: safeString(formData.step2?.studySite),
+      researcher_first_name: safeString(formData.step2?.researcherFirstName),
+      researcher_middle_name: safeString(formData.step2?.researcherMiddleName),
+      researcher_last_name: safeString(formData.step2?.researcherLastName),
+      contact_info: {
+        telNo: formData.step2?.telNo || '',
+        mobileNo: formData.step2?.mobileNo || '',
+        email: formData.step2?.email || '',
+        faxNo: formData.step2?.faxNo || 'N/A',
+      },
+      co_researcher: formData.step2?.coResearchers?.map((co: any) => ({
+        fullName: co.name,         
+        contactNumber: co.contact,   
+        emailAddress: co.email       
+      })) || [],
+      technical_advisers: formData.step2?.technicalAdvisers?.map((adv: any) => ({
+        fullName: adv.name,
+        contactNumber: adv.contact,
+        emailAddress: adv.email
+      })) || [],
+      college: safeString(formData.step2?.college),
+      institution: formData.step2?.institution || 'University of Makati',
+      institution_address: safeString(formData.step2?.institutionAddress),
+      type_of_study: formData.step2?.typeOfStudy || [],
+      type_of_study_others: safeString(formData.step2?.typeOfStudyOthers),
+      study_site_type: safeString(formData.step2?.studySiteType),
+      source_of_funding: formData.step2?.sourceOfFunding || [],
+      pharmaceutical_sponsor: safeString(formData.step2?.pharmaceuticalSponsor),
+      funding_others: safeString(formData.step2?.fundingOthers),
+      study_duration: {
+        startDate: formData.step2?.startDate || null,
+        endDate: formData.step2?.endDate || null,
+      },
+      num_participants: parseNumber(formData.step2?.numParticipants),
+      technical_review: safeString(formData.step2?.technicalReview),
+      submitted_to_other: safeString(formData.step2?.submittedToOther),
+      document_checklist: {
+        hasApplicationForm: formData.step2?.hasApplicationForm || false,
+        hasResearchProtocol: formData.step2?.hasResearchProtocol || false,
+        hasInformedConsentEnglish: formData.step2?.hasInformedConsentEnglish || false,
+        hasInformedConsentFilipino: formData.step2?.hasInformedConsentFilipino || false,
+        hasEndorsementLetter: formData.step2?.hasEndorsementLetter || false,
+      },
+    });
 
-      if (appFormError) {
-        console.error('Application form insert error:', appFormError);
-        throw appFormError;
-      }
-    }
+  if (appFormError) {
+    console.error('Application form insert error:', appFormError);
+    throw appFormError;
+  }
+}
 
-    // 3. Insert research protocol
-    if (formData.step3?.formData && Object.keys(formData.step3.formData).length > 0) {
-      // ✅ FIRST: Insert the research protocol with basic data
-      const { error: protocolError } = await supabase
-        .from('research_protocols')
-        .insert({
-          submission_id: submission.id,
-          title: safeString(formData.step3.formData?.title),
-          introduction: safeString(formData.step3.formData?.introduction),
-          background: safeString(formData.step3.formData?.background),
-          problem_statement: safeString(formData.step3.formData?.problemStatement),
-          scope_delimitation: safeString(formData.step3.formData?.scopeDelimitation),
-          literature_review: safeString(formData.step3.formData?.literatureReview),
-          methodology: safeString(formData.step3.formData?.methodology),
-          population: safeString(formData.step3.formData?.population),
-          sampling_technique: safeString(formData.step3.formData?.samplingTechnique),
-          research_instrument: safeString(formData.step3.formData?.researchInstrument),
-          statistical_treatment: safeString(formData.step3.formData?.statisticalTreatment),
-          research_references: safeString(formData.step3.formData?.references),
-          researchers: formData.step3?.researchers || [], // Save basic researchers first
-        });
 
-      if (protocolError) throw protocolError;
+  if (formData.step3?.formData && Object.keys(formData.step3.formData).length > 0) {
+  const { error: protocolError } = await supabase
+    .from('research_protocols')
+    .insert({
+      submission_id: submission.id,
+      title: safeString(formData.step3.formData?.title),
+      introduction: safeString(formData.step3.formData?.introduction),
+      background: safeString(formData.step3.formData?.background),
+      problem_statement: safeString(formData.step3.formData?.problemStatement),
+      scope_delimitation: safeString(formData.step3.formData?.scopeDelimitation),
+      literature_review: safeString(formData.step3.formData?.literatureReview),
+      methodology: safeString(formData.step3.formData?.methodology),
+      population: safeString(formData.step3.formData?.population),
+      sampling_technique: safeString(formData.step3.formData?.samplingTechnique),
+      research_instrument: safeString(formData.step3.formData?.researchInstrument),
+      statistical_treatment: safeString(formData.step3.formData?.statisticalTreatment),
+      ethical_consideration: safeString(formData.step3.formData?.ethicalConsideration), // ✅ NEW
+      research_references: safeString(formData.step3.formData?.references),
+      researchers: formData.step3?.researchers || [],
+    });
+
+  if (protocolError) throw protocolError;
 
       // ✅ THEN: Process and upload signatures
       if (formData.step3?.researchers && Array.isArray(formData.step3.researchers)) {
@@ -259,6 +268,7 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
         .insert({
           submission_id: submission.id,
           consent_type: formData.step4.consentType,
+          informed_consent_for: formData.step4.formData?.participantGroupIdentity,  
           adult_consent: formData.step4.consentType === 'adult' || formData.step4.consentType === 'both' ? {
             purposeEnglish: formData.step4.formData?.purposeEnglish || '',
             purposeTagalog: formData.step4.formData?.purposeTagalog || '',

@@ -40,25 +40,25 @@ export async function saveClassification(
       return { success: false, error: 'Failed to save classification' };
     }
 
-    // Create classification history record
-    const { error: historyError } = await supabase
-      .from('submission_history')
-      .insert({
-        submission_id: submissionId,
-        action: 'classified',
-        actor_id: user.id,
-        actor_role: 'secretariat',
-        details: {
-          classification: category,
-          reviewers_required: reviewersRequired,
-          // revision_comments: revisionComments || null,  // ✅ Include in history
-        },
-        created_at: new Date().toISOString(),
-      });
+    // // Create classification history record
+    // const { error: historyError } = await supabase
+    //   .from('submission_history')
+    //   .insert({
+    //     submission_id: submissionId,
+    //     action: 'classified',
+    //     actor_id: user.id,
+    //     actor_role: 'secretariat',
+    //     details: {
+    //       classification: category,
+    //       reviewers_required: reviewersRequired,
+    //       // revision_comments: revisionComments || null,  // ✅ Include in history
+    //     },
+    //     created_at: new Date().toISOString(),
+    //   });
 
-    if (historyError) {
-      console.error('History error:', historyError);
-    }
+    // if (historyError) {
+    //   console.error('History error:', historyError);
+    // }
 
     return { 
       success: true, 

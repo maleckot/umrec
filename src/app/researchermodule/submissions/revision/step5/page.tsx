@@ -1,12 +1,13 @@
 // app/researchermodule/submissions/revision/step5/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, AlertCircle, MessageSquare, Upload, FileText, CheckCircle } from 'lucide-react';
 import PDFUploadValidator from '@/components/researcher/submission/PDFUploadValidator';
+import { createClient } from '@/utils/supabase/client';
 
 // Revision Comment Box Component
 const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
@@ -29,9 +30,19 @@ const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
   );
 };
 
-export default function RevisionStep5() {
+function RevisionStep5Content() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id');
+  const docId = searchParams.get('docId');
+  const docType = searchParams.get('docType');
+  
+  // ✅ DETECT QUICK REVISION MODE
+  const isQuickRevision = !!docId && docType === 'research_instrument';
+  
   const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const supabase = createClient();
 
   const [revisionComments] = useState(
     'The research instrument needs to include clearer instructions for participants. Please add demographic questions at the beginning and ensure all Likert scale items are properly formatted. The validation certificate should be included or referenced.'
@@ -42,13 +53,12 @@ export default function RevisionStep5() {
     if (saved) {
       const parsedData = JSON.parse(saved);
       if (parsedData.fileName) {
-        // File reference exists but actual file needs to be re-uploaded
         console.log('Previous file:', parsedData.fileName);
       }
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!file) {
@@ -56,28 +66,107 @@ export default function RevisionStep5() {
       return;
     }
 
-    // Convert file to base64 and store in sessionStorage
-    const reader = new FileReader();
-    reader.onload = () => {
-      sessionStorage.setItem('revisionStep5File', reader.result as string);
+    // ✅ QUICK REVISION: Upload directly and update database
+    if (isQuickRevision && submissionId && docId) {
+      setUploading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          alert('Not authenticated');
+          setUploading(false);
+          return;
+        }
 
-      const dataToSave = {
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedAt: new Date().toISOString(),
+        // Upload to storage
+        const filePath = `${user.id}/${submissionId}/research_instrument_${Date.now()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('research-documents')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Update the document record
+        const { error: updateError } = await supabase
+          .from('uploaded_documents')
+          .update({
+            file_url: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            uploaded_at: new Date().toISOString(),
+          })
+          .eq('id', docId);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // Reset the verification status
+        const { error: verifyError } = await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
+          })
+          .eq('document_id', docId);
+
+        if (verifyError) {
+          console.error('Failed to reset verification:', verifyError);
+        }
+
+        // Update submission status back to under_review
+        const { error: statusError } = await supabase
+          .from('research_submissions')
+          .update({
+            status: 'Resubmit',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', submissionId);
+
+        if (statusError) {
+          console.error('Failed to update status:', statusError);
+        }
+
+        alert('✅ Research Instrument updated successfully! Your submission has been resubmitted for review.');
+        router.push(`/researchermodule/activity-details?id=${submissionId}`);
+
+      } catch (error) {
+        console.error('Error uploading:', error);
+        alert('Failed to upload document. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    } 
+    // ✅ NORMAL MULTI-STEP FLOW: Save to sessionStorage and go to next step
+    else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        sessionStorage.setItem('revisionStep5File', reader.result as string);
+
+        const dataToSave = {
+          fileName: file.name,
+          fileSize: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('revisionStep5Data', JSON.stringify(dataToSave));
+        console.log('💾 Revision Step 5 data saved');
+        router.push(`/researchermodule/submissions/revision/step6?mode=revision&id=${submissionId}`);
       };
-      localStorage.setItem('revisionStep5Data', JSON.stringify(dataToSave));
-      console.log('💾 Revision Step 5 data saved');
-      router.push('/researchermodule/submissions/revision/step6');
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleBack = () => {
-    router.push('/researchermodule/submissions/revision/step4');
+    if (isQuickRevision && submissionId) {
+      // Go back to activity details
+      router.push(`/researchermodule/activity-details?id=${submissionId}`);
+    } else {
+      // Normal flow: go to previous step
+      router.push(`/researchermodule/submissions/revision/step4?mode=revision&id=${submissionId}`);
+    }
   };
-
-  const isNextDisabled = file === null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
@@ -103,30 +192,36 @@ export default function RevisionStep5() {
                 
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Validated Research Instrument - Revision
+                    Validated Research Instrument - {isQuickRevision ? 'Quick Revision' : 'Revision'}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Review and upload your updated research instrument
+                    {isQuickRevision 
+                      ? 'Upload your updated research instrument and submit immediately' 
+                      : 'Review and upload your updated research instrument'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Enhanced Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
-                className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
-                style={{ width: '62.5%' }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Step 5 of 8
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                62.5% Complete
-              </span>
-            </div>
+            {/* Progress Bar - Only show in multi-step mode */}
+            {!isQuickRevision && (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                    style={{ width: '62.5%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Step 5 of 8
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    62.5% Complete
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Enhanced Content Card */}
@@ -225,23 +320,36 @@ export default function RevisionStep5() {
                 </ul>
               </div>
 
-              {/* SINGLE ORANGE SAVE BUTTON */}
-<div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
-  <button
-    type="submit"
-    className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
-    style={{ fontFamily: 'Metropolis, sans-serif' }}
-    aria-label="Save changes"
-  >
-    <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
-    <span className="relative z-10 flex items-center justify-center gap-2">
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-      </svg>
-      Save Changes
-    </span>
-  </button>
-</div>  
+              {/* Submit Button */}
+              <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
+                <button
+                  type="submit"
+                  disabled={uploading || !file}
+                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  aria-label={isQuickRevision ? "Submit revision" : "Save changes"}
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {isQuickRevision ? 'Submit Revision' : 'Save & Continue'}
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -249,5 +357,17 @@ export default function RevisionStep5() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function RevisionStep5() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    }>
+      <RevisionStep5Content />
+    </Suspense>
   );
 }
