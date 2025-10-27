@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
-import { ArrowLeft, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle, FileText, Calendar, Tag, AlertCircle, Edit, AlertTriangle } from 'lucide-react';
 import { getReviewerEvaluations } from '@/app/actions/reviewer/getReviewerEvaluations';
 import { postReviewReply } from '@/app/actions/reviewer/postReviewReply';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
@@ -35,11 +35,87 @@ interface Evaluation {
   technicalSuggestions: string;
   replies: Reply[];
 }
+
+// Edit Review Confirmation Modal Component
+function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: () => void;
+  submissionTitle: string;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fadeIn">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
+      
+      <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 animate-slideUp">
+        {/* Warning Icon */}
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <AlertTriangle className="w-8 h-8 text-white" />
+        </div>
+
+        {/* Title */}
+        <h2 className="text-2xl sm:text-3xl font-bold text-center mb-3 text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          Edit Your Review?
+        </h2>
+
+        {/* Subtitle */}
+        <p className="text-center text-gray-600 mb-6 text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          You're about to edit your review for:
+        </p>
+
+        {/* Submission Title */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-2xl p-4 mb-6 border border-blue-200/50">
+          <p className="text-sm font-bold text-[#101C50] text-center leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {submissionTitle}
+          </p>
+        </div>
+
+        {/* Warning Message */}
+        <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-2xl p-4 mb-6 border border-amber-200/50">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-amber-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Important Notice
+              </p>
+              <p className="text-xs sm:text-sm text-amber-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Editing your review will update your previous evaluation. Any changes you make will be saved and visible to other committee members.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-6 py-3.5 bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 rounded-2xl hover:from-gray-300 hover:to-gray-400 transition-all font-bold text-sm sm:text-base shadow-md"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 px-6 py-3.5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold text-sm sm:text-base shadow-lg flex items-center justify-center gap-2"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            <Edit className="w-4 h-4" />
+            Continue to Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReviewDetailContent() {
-const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -93,14 +169,13 @@ const router = useRouter();
             {
               id: 1,
               name: result.consolidatedDocument.name,
-              displayTitle: result.consolidatedDocument.displayTitle, // ✅ Use from backend
+              displayTitle: result.consolidatedDocument.displayTitle,
               time: new Date(result.consolidatedDocument.uploadedAt).toLocaleDateString('en-US'),
               status: 'viewed',
               url: result.consolidatedDocument.url
             }
           ]);
         }
-
       } else {
         console.error('Failed to load evaluations:', result.error);
       }
@@ -118,6 +193,16 @@ const router = useRouter();
   const handleConfirmReview = () => {
     setShowModal(false);
     router.push(`/reviewermodule/review-submission?id=${id}`);
+  };
+
+  // New handlers for edit review
+  const handleEditReview = () => {
+    setShowEditModal(true);
+  };
+
+  const handleConfirmEditReview = () => {
+    setShowEditModal(false);
+    router.push(`/reviewermodule/review-submission?id=${id}&edit=true`);
   };
 
   const handleReplyClick = (evaluationId: string) => {
@@ -179,6 +264,11 @@ const router = useRouter();
     );
   };
 
+  // Check if current user has already submitted a review
+  const currentUserReview = reviewerEvaluations.find(
+    (evaluation) => String(evaluation.reviewerId) === currentReviewerId
+  );
+
   const RenderReply = ({ reply, parentId, depth = 0, isLast = false }: { reply: Reply; parentId: string; depth?: number; isLast?: boolean }) => {
     const replyId = `${parentId}-${reply.id}`;
     const hasNestedReplies = reply.replies && reply.replies.length > 0;
@@ -186,45 +276,61 @@ const router = useRouter();
 
     return (
       <div className="relative">
-        <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-gray-300" style={{ height: isLast && !hasNestedReplies ? '24px' : '100%' }}></div>
+        <div 
+          className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 to-transparent" 
+          style={{ height: isLast && !hasNestedReplies ? '30px' : '100%' }}
+        ></div>
 
-        <div className="ml-8 sm:ml-10 mt-3 relative">
-          <div className="absolute left-[-24px] top-4 w-6 h-0.5 bg-gray-300"></div>
+        <div className="ml-10 sm:ml-12 mt-4 relative">
+          <div className="absolute left-[-28px] top-6 w-7 h-0.5 bg-gray-300 rounded-full"></div>
 
-          <div className={`rounded-lg p-3 border ${isMyReply ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'}`}>
-            <div className="flex gap-2">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isMyReply ? 'bg-blue-600' : 'bg-[#101C50]'}`}>
-                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <div className={`rounded-2xl p-4 sm:p-5 border-2 shadow-sm transition-all duration-300 hover:shadow-md ${
+            isMyReply 
+              ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/60' 
+              : 'bg-white border-gray-200/60'
+          }`}>
+            <div className="flex gap-3 sm:gap-4">
+              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md ${
+                isMyReply 
+                  ? 'bg-gradient-to-br from-blue-600 to-blue-700' 
+                  : 'bg-gradient-to-br from-[#101C50] to-[#1a2d70]'
+              }`}>
+                <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {reply.name.split(' ')[1]?.[0] || 'R'}
                 </span>
               </div>
 
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <h3 className="text-xs font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {reply.name} - {reply.code}
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <h3 className="text-sm font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {reply.name}
                   </h3>
+                  <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {reply.code}
+                  </span>
                   {isMyReply && (
-                    <span className="px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <span className="px-2.5 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs rounded-full font-bold shadow-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       You
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                <p className="text-xs text-gray-500 mb-3 flex items-center gap-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <Calendar className="w-3.5 h-3.5" />
                   {reply.date}
                 </p>
 
-                <div className="space-y-2 mb-2">
-                  <p className="text-xs text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                <div className="space-y-2 mb-3">
+                  <p className="text-sm text-gray-800 leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {reply.text || reply.ethicsRecommendation}
                   </p>
                 </div>
 
                 <button
                   onClick={() => handleReplyClick(replyId)}
-                  className="text-xs font-semibold text-[#101C50] hover:underline"
+                  className="text-xs font-bold text-[#101C50] hover:text-blue-600 transition-colors flex items-center gap-1.5 group"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
+                  <MessageCircle className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                   Reply
                 </button>
               </div>
@@ -232,8 +338,8 @@ const router = useRouter();
           </div>
 
           {replyingTo === replyId && (
-            <div className="mt-3 flex gap-2">
-              <div className="w-7 h-7 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
+            <div className="mt-4 flex gap-3 animate-fadeIn">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-[#101C50] to-[#1a2d70] flex items-center justify-center flex-shrink-0 shadow-md">
                 <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   You
                 </span>
@@ -246,22 +352,22 @@ const router = useRouter();
                     e.target.style.height = 'auto';
                     e.target.style.height = e.target.scrollHeight + 'px';
                   }}
-                  placeholder="Write a reply..."
+                  placeholder="Write a thoughtful reply..."
                   rows={2}
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none resize-none text-xs text-[#1a1a1a]"
-                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '50px', maxHeight: '150px' }}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-[#101C50] focus:ring-4 focus:ring-[#101C50]/10 focus:outline-none resize-none text-sm text-gray-800 shadow-sm transition-all"
+                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '60px', maxHeight: '180px' }}
                 />
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-3">
                   <button
                     onClick={handlePostReply}
-                    className="px-3 py-1 bg-[#101C50] text-white text-xs rounded-lg hover:bg-[#0d1640] font-semibold"
+                    className="px-5 py-2 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-xs rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-bold"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
-                    Reply
+                    Post Reply
                   </button>
                   <button
                     onClick={() => setReplyingTo(null)}
-                    className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 font-semibold"
+                    className="px-5 py-2 bg-gray-200 text-gray-700 text-xs rounded-xl hover:bg-gray-300 transition-colors font-semibold"
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
                   >
                     Cancel
@@ -287,12 +393,15 @@ const router = useRouter();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#E8EEF3]">
+      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
         <NavbarRoles role="reviewer" />
         <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50] mx-auto mb-4"></div>
-            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          <div className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-xl">
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 rounded-full border-4 border-[#101C50]/20"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-[#101C50] border-t-transparent animate-spin"></div>
+            </div>
+            <p className="text-gray-700 text-lg font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Loading review details...
             </p>
           </div>
@@ -303,70 +412,96 @@ const router = useRouter();
   }
 
   return (
-    <div className="min-h-screen bg-[#E8EEF3]">
+    <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
       <NavbarRoles role="reviewer" />
 
-      <div className="pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
+      <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 2xl:px-32 pb-12">
         <div className="max-w-[1600px] mx-auto">
+          {/* Back Button with Modern Design */}
           <button
             onClick={() => router.push('/reviewermodule/reviews')}
-            className="flex items-center gap-2 mb-6 text-[#101C50] hover:text-[#0d1640] transition-colors"
-            style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
+            className="flex items-center gap-2.5 mb-8 px-5 py-3 bg-white/80 backdrop-blur-sm text-[#101C50] hover:bg-white rounded-2xl transition-all shadow-md hover:shadow-lg group"
+            style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}
           >
-            <ArrowLeft size={20} />
-            Review Submission
+            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            Back to Reviews
           </button>
 
-          <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Submission Details
-            </h2>
+          {/* Submission Details Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
+            <div className="flex items-center mb-8">
+              <div className="flex-1">
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Submission Details
+                </h2>
+                <div className="h-1 w-20 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full mt-2"></div>
+              </div>
+            </div>
 
-            <div className="flex flex-col lg:flex-row lg:gap-20">
-              <div className="lg:w-[65%] space-y-6">
-                <div>
-                  <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Description
-                  </p>
-                  <p className="text-base text-[#101C50] font-semibold leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submissionData.title}
-                  </p>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
+              {/* Title Section */}
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-gradient-to-br from-blue-50/50 to-transparent rounded-2xl p-5 border border-blue-100/50">
+                  <div className="flex items-start gap-3 mb-2">
+                    <FileText className="w-5 h-5 text-[#101C50] mt-1 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-600 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Research Title
+                      </p>
+                      <p className="text-base sm:text-lg text-[#101C50] font-bold leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {submissionData.title}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Assigned Date
-                  </p>
-                  <p className="text-base text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submissionData.assignedDate}
-                  </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="w-4 h-4 text-[#101C50]" />
+                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Assigned Date
+                      </p>
+                    </div>
+                    <p className="text-base text-[#101C50] font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {submissionData.assignedDate}
+                    </p>
+                  </div>
+
+                  <div className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="w-4 h-4 text-[#7C1100]" />
+                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Due Date
+                      </p>
+                    </div>
+                    <p className="text-base text-[#7C1100] font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {submissionData.dueDate}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="lg:w-[35%] space-y-6 mt-6 lg:mt-0">
-                <div>
-                  <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Category
-                  </p>
-                  <p className="text-base text-[#101C50] font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {/* Category Section */}
+              <div className="space-y-5">
+                <div className="bg-gradient-to-br from-amber-50/50 to-transparent rounded-2xl p-5 border border-amber-100/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Tag className="w-4 h-4 text-amber-700" />
+                    <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Review Category
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm bg-gradient-to-r from-amber-100 to-amber-50 text-amber-900 border border-amber-200" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {submissionData.category}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Due Date
-                  </p>
-                  <p className="text-base text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {submissionData.dueDate}
-                  </p>
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Description
+            {/* Description Section */}
+            <div className="mt-8 pt-8 border-t-2 border-gray-100">
+              <p className="text-xs text-gray-600 mb-3 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Research Description
               </p>
               <p className="text-base text-gray-700 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 {submissionData.description}
@@ -374,140 +509,179 @@ const router = useRouter();
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Submitted File
-            </h2>
+          {/* Submitted Files Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
+            <div className="flex items-center mb-6">
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Submitted Documents
+                </h2>
+                <div className="h-1 w-16 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full mt-2"></div>
+              </div>
+            </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {submittedFiles.map((file) => (
-                <div key={file.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" />
-                      </svg>
+                <div key={file.id} className="group bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 sm:p-6 shadow-md hover:shadow-xl border border-gray-200/50 transition-all duration-300">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-[#101C50] to-[#1a2d70] rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg group-hover:scale-110 transition-transform">
+                        <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" />
+                          <path d="M14 2v6h6" />
+                        </svg>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm sm:text-base font-bold text-[#101C50] mb-1 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          {file.displayTitle || 'Consolidated Application - ' + submissionData.title}
+                        </p>
+                        <p className="text-xs text-gray-500 flex items-center gap-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <Calendar className="w-3.5 h-3.5" />
+                          Uploaded: {file.time}
+                        </p>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      {/* ✅ Show display title instead of raw filename */}
-                      <p className="text-sm font-semibold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {file.displayTitle || 'Consolidated Application - ' + submissionData.title}
-                      </p>
-                      <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {file.time}
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => {
+                        if (file.url) {
+                          setSelectedDocument({ name: file.displayTitle || file.name, url: file.url });
+                          setViewerOpen(true);
+                        } else {
+                          alert('Document URL not available');
+                        }
+                      }}
+                      className="w-full sm:w-32 px-6 py-3 rounded-2xl text-sm font-bold transition-all bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white hover:shadow-lg hover:scale-105 transform"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      View File
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (file.url) {
-                        setSelectedDocument({ name: file.displayTitle || file.name, url: file.url });
-                        setViewerOpen(true);
-                      } else {
-                        alert('Document URL not available');
-                      }
-                    }}
-                    className="w-full sm:w-24 px-6 py-2 rounded-full text-sm font-semibold transition-colors bg-[#101C50] text-white cursor-pointer hover:bg-[#0d1640]"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    View
-                  </button>
                 </div>
               ))}
             </div>
-
           </div>
 
-          <div className="bg-white rounded-xl p-6 sm:p-8 shadow-sm mb-6">
-            <h2 className="text-xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Reviewer Evaluations
-            </h2>
+          {/* Reviewer Evaluations Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
+            <div className="flex items-center mb-8">
+              <div className="flex-1">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Reviewer Evaluations
+                </h2>
+                <div className="h-1 w-16 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full mt-2"></div>
+              </div>
+            </div>
 
             {reviewerEvaluations.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-10 h-10 text-gray-400" />
+              <div className="text-center py-16 sm:py-20">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 bg-gradient-to-br from-gray-100 to-gray-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <MessageCircle className="w-12 h-12 sm:w-14 sm:h-14 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  No Reviewer Evaluations Yet
+                <h3 className="text-lg sm:text-xl font-bold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  No Evaluations Yet
                 </h3>
-                <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                <p className="text-gray-500 text-sm sm:text-base" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Reviewers haven't submitted their evaluations for this submission.
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {reviewerEvaluations.map((evaluation) => {
+              <div className="space-y-5">
+                {reviewerEvaluations.map((evaluation, index) => {
                   const evaluationId = String(evaluation.id);
                   const isMyEvaluation = String(evaluation.reviewerId) === currentReviewerId;
                   const showReplies = showRepliesFor.includes(evaluationId);
                   const hasReplies = evaluation.replies && evaluation.replies.length > 0;
 
                   return (
-                    <div key={evaluation.id}>
-                      <div className={`rounded-lg p-4 ${isMyEvaluation ? 'bg-blue-50 border-2 border-blue-200' : 'bg-gray-50'}`}>
-                        <div className="flex gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${isMyEvaluation ? 'bg-blue-600' : 'bg-[#101C50]'}`}>
-                            <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <div key={evaluation.id} className="animate-fadeIn" style={{ animationDelay: `${index * 100}ms` }}>
+                      <div className={`rounded-2xl p-5 sm:p-6 border-2 shadow-lg transition-all duration-300 hover:shadow-xl ${
+                        isMyEvaluation 
+                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300/60' 
+                          : 'bg-white border-gray-200/60'
+                      }`}>
+                        <div className="flex gap-4">
+                          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${
+                            isMyEvaluation 
+                              ? 'bg-gradient-to-br from-blue-600 to-blue-700' 
+                              : 'bg-gradient-to-br from-[#101C50] to-[#1a2d70]'
+                          }`}>
+                            <span className="text-white font-bold text-base sm:text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                               {evaluation.name.split(' ')[1]?.[0] || 'R'}
                             </span>
                           </div>
 
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h3 className="text-sm font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                {evaluation.name} - {evaluation.code}
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <h3 className="text-base sm:text-lg font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {evaluation.name}
                               </h3>
+                              <span className="text-xs sm:text-sm text-gray-600 font-semibold px-2.5 py-1 bg-gray-200 rounded-full" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {evaluation.code}
+                              </span>
                               {isMyEvaluation && (
-                                <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                  You
+                                <span className="px-3 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs rounded-full font-bold shadow-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  Your Review
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            <p className="text-xs sm:text-sm text-gray-500 mb-4 flex items-center gap-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <Calendar className="w-4 h-4" />
                               {evaluation.date}
                             </p>
 
-                            <div className="mb-3">
-                              <p className="text-sm font-semibold text-[#1a1a1a] mb-2 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            <div className="mb-4 p-4 bg-gradient-to-br from-amber-50 to-amber-100/30 rounded-xl border border-amber-200/50">
+                              <p className="text-sm sm:text-base font-bold text-amber-900 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                <Tag className="w-4 h-4" />
                                 Decision: {evaluation.decision}
                               </p>
                             </div>
 
-                            <div className="space-y-2 mb-3">
-                              <div>
-                                <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                  Ethics Review Recommendation:
+                            <div className="space-y-4 mb-5">
+                              <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-200/50">
+                                <p className="text-xs sm:text-sm font-bold text-[#101C50] mb-2 uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  Ethics Review Recommendation
                                 </p>
-                                <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                <p className="text-sm sm:text-base text-gray-800 leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                   {evaluation.ethicsRecommendation}
                                 </p>
                               </div>
-                              <div>
-                                <p className="text-xs font-semibold text-[#1a1a1a] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                  Technical Suggestions:
+                              <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-200/50">
+                                <p className="text-xs sm:text-sm font-bold text-[#101C50] mb-2 uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  Technical Suggestions
                                 </p>
-                                <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                <p className="text-sm sm:text-base text-gray-800 leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                   {evaluation.technicalSuggestions}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-4 pt-2">
+                            <div className="flex items-center gap-5 pt-3 border-t border-gray-200/60 flex-wrap">
                               <button
                                 onClick={() => handleReplyClick(evaluationId)}
-                                className="text-xs font-semibold text-[#101C50] hover:underline"
+                                className="text-xs sm:text-sm font-bold text-[#101C50] hover:text-blue-600 transition-colors flex items-center gap-2 group"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
+                                <MessageCircle className="w-4 h-4 group-hover:scale-110 transition-transform" />
                                 Reply
                               </button>
                               {hasReplies && (
                                 <button
                                   onClick={() => toggleReplies(evaluationId)}
-                                  className="text-xs font-semibold text-[#101C50] hover:underline"
+                                  className="text-xs sm:text-sm font-bold text-[#101C50] hover:text-blue-600 transition-colors flex items-center gap-2"
                                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                                 >
-                                  {showReplies ? 'Hide replies' : `View replies (${evaluation.replies.length})`}
+                                  {showReplies ? 'Hide' : 'View'} {evaluation.replies.length} {evaluation.replies.length === 1 ? 'reply' : 'replies'}
+                                </button>
+                              )}
+                              {/* Edit Button - Only show for current user's review */}
+                              {isMyEvaluation && (
+                                <button
+                                  onClick={handleEditReview}
+                                  className="text-xs sm:text-sm font-bold text-amber-700 hover:text-amber-900 transition-colors flex items-center gap-2 group"
+                                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                                >
+                                  <Edit className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                  Edit Review
                                 </button>
                               )}
                             </div>
@@ -516,9 +690,9 @@ const router = useRouter();
                       </div>
 
                       {replyingTo === evaluationId && (
-                        <div className="ml-8 sm:ml-14 mt-3 flex gap-2">
-                          <div className="w-8 h-8 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
-                            <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        <div className="ml-10 sm:ml-16 mt-4 flex gap-3 sm:gap-4 animate-fadeIn">
+                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#101C50] to-[#1a2d70] flex items-center justify-center flex-shrink-0 shadow-lg">
+                            <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                               You
                             </span>
                           </div>
@@ -530,22 +704,22 @@ const router = useRouter();
                                 e.target.style.height = 'auto';
                                 e.target.style.height = e.target.scrollHeight + 'px';
                               }}
-                              placeholder="Write a reply..."
+                              placeholder="Write a thoughtful reply..."
                               rows={2}
-                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-[#101C50] focus:outline-none resize-none text-sm text-[#1a1a1a]"
-                              style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '60px', maxHeight: '200px' }}
+                              className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-[#101C50] focus:ring-4 focus:ring-[#101C50]/10 focus:outline-none resize-none text-sm sm:text-base text-gray-800 shadow-sm transition-all"
+                              style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '80px', maxHeight: '200px' }}
                             />
-                            <div className="flex gap-2 mt-2">
+                            <div className="flex gap-2 sm:gap-3 mt-3">
                               <button
                                 onClick={handlePostReply}
-                                className="px-4 py-1.5 bg-[#101C50] text-white text-xs rounded-lg hover:bg-[#0d1640] font-semibold"
+                                className="px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-xs sm:text-sm rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-bold"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
-                                Reply
+                                Post Reply
                               </button>
                               <button
                                 onClick={() => setReplyingTo(null)}
-                                className="px-4 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 font-semibold"
+                                className="px-5 sm:px-6 py-2.5 sm:py-3 bg-gray-200 text-gray-700 text-xs sm:text-sm rounded-xl hover:bg-gray-300 transition-colors font-semibold"
                                 style={{ fontFamily: 'Metropolis, sans-serif' }}
                               >
                                 Cancel
@@ -556,30 +730,32 @@ const router = useRouter();
                       )}
 
                       {showReplies && evaluation.replies && evaluation.replies.map((reply: any) => (
-                        <div key={reply.id} className="ml-8 sm:ml-14 mt-3">
-                          <div className="bg-white rounded-lg p-4 border border-gray-200">
-                            <div className="flex gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#101C50] flex items-center justify-center flex-shrink-0">
-                                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        <div key={reply.id} className="ml-10 sm:ml-16 mt-4">
+                          <div className="bg-white rounded-2xl p-5 border-2 border-gray-200/60 shadow-md hover:shadow-lg transition-all">
+                            <div className="flex gap-3 sm:gap-4">
+                              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#101C50] to-[#1a2d70] flex items-center justify-center flex-shrink-0 shadow-md">
+                                <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                   {reply.name.split(' ')[1]?.[0] || 'R'}
                                 </span>
                               </div>
 
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h3 className="text-sm font-bold text-[#101C50] truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                    {reply.name} - {reply.code}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="text-sm sm:text-base font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    {reply.name}
                                   </h3>
+                                  <span className="text-xs text-gray-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    {reply.code}
+                                  </span>
                                 </div>
-                                <p className="text-xs text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                <p className="text-xs text-gray-500 mb-3 flex items-center gap-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  <Calendar className="w-3.5 h-3.5" />
                                   {reply.date}
                                 </p>
 
-                                <div className="space-y-2">
-                                  <p className="text-sm text-[#2d2d2d] break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                    {reply.text}
-                                  </p>
-                                </div>
+                                <p className="text-sm sm:text-base text-gray-800 leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                  {reply.text}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -592,14 +768,27 @@ const router = useRouter();
             )}
           </div>
 
-          <div className="flex justify-center">
-            <button
-              onClick={handleStartReview}
-              className="px-12 py-4 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors text-lg font-bold"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
-              Start Review
-            </button>
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            {/* Show "Start Review" if user hasn't reviewed yet, otherwise show "Edit Review" */}
+            {!currentUserReview ? (
+              <button
+                onClick={handleStartReview}
+                className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                Start Review
+              </button>
+            ) : (
+              <button
+                onClick={handleEditReview}
+                className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-amber-600 to-amber-700 text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl flex items-center justify-center gap-3"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
+                Edit Your Review
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -623,17 +812,30 @@ const router = useRouter();
         submissionTitle={submissionData.title}
       />
 
+      <EditReviewModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        onConfirm={handleConfirmEditReview}
+        submissionTitle={submissionData.title}
+      />
+
       <Footer />
     </div>
-);
+  );
 }
+
 export default function ReviewDetailPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#E8EEF3]">
+      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
         <NavbarRoles role="reviewer" />
         <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-xl">
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 rounded-full border-4 border-[#101C50]/20"></div>
+              <div className="absolute inset-0 rounded-full border-4 border-[#101C50] border-t-transparent animate-spin"></div>
+            </div>
+          </div>
         </div>
         <Footer />
       </div>

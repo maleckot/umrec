@@ -1,20 +1,24 @@
 // app/researchermodule/submissions/revision/step8/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import RevisionStepLayout from '@/components/researcher/revision/RevisionStepLayout';
-import ReviewField from '@/components/researcher/submission/ReviewField';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
+import Footer from '@/components/researcher-reviewer/Footer';
+import { ArrowLeft, CheckCircle, FileText, Building, Shield, Edit, AlertCircle } from 'lucide-react';
 import { submitResearchApplication } from '@/app/actions/researcher/submitResearchApplication';
 
 export default function RevisionStep8() {
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allData, setAllData] = useState<any>({});
   const [revisedSteps, setRevisedSteps] = useState<number[]>([]);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
+    setIsClient(true);
+    
     // Load all revision data
     const step1 = JSON.parse(localStorage.getItem('revisionStep1Data') || '{}');
     const step2 = JSON.parse(localStorage.getItem('revisionStep2Data') || '{}');
@@ -40,6 +44,7 @@ export default function RevisionStep8() {
 
     console.log('All collected revision data:', { step1, step2, step3, step4, step5, step6, step7 });
     console.log('Revised steps:', revised);
+    isInitialMount.current = false;
   }, []);
 
   const handleSubmit = async () => {
@@ -69,7 +74,7 @@ export default function RevisionStep8() {
         revisionSubmittedAt: new Date().toISOString(),
       };
 
-      // Call the existing function without the third parameter
+      // Call the existing function
       const result = await submitResearchApplication(revisionData, files);
 
       console.log('Server action result:', result);
@@ -137,7 +142,7 @@ export default function RevisionStep8() {
   const formatTypeOfStudy = (typeOfStudy: string[], typeOfStudyOthers?: string) => {
     if (!typeOfStudy || typeOfStudy.length === 0) return 'N/A';
 
-    const formattedTypes = typeOfStudy.map((type) => {
+    const formattedTypes = typeOfStudy.map(type => {
       if (type.toLowerCase() === 'others' && typeOfStudyOthers) {
         return `Others: ${typeOfStudyOthers}`;
       }
@@ -147,331 +152,369 @@ export default function RevisionStep8() {
     return formattedTypes.join(', ');
   };
 
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <NavbarRoles role="researcher" />
+        <div className="flex items-center justify-center py-12">
+          <div className="text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Loading...
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
-    <RevisionStepLayout
-      stepNumber={8}
-      title="Review & Submit Revisions"
-      description="Review all your revised sections before resubmitting."
-      onBack={handleBack}
-    >
-      {/* Alert Banner */}
-      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg mb-6 sm:mb-8">
-        <div className="flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
-          <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-[#1E293B] text-sm sm:text-base mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Review Your Revisions
-            </h4>
-            <p className="text-xs sm:text-sm text-[#475569] leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Please carefully review all the revised sections below. Only the sections you modified will be shown. You can click "Edit" on any section to make additional changes before final submission.
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+      <NavbarRoles role="researcher" />
+
+      <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-28 pb-8">
+        <div className="max-w-[1400px] mx-auto">
+          {/* Header Section */}
+          <div className="mb-6 sm:mb-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-6">
+              <button
+                onClick={handleBack}
+                className="w-12 h-12 bg-white border-2 border-[#071139]/20 rounded-full flex items-center justify-center hover:bg-[#071139] hover:border-[#071139] hover:shadow-lg transition-all duration-300 group"
+                aria-label="Go back to previous page"
+              >
+                <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
+              </button>
+              
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
+                  <span style={{ fontFamily: 'Metropolis, sans-serif' }}>8</span>
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Review & Submit Revisions
+                  </h1>
+                  <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Please review all information before submitting
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+              <div 
+                className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Step 8 of 8
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                100% Complete
+              </span>
+            </div>
+          </div>
+
+          {/* Content Card */}
+          <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
+            {/* Alert Banner */}
+            <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4 sm:p-6 mb-6 sm:mb-8">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600 flex-shrink-0 mt-0.5" strokeWidth={2} />
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-bold text-[#071139] text-sm sm:text-base mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Review Your Revisions
+                  </h4>
+                  <p className="text-xs sm:text-sm text-gray-700 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Please carefully review all revised sections below. Only the sections you modified will be shown. You can click "Edit" on any section to make additional changes before final submission.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Revision Summary */}
+            <div className="bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-orange-500 rounded-r-lg p-4 sm:p-6 mb-6 sm:mb-8">
+              <h4 className="font-bold text-[#071139] text-sm sm:text-base mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Revision Summary
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-orange-600 flex-shrink-0" strokeWidth={2} />
+                  <span className="text-xs sm:text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <strong>{revisedSteps.length}</strong> section(s) revised
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0" strokeWidth={2} />
+                  <span className="text-xs sm:text-sm text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Ready for re-review
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6 sm:space-y-8">
+              {/* Section 1: Researcher Details */}
+              {revisedSteps.includes(1) && (
+                <div className="bg-gradient-to-r from-orange-500/5 to-orange-600/5 rounded-xl p-4 sm:p-6 border-l-4 border-orange-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md">
+                        <FileText size={20} className="text-white" />
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Researcher Details (Revised)
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => handleEdit(1)}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg hover:scale-105"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      <Edit size={16} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Project Title</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step1?.protocolTitle || allData.step1?.title || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Project Leader</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step1?.principalInvestigator || `${allData.step1?.projectLeaderFirstName || ''} ${allData.step1?.projectLeaderLastName || ''}`.trim() || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Email</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step1?.emailAddress || allData.step1?.projectLeaderEmail || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Organization</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step1?.organization || allData.step1?.position || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Section 2: Application for Ethics Review */}
+              {revisedSteps.includes(2) && (
+                <div className="bg-gradient-to-r from-orange-500/5 to-orange-600/5 rounded-xl p-4 sm:p-6 border-l-4 border-orange-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md">
+                        <Building size={20} className="text-white" />
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Application for Ethics Review (Revised)
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => handleEdit(2)}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg hover:scale-105"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      <Edit size={16} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Study Site Type</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step2?.studySiteType || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Type of Study</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {formatTypeOfStudy(allData.step2?.typeOfStudy, allData.step2?.typeOfStudyOthers)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Study Duration</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step2?.startDate || 'N/A'} to {allData.step2?.endDate || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Number of Participants</p>
+                      <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {allData.step2?.numParticipants || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="md:col-span-2">
+                      <p className="text-xs sm:text-sm text-gray-500 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>Uploaded Documents</p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-[#071139] flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <CheckCircle size={16} className={allData.step5?.fileName ? 'text-green-600' : 'text-gray-300'} />
+                          Research Instrument: {allData.step5?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}
+                        </p>
+                        <p className="text-sm text-[#071139] flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <CheckCircle size={16} className={allData.step6?.fileName ? 'text-green-600' : 'text-gray-300'} />
+                          Proposal Defense Certification: {allData.step6?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}
+                        </p>
+                        <p className="text-sm text-[#071139] flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          <CheckCircle size={16} className={allData.step7?.fileName ? 'text-green-600' : 'text-gray-300'} />
+                          Endorsement Letter: {allData.step7?.fileName ? '✓ Uploaded' : '✗ Not Uploaded'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Section 3: Research Protocol */}
+              {revisedSteps.includes(3) && (
+                <div className="bg-gradient-to-r from-orange-500/5 to-orange-600/5 rounded-xl p-4 sm:p-6 border-l-4 border-orange-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md">
+                        <Shield size={20} className="text-white" />
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Research Protocol (Revised)
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => handleEdit(3)}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg hover:scale-105"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      <Edit size={16} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Protocol Summary</p>
+                    <p className="text-sm sm:text-base text-[#071139] line-clamp-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {stripHtmlTags(allData.step3?.formData?.introduction || '')}...
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Section 4: Informed Consent/Assent Form */}
+              {revisedSteps.includes(4) && (
+                <div className="bg-gradient-to-r from-orange-500/5 to-orange-600/5 rounded-xl p-4 sm:p-6 border-l-4 border-orange-500">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center shadow-md">
+                        <FileText size={20} className="text-white" />
+                      </div>
+                      <h2 className="text-lg sm:text-xl font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Informed Consent / Assent Form (Revised)
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => handleEdit(4)}
+                      className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg hover:scale-105"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      <Edit size={16} />
+                      <span className="hidden sm:inline">Edit</span>
+                    </button>
+                  </div>
+                  <div>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Participant Type</p>
+                    <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {getConsentTypeLabel(allData.step4?.consentType)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Loading indicator */}
+              {isSubmitting && (
+                <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4 sm:p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600"></div>
+                    <p className="text-sm text-orange-700 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Uploading files and submitting your revision...
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Important Notice */}
+              <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4 sm:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+                    <span className="text-white text-lg font-bold">!</span>
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-orange-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Declaration
+                    </h3>
+                    <p className="text-sm sm:text-base text-orange-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      By submitting this revision, I/we certify that all requested changes have been addressed and all revised information provided is accurate and complete to the best of my/our knowledge. I/we understand that the revised submission will be re-evaluated by the University of Makati Research Ethics Committee.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Buttons */}
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 pt-8 border-t-2 border-gray-200">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto px-10 sm:px-12 py-3 sm:py-4 bg-gray-200 text-[#071139] rounded-xl hover:bg-gray-300 transition-all duration-300 font-bold text-base sm:text-lg shadow-lg hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed order-2 sm:order-1"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  aria-label="Go back to previous step"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+                    </svg>
+                    Previous Step
+                  </span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || revisedSteps.length === 0}
+                  className={`w-full sm:w-auto group relative px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl transition-all duration-300 overflow-hidden order-1 sm:order-2 ${
+                    isSubmitting || revisedSteps.length === 0
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:scale-105'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  aria-label="Submit revision"
+                >
+                  {!isSubmitting && revisedSteps.length > 0 && (
+                    <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></span>
+                  )}
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={20} />
+                        Submit Revision
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Revision Summary */}
-      <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-lg mb-6 sm:mb-8">
-        <h4 className="font-bold text-[#1E293B] text-sm sm:text-base mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          Revision Summary
-        </h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0" strokeWidth={2} />
-            <span className="text-xs sm:text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              <strong>{revisedSteps.length}</strong> section(s) revised
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" strokeWidth={2} />
-            <span className="text-xs sm:text-sm text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Ready for re-review
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-6 sm:space-y-8">
-        {/* Section 1: Researcher Details */}
-        {revisedSteps.includes(1) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Researcher Details (Revised)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(1)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 space-y-3">
-              <ReviewField label="Title of the Project" value={allData.step1?.title || 'N/A'} fullWidth />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <ReviewField
-                  label="Project Leader Full Name"
-                  value={`${allData.step1?.projectLeaderFirstName || ''} ${allData.step1?.projectLeaderMiddleName || ''} ${allData.step1?.projectLeaderLastName || ''}`.trim() || 'N/A'}
-                />
-                <ReviewField label="Email" value={allData.step1?.projectLeaderEmail || 'N/A'} />
-              </div>
-              <ReviewField label="Organization" value={allData.step1?.organization || 'N/A'} fullWidth />
-              <ReviewField label="Co-Authors" value={allData.step1?.coAuthors || 'N/A'} fullWidth />
-            </div>
-          </div>
-        )}
-
-        {/* Section 2: Application for Ethics Review */}
-        {revisedSteps.includes(2) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Application for Ethics Review (Revised)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(2)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 space-y-4">
-              <div>
-                <h4 className="text-xs sm:text-sm font-bold text-amber-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  General Information
-                </h4>
-                <div className="space-y-2 pl-3 sm:pl-4">
-                  <ReviewField label="Study Site Type" value={allData.step2?.studySiteType || 'N/A'} fullWidth />
-                  <ReviewField label="Type of Study" value={formatTypeOfStudy(allData.step2?.typeOfStudy, allData.step2?.typeOfStudyOthers)} fullWidth />
-                  <ReviewField label="Study Duration" value={`${allData.step2?.startDate || 'N/A'} to ${allData.step2?.endDate || 'N/A'}`} fullWidth />
-                  <ReviewField label="Number of Participants" value={allData.step2?.numParticipants || 'N/A'} fullWidth />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 3: Research Protocol */}
-        {revisedSteps.includes(3) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Research Protocol (Revised)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(3)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6 space-y-3">
-              <div>
-                <p className="text-xs text-[#64748B] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Protocol Summary (Introduction)
-                </p>
-                <p className="text-xs sm:text-sm text-[#1E293B] line-clamp-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {stripHtmlTags(allData.step3?.formData?.introduction || '')}...
-                </p>
-              </div>
-              <div className="flex items-center gap-2 bg-amber-50 p-3 rounded-lg">
-                <CheckCircle className="w-4 h-4 text-amber-600 flex-shrink-0" strokeWidth={2} />
-                <span className="text-xs text-amber-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  All protocol sections have been updated
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 4: Informed Consent/Assent Form */}
-        {revisedSteps.includes(4) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Informed Consent / Assent Form (Revised)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(4)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6">
-              <ReviewField label="Participant Type" value={getConsentTypeLabel(allData.step4?.consentType)} fullWidth />
-            </div>
-          </div>
-        )}
-
-        {/* Section 5: Research Instrument */}
-        {revisedSteps.includes(5) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Research Instrument (Updated)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(5)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center gap-3 bg-green-50 p-3 sm:p-4 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" strokeWidth={2} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-green-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {allData.step5?.fileName || 'Document uploaded'}
-                  </p>
-                  <p className="text-xs text-green-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Uploaded: {allData.step5?.uploadedAt ? new Date(allData.step5.uploadedAt).toLocaleString() : 'Recently'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 6: Proposal Defense Certification */}
-        {revisedSteps.includes(6) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Proposal Defense Certification (Updated)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(6)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center gap-3 bg-green-50 p-3 sm:p-4 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" strokeWidth={2} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-green-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {allData.step6?.fileName || 'Document uploaded'}
-                  </p>
-                  <p className="text-xs text-green-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Uploaded: {allData.step6?.uploadedAt ? new Date(allData.step6.uploadedAt).toLocaleString() : 'Recently'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Section 7: Endorsement Letter */}
-        {revisedSteps.includes(7) && (
-          <div className="bg-white rounded-lg border-2 border-amber-200 overflow-hidden">
-            <div className="bg-amber-600 p-3 sm:p-4 flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white flex-shrink-0" strokeWidth={2} />
-                <h3 className="text-white font-bold text-sm sm:text-base truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Endorsement Letter (Updated)
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleEdit(7)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-white text-amber-600 rounded-lg hover:bg-gray-100 transition-colors text-xs font-semibold flex-shrink-0"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                <span>Edit</span>
-              </button>
-            </div>
-            <div className="p-4 sm:p-6">
-              <div className="flex items-center gap-3 bg-green-50 p-3 sm:p-4 rounded-lg">
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" strokeWidth={2} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs sm:text-sm font-semibold text-green-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {allData.step7?.fileName || 'Document uploaded'}
-                  </p>
-                  <p className="text-xs text-green-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Uploaded: {allData.step7?.uploadedAt ? new Date(allData.step7.uploadedAt).toLocaleString() : 'Recently'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading indicator */}
-        {isSubmitting && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-blue-600"></div>
-              <p className="text-xs sm:text-sm text-blue-700 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Uploading files and submitting your revision...
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Final Confirmation */}
-        <div className="bg-amber-50 border-l-4 border-amber-500 p-4 sm:p-6 rounded-lg">
-          <h4 className="font-bold text-[#1E293B] text-sm sm:text-base mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Declaration
-          </h4>
-          <p className="text-xs sm:text-sm text-[#475569] leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            By submitting this revision, I/we certify that all requested changes have been addressed and all revised information provided is accurate and complete to the best of my/our knowledge. I/we understand that the revised submission will be re-evaluated by the University of Makati Research Ethics Committee.
-          </p>
-        </div>
-
-        {/* Navigation Buttons */}
-        <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 sm:pt-8 border-t-2 border-gray-200">
-          <button
-            type="button"
-            onClick={handleBack}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors font-semibold order-2 sm:order-1"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            Back
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting || revisedSteps.length === 0}
-            className="w-full sm:w-auto px-8 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold cursor-pointer order-1 sm:order-2"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            {isSubmitting ? 'Submitting...' : 'Submit Revision'}
-          </button>
-        </div>
-      </div>
-    </RevisionStepLayout>
+      <Footer />
+    </div>
   );
 }
