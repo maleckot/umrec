@@ -84,6 +84,7 @@ export default function Step8ReviewSubmit() {
       console.log('Data to submit:', submissionData);
 
       const files = {
+        step2TechnicalReview: sessionStorage.getItem('step2TechnicalReviewFile') || undefined,  // ✅ ADD THIS
         step5: sessionStorage.getItem('step5File') || undefined,
         step6: sessionStorage.getItem('step6File') || undefined,
         step7: sessionStorage.getItem('step7File') || undefined,
@@ -104,6 +105,7 @@ export default function Step8ReviewSubmit() {
       }
 
       // Clear sessionStorage files
+      sessionStorage.removeItem('step2TechnicalReviewFile');  // ✅ ADD THIS
       sessionStorage.removeItem('step5File');
       sessionStorage.removeItem('step6File');
       sessionStorage.removeItem('step7File');

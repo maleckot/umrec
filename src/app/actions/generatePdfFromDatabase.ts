@@ -17,7 +17,7 @@ export type PdfGenerationResult =
   };
 function stripHtmlAndSanitize(text: string): string {
   if (!text) return '';
-  
+
   let cleaned = text
     // Convert common HTML tags to text equivalents
     .replace(/<br\s*\/?>/gi, '\n')
@@ -26,10 +26,10 @@ function stripHtmlAndSanitize(text: string): string {
     .replace(/<\/h[1-6]>/gi, '\n\n')
     .replace(/<li>/gi, '\n• ')
     .replace(/<\/li>/gi, '')
-    
+
     // Remove all HTML tags
     .replace(/<[^>]+>/g, '')
-    
+
     // Decode HTML entities
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')
@@ -38,20 +38,20 @@ function stripHtmlAndSanitize(text: string): string {
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
     .replace(/&apos;/gi, "'")
-    
+
     // Replace special characters
     .replace(/[●○■□]/g, '•')
     .replace(/[—–]/g, '-')
     .replace(/[""]/g, '"')
     .replace(/['']/g, "'")
     .replace(/…/g, '...')
-    
+
     // Clean whitespace
     .replace(/  +/g, ' ')
     .replace(/^ +| +$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
-    
+
     // Remove non-WinAnsi characters
     .replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, '');
 
@@ -321,7 +321,7 @@ export async function generateApplicationFormPdf(
       if (!text || text.trim() === '') return [];
 
       // ✅ FIX: Handle newlines first
-        const sanitizedText = stripHtmlAndSanitize(text);
+      const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
@@ -645,8 +645,7 @@ export async function generateApplicationFormPdf(
     };
   }
 }
-
-// ========== 2. RESEARCH PROTOCOL ==========
+// ========== 2. RESEARCH PROTOCOL WITH IMAGES & SIGNATURES ==========
 export async function generateResearchProtocolPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
@@ -659,17 +658,49 @@ export async function generateResearchProtocolPdf(
     const pageHeight = 792;
     const margin = 50;
 
+    const embedImageFromUrl = async (imageUrl: string) => {
+      try {
+        const response = await fetch(imageUrl);
+        const imageBytes = await response.arrayBuffer();
+
+        // Check actual image type from content
+        const uint8Array = new Uint8Array(imageBytes);
+        const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50;
+
+        if (isPNG) {
+          return await pdfDoc.embedPng(imageBytes);
+        } else {
+          return await pdfDoc.embedJpg(imageBytes);
+        }
+      } catch (error) {
+        console.error('Error embedding image:', error);
+        return null;
+      }
+    };
+
+
+    // ✅ Helper: Extract image URLs from HTML
+    const extractImageUrls = (html: string): string[] => {
+      if (!html) return [];
+      const imgRegex = /<img[^>]+src="([^">]+)"/g;
+      const urls: string[] = [];
+      let match;
+      while ((match = imgRegex.exec(html)) !== null) {
+        urls.push(match[1]);
+      }
+      return urls;
+    };
+
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
       if (!text || text.trim() === '') return [];
 
-      // ✅ FIX: Handle newlines first
       const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
       for (const paragraph of paragraphs) {
         if (!paragraph.trim()) {
-          allLines.push(''); // Preserve empty lines
+          allLines.push('');
           continue;
         }
 
@@ -678,8 +709,6 @@ export async function generateResearchProtocolPdf(
 
         for (const word of words) {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-
-          // ✅ Now safe to measure - no newlines in testLine
           const width = helvetica.widthOfTextAtSize(testLine, fontSize);
 
           if (width > maxWidth) {
@@ -701,7 +730,6 @@ export async function generateResearchProtocolPdf(
 
       return allLines;
     };
-
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -737,7 +765,8 @@ export async function generateResearchProtocolPdf(
     const step1 = submissionData.step1;
     const step3 = submissionData.step3?.formData;
 
-    const addSection = (title: string, content: string) => {
+    // ✅ Updated addSection with image support
+    const addSection = async (title: string, content: string) => {
       if (!content) return;
 
       if (yPos < 120) {
@@ -745,6 +774,7 @@ export async function generateResearchProtocolPdf(
         yPos = pageHeight - margin;
       }
 
+      // Draw section header
       page.drawRectangle({
         x: margin,
         y: yPos - 12,
@@ -755,53 +785,175 @@ export async function generateResearchProtocolPdf(
       page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
       yPos -= 20;
 
+      // Draw text content
       const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
-      lines.forEach(line => {
+      for (const line of lines) {
         if (yPos < 80) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           yPos = pageHeight - margin;
         }
         page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
         yPos -= 12;
-      });
+      }
+
+      // ✅ Extract and embed images from HTML content
+      const imageUrls = extractImageUrls(content);
+      for (const imageUrl of imageUrls) {
+        const embeddedImage = await embedImageFromUrl(imageUrl);
+
+        if (embeddedImage) {
+          const imgWidth = 300; // Max width for embedded images
+          const imgHeight = (embeddedImage.height / embeddedImage.width) * imgWidth;
+
+          // Check if we need a new page
+          if (yPos - imgHeight < 80) {
+            page = pdfDoc.addPage([pageWidth, pageHeight]);
+            yPos = pageHeight - margin;
+          }
+
+          yPos -= imgHeight + 10;
+
+          page.drawImage(embeddedImage, {
+            x: margin + 5,
+            y: yPos,
+            width: imgWidth,
+            height: imgHeight,
+          });
+
+          yPos -= 10; // Space after image
+        }
+      }
 
       yPos -= 10;
     };
 
-    addSection('I. Title of the Study', step3?.title || step1?.title || 'N/A');
-    addSection('II. Introduction', step3?.introduction || 'N/A');
-    addSection('III. Background of the Study', step3?.background || 'N/A');
-    addSection('IV. Statement of the Problem/Objectives of the Study', step3?.problemStatement || 'N/A');
-    addSection('V. Scope and Delimitation', step3?.scopeDelimitation || 'N/A');
-    addSection('VI. Related Literature & Studies', step3?.literatureReview || 'N/A');
-    addSection('VII. Research Methodology', step3?.methodology || 'N/A');
-    addSection('VIII. Population, Respondents, and Sample Size', step3?.population || 'N/A');
-    addSection('IX. Sampling Technique', step3?.samplingTechnique || 'N/A');
-    addSection('X. Research Instrument and Validation', step3?.researchInstrument || 'N/A');
-    addSection('XI. Ethical Consideration', step3?.ethicalConsideration || 'The research will ensure participant confidentiality, informed consent, and data protection.');
-    addSection('XII. Statistical Treatment of Data', step3?.statisticalTreatment || 'N/A');
-    addSection('XIII. References (Main Themes Only)', step3?.references || 'N/A');
+    // Add all sections with images
+    await addSection('I. Title of the Study', step3?.title || step1?.title || 'N/A');
+    await addSection('II. Introduction', step3?.introduction || 'N/A');
+    await addSection('III. Background of the Study', step3?.background || 'N/A');
+    await addSection('IV. Statement of the Problem/Objectives of the Study', step3?.problemStatement || 'N/A');
+    await addSection('V. Scope and Delimitation', step3?.scopeDelimitation || 'N/A');
+    await addSection('VI. Related Literature & Studies', step3?.literatureReview || 'N/A');
+    await addSection('VII. Research Methodology', step3?.methodology || 'N/A');
+    await addSection('VIII. Population, Respondents, and Sample Size', step3?.population || 'N/A');
+    await addSection('IX. Sampling Technique', step3?.samplingTechnique || 'N/A');
+    await addSection('X. Research Instrument and Validation', step3?.researchInstrument || 'N/A');
+    await addSection('XI. Ethical Consideration', step3?.ethicalConsideration || 'The research will ensure participant confidentiality, informed consent, and data protection.');
+    await addSection('XII. Statistical Treatment of Data', step3?.statisticalTreatment || 'N/A');
+    await addSection('XIII. References (Main Themes Only)', step3?.references || 'N/A');
 
-    if (yPos < 100) {
+    // ✅ Add researcher signatures
+    if (yPos < 200) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
       yPos = pageHeight - margin;
     }
 
     page.drawText('Accomplished by:', { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    yPos -= 30;
-    page.drawLine({
-      start: { x: margin + 5, y: yPos },
-      end: { x: margin + 200, y: yPos },
-      thickness: 1,
-    });
-    page.drawText('Signature over printed name', { x: margin + 5, y: yPos - 12, size: 8, font: helvetica });
-    page.drawLine({
-      start: { x: margin + 250, y: yPos },
-      end: { x: margin + 350, y: yPos },
-      thickness: 1,
-    });
-    page.drawText('Date', { x: margin + 280, y: yPos - 12, size: 8, font: helvetica });
+    yPos -= 20;
 
+    const researchers = submissionData.step3?.researchers || [];
+
+    if (researchers.length > 0) {
+      for (const researcher of researchers) {
+        if (yPos < 100) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPos = pageHeight - margin;
+        }
+
+        // Draw researcher name
+        page.drawText(researcher.name || 'Unknown', {
+          x: margin + 5,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+        });
+        yPos -= 15;
+
+        // ✅ Embed signature if available
+        if (researcher.signatureBase64 || researcher.signaturePath) {
+          try {
+            let signatureImage;
+
+            if (researcher.signatureBase64) {
+              const base64Data = researcher.signatureBase64.split(',')[1];
+              const signatureBytes = Buffer.from(base64Data, 'base64');
+
+              // ✅ Detect if PNG or JPG from base64 header
+              const isPNG = researcher.signatureBase64.startsWith('data:image/png');
+
+              if (isPNG) {
+                signatureImage = await pdfDoc.embedPng(signatureBytes);
+              } else {
+                signatureImage = await pdfDoc.embedJpg(signatureBytes);
+              }
+            } else if (researcher.signaturePath) {
+              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+              const fullUrl = `${supabaseUrl}/storage/v1/object/public/research-documents/${researcher.signaturePath}`;
+              signatureImage = await embedImageFromUrl(fullUrl);
+            }
+
+            if (signatureImage) {
+              const sigWidth = 100;
+              const sigHeight = (signatureImage.height / signatureImage.width) * sigWidth;
+
+              page.drawImage(signatureImage, {
+                x: margin + 5,
+                y: yPos - sigHeight,
+                width: sigWidth,
+                height: sigHeight,
+              });
+
+              yPos -= sigHeight + 5;
+            }
+          } catch (error) {
+            console.error('Error embedding signature:', error);
+            // Draw placeholder line if signature fails
+            page.drawLine({
+              start: { x: margin + 5, y: yPos },
+              end: { x: margin + 150, y: yPos },
+              thickness: 1,
+            });
+            yPos -= 15;
+          }
+        }
+        else {
+          // No signature - draw line
+          page.drawLine({
+            start: { x: margin + 5, y: yPos },
+            end: { x: margin + 150, y: yPos },
+            thickness: 1,
+          });
+          yPos -= 15;
+        }
+
+        page.drawText('Signature over printed name', {
+          x: margin + 5,
+          y: yPos,
+          size: 7,
+          font: helvetica,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+
+        yPos -= 25; // Space before next researcher
+      }
+    } else {
+      // Fallback if no researchers
+      yPos -= 15;
+      page.drawLine({
+        start: { x: margin + 5, y: yPos },
+        end: { x: margin + 200, y: yPos },
+        thickness: 1,
+      });
+      page.drawText('Signature over printed name', { x: margin + 5, y: yPos - 12, size: 8, font: helvetica });
+      page.drawLine({
+        start: { x: margin + 250, y: yPos },
+        end: { x: margin + 350, y: yPos },
+        thickness: 1,
+      });
+      page.drawText('Date', { x: margin + 280, y: yPos - 12, size: 8, font: helvetica });
+    }
+
+    // Add page numbers
     const pages = pdfDoc.getPages();
     pages.forEach((page, index) => {
       page.drawText(`Page ${index + 1} of ${pages.length}`, {

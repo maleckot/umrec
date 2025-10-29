@@ -10,7 +10,74 @@ import {
 } from '@/app/actions/generatePdfFromDatabase';
 import { autoClassifyFromDatabase } from '@/app/actions/autoClassifyFromDatabase';
 
-export async function submitResearchApplication(formData: any, files: { step5?: string; step6?: string; step7?: string }) {
+async function extractAndUploadImages(htmlContent: string, userId: string, supabase: any, sectionName: string) {
+  if (!htmlContent || typeof htmlContent !== 'string') {
+    return { htmlContent: htmlContent || '', uploadedImages: [] };
+  }
+
+  const uploadedImages = [];
+  let updatedHtml = htmlContent;
+
+  const base64ImageRegex = /<img[^>]+src="(data:image\/[^;]+;base64,[^"]+)"[^>]*>/gi;
+  const matches = [...htmlContent.matchAll(base64ImageRegex)];
+
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i];
+    const fullImgTag = match[0];
+    const base64Src = match[1];
+
+    try {
+      const base64Data = base64Src.split(',')[1];
+      const mimeType = base64Src.match(/data:([^;]+);/)?.[1] || 'image/png';
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(7);
+      const extension = mimeType.split('/')[1];
+      const filePath = `${userId}/protocol-images/${sectionName}-${i + 1}-${timestamp}-${randomStr}.${extension}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('research-documents')
+        .upload(filePath, buffer, {
+          contentType: mimeType,
+          upsert: false
+        });
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('research-documents')
+          .getPublicUrl(filePath);
+
+        const newImgTag = fullImgTag.replace(base64Src, urlData.publicUrl);
+        updatedHtml = updatedHtml.replace(fullImgTag, newImgTag);
+
+        uploadedImages.push({
+          section: sectionName,
+          imageNumber: i + 1,
+          filePath: filePath,
+          publicUrl: urlData.publicUrl,
+          fileSize: buffer.length
+        });
+
+        console.log(`✅ Uploaded ${sectionName} image ${i + 1}: ${filePath}`);
+      }
+    } catch (error) {
+      console.error(`Error uploading ${sectionName} image:`, error);
+    }
+  }
+
+  return { htmlContent: updatedHtml, uploadedImages };
+}
+
+export async function submitResearchApplication(
+  formData: any,
+  files: {
+    step2TechnicalReview?: string;
+    step5?: string;
+    step6?: string;
+    step7?: string
+  }
+) {
   const supabase = await createClient();
 
   try {
@@ -102,88 +169,229 @@ export async function submitResearchApplication(formData: any, files: { step5?: 
       throw submissionError;
     }
 
-// 2. Insert application form
-if (formData.step2 && Object.keys(formData.step2).length > 0) {
-  const { error: appFormError } = await supabase
-    .from('application_forms')
-    .insert({
-      submission_id: submission.id,
-      study_site: safeString(formData.step2?.studySite),
-      researcher_first_name: safeString(formData.step2?.researcherFirstName),
-      researcher_middle_name: safeString(formData.step2?.researcherMiddleName),
-      researcher_last_name: safeString(formData.step2?.researcherLastName),
-      contact_info: {
-        telNo: formData.step2?.telNo || '',
-        mobileNo: formData.step2?.mobileNo || '',
-        email: formData.step2?.email || '',
-        faxNo: formData.step2?.faxNo || 'N/A',
-      },
-      co_researcher: formData.step2?.coResearchers?.map((co: any) => ({
-        fullName: co.name,         
-        contactNumber: co.contact,   
-        emailAddress: co.email       
-      })) || [],
-      technical_advisers: formData.step2?.technicalAdvisers?.map((adv: any) => ({
-        fullName: adv.name,
-        contactNumber: adv.contact,
-        emailAddress: adv.email
-      })) || [],
-      college: safeString(formData.step2?.college),
-      institution: formData.step2?.institution || 'University of Makati',
-      institution_address: safeString(formData.step2?.institutionAddress),
-      type_of_study: formData.step2?.typeOfStudy || [],
-      type_of_study_others: safeString(formData.step2?.typeOfStudyOthers),
-      study_site_type: safeString(formData.step2?.studySiteType),
-      source_of_funding: formData.step2?.sourceOfFunding || [],
-      pharmaceutical_sponsor: safeString(formData.step2?.pharmaceuticalSponsor),
-      funding_others: safeString(formData.step2?.fundingOthers),
-      study_duration: {
-        startDate: formData.step2?.startDate || null,
-        endDate: formData.step2?.endDate || null,
-      },
-      num_participants: parseNumber(formData.step2?.numParticipants),
-      technical_review: safeString(formData.step2?.technicalReview),
-      submitted_to_other: safeString(formData.step2?.submittedToOther),
-      document_checklist: {
-        hasApplicationForm: formData.step2?.hasApplicationForm || false,
-        hasResearchProtocol: formData.step2?.hasResearchProtocol || false,
-        hasInformedConsentEnglish: formData.step2?.hasInformedConsentEnglish || false,
-        hasInformedConsentFilipino: formData.step2?.hasInformedConsentFilipino || false,
-        hasEndorsementLetter: formData.step2?.hasEndorsementLetter || false,
-      },
-    });
+    // 2. Insert application form
+    if (formData.step2 && Object.keys(formData.step2).length > 0) {
+      const { error: appFormError } = await supabase
+        .from('application_forms')
+        .insert({
+          submission_id: submission.id,
+          study_site: safeString(formData.step2?.studySite),
+          researcher_first_name: safeString(formData.step2?.researcherFirstName),
+          researcher_middle_name: safeString(formData.step2?.researcherMiddleName),
+          researcher_last_name: safeString(formData.step2?.researcherLastName),
+          contact_info: {
+            telNo: formData.step2?.telNo || '',
+            mobileNo: formData.step2?.mobileNo || '',
+            email: formData.step2?.email || '',
+            faxNo: formData.step2?.faxNo || 'N/A',
+          },
+          co_researcher: formData.step2?.coResearchers?.map((co: any) => ({
+            fullName: co.name,
+            contactNumber: co.contact,
+            emailAddress: co.email
+          })) || [],
+          technical_advisers: formData.step2?.technicalAdvisers?.map((adv: any) => ({
+            fullName: adv.name,
+            contactNumber: adv.contact,
+            emailAddress: adv.email
+          })) || [],
+          college: safeString(formData.step2?.college),
+          institution: formData.step2?.institution || 'University of Makati',
+          institution_address: safeString(formData.step2?.institutionAddress),
+          type_of_study: formData.step2?.typeOfStudy || [],
+          type_of_study_others: safeString(formData.step2?.typeOfStudyOthers),
+          study_site_type: safeString(formData.step2?.studySiteType),
+          source_of_funding: formData.step2?.sourceOfFunding || [],
+          pharmaceutical_sponsor: safeString(formData.step2?.pharmaceuticalSponsor),
+          funding_others: safeString(formData.step2?.fundingOthers),
+          study_duration: {
+            startDate: formData.step2?.startDate || null,
+            endDate: formData.step2?.endDate || null,
+          },
+          num_participants: parseNumber(formData.step2?.numParticipants),
+          technical_review: safeString(formData.step2?.technicalReview),
+          submitted_to_other: safeString(formData.step2?.submittedToOther),
+          document_checklist: {
+            hasApplicationForm: formData.step2?.hasApplicationForm || false,
+            hasResearchProtocol: formData.step2?.hasResearchProtocol || false,
+            hasInformedConsentEnglish: formData.step2?.hasInformedConsentEnglish || false,
+            hasInformedConsentFilipino: formData.step2?.hasInformedConsentFilipino || false,
+            hasEndorsementLetter: formData.step2?.hasEndorsementLetter || false,
+          },
+        });
 
-  if (appFormError) {
-    console.error('Application form insert error:', appFormError);
-    throw appFormError;
-  }
-}
+      if (appFormError) {
+        console.error('Application form insert error:', appFormError);
+        throw appFormError;
+      }
+    }
 
+    if (formData.step3?.formData && Object.keys(formData.step3.formData).length > 0) {
+      console.log('📸 Extracting and uploading embedded images...');
 
-  if (formData.step3?.formData && Object.keys(formData.step3.formData).length > 0) {
-  const { error: protocolError } = await supabase
-    .from('research_protocols')
-    .insert({
-      submission_id: submission.id,
-      title: safeString(formData.step3.formData?.title),
-      introduction: safeString(formData.step3.formData?.introduction),
-      background: safeString(formData.step3.formData?.background),
-      problem_statement: safeString(formData.step3.formData?.problemStatement),
-      scope_delimitation: safeString(formData.step3.formData?.scopeDelimitation),
-      literature_review: safeString(formData.step3.formData?.literatureReview),
-      methodology: safeString(formData.step3.formData?.methodology),
-      population: safeString(formData.step3.formData?.population),
-      sampling_technique: safeString(formData.step3.formData?.samplingTechnique),
-      research_instrument: safeString(formData.step3.formData?.researchInstrument),
-      statistical_treatment: safeString(formData.step3.formData?.statisticalTreatment),
-      ethical_consideration: safeString(formData.step3.formData?.ethicalConsideration), // ✅ NEW
-      research_references: safeString(formData.step3.formData?.references),
-      researchers: formData.step3?.researchers || [],
-    });
+      console.log('🔍 Introduction content:', formData.step3.formData?.introduction?.substring(0, 500));
+      console.log('🔍 Has data:image?', formData.step3.formData?.introduction?.includes('data:image'));
+      console.log('🔍 Background content:', formData.step3.formData?.background?.substring(0, 500));
+      console.log('🔍 Background has data:image?', formData.step3.formData?.background?.includes('data:image'));
+      const introductionResult = await extractAndUploadImages(
+        formData.step3.formData?.introduction || '',
+        user.id,
+        supabase,
+        'introduction'
+      );
 
-  if (protocolError) throw protocolError;
+      const backgroundResult = await extractAndUploadImages(
+        formData.step3.formData?.background || '',
+        user.id,
+        supabase,
+        'background'
+      );
 
-      // ✅ THEN: Process and upload signatures
+      const problemStatementResult = await extractAndUploadImages(
+        formData.step3.formData?.problemStatement || '',
+        user.id,
+        supabase,
+        'problem_statement'
+      );
+
+      const scopeDelimitationResult = await extractAndUploadImages(
+        formData.step3.formData?.scopeDelimitation || '',
+        user.id,
+        supabase,
+        'scope_delimitation'
+      );
+
+      const literatureReviewResult = await extractAndUploadImages(
+        formData.step3.formData?.literatureReview || '',
+        user.id,
+        supabase,
+        'literature_review'
+      );
+
+      const methodologyResult = await extractAndUploadImages(
+        formData.step3.formData?.methodology || '',
+        user.id,
+        supabase,
+        'methodology'
+      );
+
+      const populationResult = await extractAndUploadImages(
+        formData.step3.formData?.population || '',
+        user.id,
+        supabase,
+        'population'
+      );
+
+      const samplingTechniqueResult = await extractAndUploadImages(
+        formData.step3.formData?.samplingTechnique || '',
+        user.id,
+        supabase,
+        'sampling_technique'
+      );
+
+      const researchInstrumentResult = await extractAndUploadImages(
+        formData.step3.formData?.researchInstrument || '',
+        user.id,
+        supabase,
+        'research_instrument'
+      );
+
+      const statisticalTreatmentResult = await extractAndUploadImages(
+        formData.step3.formData?.statisticalTreatment || '',
+        user.id,
+        supabase,
+        'statistical_treatment'
+      );
+
+      const ethicalConsiderationResult = await extractAndUploadImages(
+        formData.step3.formData?.ethicalConsideration || '',
+        user.id,
+        supabase,
+        'ethical_consideration'
+      );
+
+      const referencesResult = await extractAndUploadImages(
+        formData.step3.formData?.references || '',
+        user.id,
+        supabase,
+        'references'
+      );
+
+      const totalImages = 
+        introductionResult.uploadedImages.length +
+        backgroundResult.uploadedImages.length +
+        problemStatementResult.uploadedImages.length +
+        scopeDelimitationResult.uploadedImages.length +
+        literatureReviewResult.uploadedImages.length +
+        methodologyResult.uploadedImages.length +
+        populationResult.uploadedImages.length +
+        samplingTechniqueResult.uploadedImages.length +
+        researchInstrumentResult.uploadedImages.length +
+        statisticalTreatmentResult.uploadedImages.length +
+        ethicalConsiderationResult.uploadedImages.length +
+        referencesResult.uploadedImages.length;
+
+      console.log(`✅ Images processed: ${totalImages} images uploaded`);
+
+      const { error: protocolError } = await supabase
+        .from('research_protocols')
+        .insert({
+          submission_id: submission.id,
+          title: safeString(formData.step3.formData?.title),
+          introduction: introductionResult.htmlContent,
+          background: backgroundResult.htmlContent,
+          problem_statement: problemStatementResult.htmlContent,
+          scope_delimitation: scopeDelimitationResult.htmlContent,
+          literature_review: literatureReviewResult.htmlContent,
+          methodology: methodologyResult.htmlContent,
+          population: populationResult.htmlContent,
+          sampling_technique: samplingTechniqueResult.htmlContent,
+          research_instrument: researchInstrumentResult.htmlContent,
+          statistical_treatment: statisticalTreatmentResult.htmlContent,
+          ethical_consideration: ethicalConsiderationResult.htmlContent,
+          research_references: referencesResult.htmlContent,
+          researchers: formData.step3?.researchers || [],
+        });
+
+      if (protocolError) throw protocolError;
+
+      // Track uploaded images in uploaded_documents table
+      const allUploadedImages = [
+        ...introductionResult.uploadedImages,
+        ...backgroundResult.uploadedImages,
+        ...problemStatementResult.uploadedImages,
+        ...scopeDelimitationResult.uploadedImages,
+        ...literatureReviewResult.uploadedImages,
+        ...methodologyResult.uploadedImages,
+        ...populationResult.uploadedImages,
+        ...samplingTechniqueResult.uploadedImages,
+        ...researchInstrumentResult.uploadedImages,
+        ...statisticalTreatmentResult.uploadedImages,
+        ...ethicalConsiderationResult.uploadedImages,
+        ...referencesResult.uploadedImages
+      ];
+
+      if (allUploadedImages.length > 0) {
+        const imageDocuments = allUploadedImages.map((img) => ({
+          submission_id: submission.id,
+          document_type: `protocol_image_${img.section}`,
+          file_name: `${img.section}-image-${img.imageNumber}.${img.filePath.split('.').pop()}`,
+          file_size: img.fileSize,
+          file_url: img.filePath,
+        }));
+
+        const { error: imageDocsError } = await supabase
+          .from('uploaded_documents')
+          .insert(imageDocuments);
+
+        if (!imageDocsError) {
+          console.log(`✅ Tracked ${allUploadedImages.length} images in uploaded_documents table`);
+        } else {
+          console.error('Error tracking images:', imageDocsError);
+        }
+      }
+
+      // Process and upload signatures
       if (formData.step3?.researchers && Array.isArray(formData.step3.researchers)) {
         console.log('📝 Processing researcher signatures...');
 
@@ -199,11 +407,8 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
             }
 
             try {
-              // Convert base64 to buffer
               const base64Data = researcher.signatureBase64.split(',')[1];
               const buffer = Buffer.from(base64Data, 'base64');
-
-              // Upload to storage
               const signaturePath = `${user.id}/signatures/researcher-${index + 1}-${Date.now()}.png`;
 
               const { error: uploadError } = await supabase.storage
@@ -219,7 +424,7 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
                   id: researcher.id,
                   name: researcher.name,
                   signaturePath: null,
-                  signatureBase64: researcher.signatureBase64 // Keep for PDF
+                  signatureBase64: researcher.signatureBase64
                 };
               }
 
@@ -229,7 +434,7 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
                 id: researcher.id,
                 name: researcher.name,
                 signaturePath: signaturePath,
-                signatureBase64: researcher.signatureBase64 // Keep for PDF generation
+                signatureBase64: researcher.signatureBase64
               };
             } catch (error) {
               console.error('Error processing signature:', error);
@@ -243,7 +448,6 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
           })
         );
 
-        // ✅ Update research_protocols with signature paths
         const { error: updateError } = await supabase
           .from('research_protocols')
           .update({
@@ -259,8 +463,6 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
       }
     }
 
-
-
     // 4. Insert consent forms
     if (formData.step4?.consentType) {
       const { error: consentError } = await supabase
@@ -268,7 +470,7 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
         .insert({
           submission_id: submission.id,
           consent_type: formData.step4.consentType,
-          informed_consent_for: formData.step4.formData?.participantGroupIdentity,  
+          informed_consent_for: formData.step4.formData?.participantGroupIdentity,
           adult_consent: formData.step4.consentType === 'adult' || formData.step4.consentType === 'both' ? {
             purposeEnglish: formData.step4.formData?.purposeEnglish || '',
             purposeTagalog: formData.step4.formData?.purposeTagalog || '',
@@ -304,6 +506,21 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
 
     // 5. Upload files and save metadata
     const documentInserts = [];
+
+    if (files.step2TechnicalReview && formData.step2?.technicalReviewFileName) {
+      const fileUrl = await uploadFile(
+        files.step2TechnicalReview,
+        formData.step2.technicalReviewFileName,
+        'technical-review'
+      );
+      documentInserts.push({
+        submission_id: submission.id,
+        document_type: 'technical_review',
+        file_name: formData.step2.technicalReviewFileName,
+        file_size: formData.step2.technicalReviewFileSize || 0,
+        file_url: fileUrl,
+      });
+    }
 
     if (files.step5 && formData.step5?.fileName) {
       const fileUrl = await uploadFile(files.step5, formData.step5.fileName, 'research-instrument');
@@ -393,7 +610,6 @@ if (formData.step2 && Object.keys(formData.step2).length > 0) {
     } catch (pdfError) {
       console.error('PDF generation error (non-critical):', pdfError);
     }
-
 
     autoClassifyFromDatabase(submission.id)
       .then(result => {

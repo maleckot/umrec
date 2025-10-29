@@ -132,6 +132,8 @@ export default function Step2ApplicationForm() {
     numParticipants: '',
     technicalReview: '',
     technicalReviewFile: null as File | null,
+    technicalReviewFileName: '',        // ✅ ADD THIS
+    technicalReviewFileSize: 0,         // ✅ ADD THIS
     submittedToOther: '',
     hasApplicationForm: true,
     hasResearchProtocol: false,
@@ -226,40 +228,59 @@ export default function Step2ApplicationForm() {
     return null;
   };
 
- useEffect(() => {
-  setIsClient(true);
-  const saved = localStorage.getItem('step2Data');
-  const step1Raw = localStorage.getItem('step1Data');
+  useEffect(() => {
+    setIsClient(true);
+    const saved = localStorage.getItem('step2Data');
+    const step1Raw = localStorage.getItem('step1Data');
 
-  // ✅ Load co-researchers and technical advisers
-  const savedCoResearchers = localStorage.getItem('step2CoResearchers');
-  const savedTechnicalAdvisers = localStorage.getItem('step2TechnicalAdvisers');
+    // ✅ Load co-researchers and technical advisers
+    const savedCoResearchers = localStorage.getItem('step2CoResearchers');
+    const savedTechnicalAdvisers = localStorage.getItem('step2TechnicalAdvisers');
 
-  if (savedCoResearchers) {
-    try {
-      setCoResearchers(JSON.parse(savedCoResearchers));
-    } catch (error) {
-      console.error('Error loading co-researchers:', error);
+    if (savedCoResearchers) {
+      try {
+        setCoResearchers(JSON.parse(savedCoResearchers));
+      } catch (error) {
+        console.error('Error loading co-researchers:', error);
+      }
     }
-  }
 
-  if (savedTechnicalAdvisers) {
-    try {
-      setTechnicalAdvisers(JSON.parse(savedTechnicalAdvisers));
-    } catch (error) {
-      console.error('Error loading technical advisers:', error);
+    if (savedTechnicalAdvisers) {
+      try {
+        setTechnicalAdvisers(JSON.parse(savedTechnicalAdvisers));
+      } catch (error) {
+        console.error('Error loading technical advisers:', error);
+      }
     }
-  }
 
-  if (saved) {
-    try {
-      const parsedData = JSON.parse(saved);
-      const isEmpty = !parsedData.title && !parsedData.email;
+    if (saved) {
+      try {
+        const parsedData = JSON.parse(saved);
+        const isEmpty = !parsedData.title && !parsedData.email;
 
-      if (isEmpty && step1Raw) {
+        if (isEmpty && step1Raw) {
+          const step1Data = JSON.parse(step1Raw);
+          setFormData({
+            ...parsedData,
+            title: step1Data.title || '',
+            researcherFirstName: step1Data.projectLeaderFirstName || '',
+            researcherMiddleName: step1Data.projectLeaderMiddleName || '',
+            researcherLastName: step1Data.projectLeaderLastName || '',
+            mobileNo: step1Data.projectLeaderContact || '',
+            email: step1Data.projectLeaderEmail || '',
+            institution: step1Data.organization === 'internal' ? 'University of Makati' : '',
+          });
+        } else {
+          setFormData({ ...parsedData, technicalReviewFile: null });
+        }
+      } catch (error) {
+        console.error('Error loading step2 data:', error);
+      }
+    } else if (step1Raw) {
+      try {
         const step1Data = JSON.parse(step1Raw);
-        setFormData({
-          ...parsedData,
+        setFormData(prev => ({
+          ...prev,
           title: step1Data.title || '',
           researcherFirstName: step1Data.projectLeaderFirstName || '',
           researcherMiddleName: step1Data.projectLeaderMiddleName || '',
@@ -267,33 +288,14 @@ export default function Step2ApplicationForm() {
           mobileNo: step1Data.projectLeaderContact || '',
           email: step1Data.projectLeaderEmail || '',
           institution: step1Data.organization === 'internal' ? 'University of Makati' : '',
-        });
-      } else {
-        setFormData({ ...parsedData, technicalReviewFile: null });
+        }));
+      } catch (error) {
+        console.error('Error loading step1 data:', error);
       }
-    } catch (error) {
-      console.error('Error loading step2 data:', error);
     }
-  } else if (step1Raw) {
-    try {
-      const step1Data = JSON.parse(step1Raw);
-      setFormData(prev => ({
-        ...prev,
-        title: step1Data.title || '',
-        researcherFirstName: step1Data.projectLeaderFirstName || '',
-        researcherMiddleName: step1Data.projectLeaderMiddleName || '',
-        researcherLastName: step1Data.projectLeaderLastName || '',
-        mobileNo: step1Data.projectLeaderContact || '',
-        email: step1Data.projectLeaderEmail || '',
-        institution: step1Data.organization === 'internal' ? 'University of Makati' : '',
-      }));
-    } catch (error) {
-      console.error('Error loading step1 data:', error);
-    }
-  }
 
-  isInitialMount.current = false;
-}, []);
+    isInitialMount.current = false;
+  }, []);
 
   useEffect(() => {
     if (isInitialMount.current || !isClient) return;
@@ -344,8 +346,14 @@ export default function Step2ApplicationForm() {
       return;
     }
 
+
     const dataToSave = { ...formData };
     delete (dataToSave as any).technicalReviewFile;
+
+    if (formData.technicalReviewFile) {
+      dataToSave.technicalReviewFileName = formData.technicalReviewFile.name;
+      dataToSave.technicalReviewFileSize = formData.technicalReviewFile.size;
+    }
     localStorage.setItem('step2Data', JSON.stringify(dataToSave));
     localStorage.setItem('step2CoResearchers', JSON.stringify(coResearchers));
     localStorage.setItem('step2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
@@ -1179,7 +1187,7 @@ export default function Step2ApplicationForm() {
                     <div className="relative">
                       <input
                         type="file"
-                        accept=".pdf,.doc,.docx"
+                        accept=".pdf"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (file) {
@@ -1188,13 +1196,30 @@ export default function Step2ApplicationForm() {
                               e.target.value = '';
                               return;
                             }
-                            setFormData({ ...formData, technicalReviewFile: file });
+
+                            // ✅ Convert to base64 and save to sessionStorage
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const base64 = reader.result as string;
+                              sessionStorage.setItem('step2TechnicalReviewFile', base64);
+                              console.log('✅ Technical review file saved to sessionStorage');
+                            };
+                            reader.readAsDataURL(file);
+
+                            // Save file metadata to formData
+                            setFormData({
+                              ...formData,
+                              technicalReviewFile: file,
+                              technicalReviewFileName: file.name,
+                              technicalReviewFileSize: file.size
+                            });
                           }
                         }}
                         className="hidden"
                         id="technicalReviewFile"
                         required
                       />
+
                       <label
                         htmlFor="technicalReviewFile"
                         className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-[#071139] rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300 group"

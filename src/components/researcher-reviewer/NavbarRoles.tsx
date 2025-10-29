@@ -49,7 +49,7 @@ const NAV_LINKS = {
     mainLinks: [
       { href: '/reviewermodule', text: 'Dashboard' },
       { href: '/reviewermodule/reviews', text: 'Reviews' },
-      { href: '/reviewermodule/help', text: 'Help Center' },
+      { href: '/help-center', text: 'Help Center' },
     ] as NavLinkProps[],
     iconLinks: [
       { href: '/reviewermodule/notifications', icon: 'bell', ariaLabel: 'Notifications' },

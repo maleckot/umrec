@@ -36,31 +36,35 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isUpdatingRef = useRef(false); 
 
-  // Set initial value only once
   useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = value || '';
-      setWordCount(countWords(value || ''));
+    if (editorRef.current && !isUpdatingRef.current) {
+      if (editorRef.current.innerHTML !== value) {
+        editorRef.current.innerHTML = value || '';
+        setWordCount(countWords(value || ''));
+      }
     }
-  }, []);
+  }, [value]);
 
-  // Count words in text - with null/undefined safety and minimum 2 characters per word
   const countWords = (text: string | null | undefined) => {
     if (!text) return 0;
     const cleaned = text.replace(/<[^>]*>/g, '').trim();
     if (!cleaned) return 0;
     
-    // Split by whitespace and filter out single characters and empty strings
     const words = cleaned.split(/\s+/).filter(word => word.length >= 2);
     return words.length;
   };
 
   const handleTextChange = () => {
     if (editorRef.current) {
+      isUpdatingRef.current = true; 
       const content = editorRef.current.innerHTML;
       onChange(content);
       setWordCount(countWords(content));
+      setTimeout(() => {
+        isUpdatingRef.current = false; 
+      }, 0);
     }
   };
 
@@ -81,22 +85,32 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     handleTextChange();
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
-    
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const img = `<img src="${event.target?.result}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const files = Array.from(e.target.files || []);
+  setUploadedFiles(prev => [...prev, ...files]);
+  
+  files.forEach(file => {
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = `<img src="${event.target?.result}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+        
+        // Insert image
+        if (editorRef.current) {
+          editorRef.current.focus();
           document.execCommand('insertHTML', false, img);
-          handleTextChange();
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  };
+          
+          // ✅ Force immediate update
+          setTimeout(() => {
+            handleTextChange();
+            console.log('✅ Image inserted, onChange called');
+          }, 100);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+};
 
   const insertTable = () => {
     editorRef.current?.focus();

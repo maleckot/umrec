@@ -1,8 +1,11 @@
 // components/helpcenter/HelpCenterLayout.tsx
 'use client';
 
-import { useState, ReactNode, useEffect } from 'react';
+import { useState, ReactNode, useEffect, useRef } from 'react';
 import { Search, Bot, FileText, ClipboardList, HelpCircle, Send, MessageSquare, X, Download, LucideIcon } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+
+
 
 // Custom Modern Menu Icon Component
 const ModernMenuIcon = ({ className = "w-6 h-6", color }: { className?: string; color?: string }) => (
@@ -114,15 +117,16 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
   },
 };
 
-export default function HelpCenterLayout({ 
-  children, 
+export default function HelpCenterLayout({
+  children,
   role = 'researcher',
-  customConfig 
+  customConfig
 }: HelpCenterLayoutProps) {
   const config = {
     ...ROLE_CONFIGS[role],
     ...customConfig
   };
+
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -136,6 +140,16 @@ export default function HelpCenterLayout({
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   useEffect(() => {
     if (isSidebarOpen) {
@@ -148,26 +162,54 @@ export default function HelpCenterLayout({
     };
   }, [isSidebarOpen]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim()) {
-      const newMessage = {
+  const handleSendMessage = async () => {
+    if (inputMessage.trim() && !isLoading) {
+      const userMessage = {
         id: messages.length + 1,
         text: inputMessage,
         isUser: true,
-        timestamp: 'Just now'
+        timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
       };
-      setMessages([...messages, newMessage]);
-      setInputMessage('');
 
-      setTimeout(() => {
-        const botResponse = {
+      setMessages(prev => [...prev, userMessage]);
+      setInputMessage('');
+      setIsLoading(true);
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: inputMessage,
+            history: messages.slice(1), // Exclude initial greeting
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const botResponse = {
+            id: messages.length + 2,
+            text: data.message,
+            isUser: false,
+            timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, botResponse]);
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (error) {
+        console.error('Chat error:', error);
+        const errorMessage = {
           id: messages.length + 2,
-          text: "I'm processing your request. How else can I assist you?",
+          text: "I'm sorry, I encountered an error. Please try again or contact UMREC support.",
           isUser: false,
-          timestamp: 'Just now'
+          timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
         };
-        setMessages(prev => [...prev, botResponse]);
-      }, 1000);
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -177,6 +219,7 @@ export default function HelpCenterLayout({
       handleSendMessage();
     }
   };
+
 
   const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
@@ -219,11 +262,10 @@ export default function HelpCenterLayout({
 
       {/* Sidebar - Now matches navbar color */}
       <aside
-        className={`${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0 fixed lg:static w-80 left-0 z-40 transition-transform duration-300 ease-in-out flex-shrink-0`}
-        style={{ 
-          backgroundColor: '#071139', 
+        className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          } lg:translate-x-0 fixed lg:static w-80 left-0 z-40 transition-transform duration-300 ease-in-out flex-shrink-0`}
+        style={{
+          backgroundColor: '#071139',
           top: '72px',
           height: 'calc(100vh - 72px)'
         }}
@@ -299,13 +341,13 @@ export default function HelpCenterLayout({
                     {config.title}
                   </h3>
                   <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Always Available
+                    {isLoading ? 'Typing...' : 'AI-Powered • Always Available'}
                   </p>
                 </div>
               </div>
             </div>
-
             {/* Messages Area */}
+
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 md:px-8 py-6 space-y-4" style={{ backgroundColor: '#E8EEF3' }}>
               {messages.map((message) => (
                 <div
@@ -319,18 +361,23 @@ export default function HelpCenterLayout({
                           <Bot className="w-4 h-4 text-[#F7D117]" />
                         </div>
                         <span className="text-xs font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {config.title}
+                          UMREC AI
                         </span>
                       </div>
                     )}
                     <div
-                      className={`rounded-2xl px-4 py-3 ${
-                        message.isUser ? 'rounded-tr-none bg-[#A0A0A0] text-white' : 'rounded-tl-none bg-white text-[#071139]'
-                      }`}
+                      className={`rounded-2xl px-4 py-3 ${message.isUser ? 'rounded-tr-none bg-[#A0A0A0] text-white' : 'rounded-tl-none bg-white text-[#071139]'
+                        }`}
                     >
-                      <p className="text-sm leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {message.isUser ? (
+                      <p className="text-sm leading-relaxed break-words whitespace-pre-wrap" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {message.text}
                       </p>
+                    ) : (
+                      <div className="text-sm leading-relaxed break-words prose prose-sm max-w-none" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        <ReactMarkdown>{message.text}</ReactMarkdown>
+                      </div>
+                    )}
                     </div>
                     <span className="text-xs text-gray-500 mt-1 block" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {message.timestamp}
@@ -338,6 +385,31 @@ export default function HelpCenterLayout({
                   </div>
                 </div>
               ))}
+
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="max-w-[70%]">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-[#071139] flex items-center justify-center">
+                        <Bot className="w-4 h-4 text-[#F7D117]" />
+                      </div>
+                      <span className="text-xs font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        UMREC AI
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-2xl rounded-tl-none px-4 py-3">
+                      <div className="flex gap-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Input Area */}
@@ -345,17 +417,19 @@ export default function HelpCenterLayout({
               <div className="flex items-center space-x-2 sm:space-x-3 max-w-4xl mx-auto">
                 <input
                   type="text"
-                  placeholder="Type your question......"
+                  placeholder="Type your question..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="flex-1 px-4 sm:px-5 py-3 rounded-full bg-gray-100 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#071139]"
+                  disabled={isLoading}
+                  className="flex-1 px-4 sm:px-5 py-3 rounded-full bg-gray-100 text-sm text-gray-800 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[#071139] disabled:bg-gray-200 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   aria-label="Type your message"
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="w-11 h-11 rounded-full bg-[#A0A0A0] flex items-center justify-center transition-colors hover:bg-[#8a8a8a] focus:outline-none flex-shrink-0"
+                  disabled={isLoading || !inputMessage.trim()}
+                  className="w-11 h-11 rounded-full bg-[#A0A0A0] flex items-center justify-center transition-colors hover:bg-[#8a8a8a] focus:outline-none flex-shrink-0 disabled:bg-gray-300 disabled:cursor-not-allowed"
                   aria-label="Send message"
                 >
                   <Send className="w-5 h-5 text-white" />
