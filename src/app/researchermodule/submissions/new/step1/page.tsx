@@ -486,42 +486,6 @@ export default function Step1ResearcherDetails() {
                 </div>
               </div>
 
-              {/* Co-Authors - Enhanced */}
-              <div>
-                <label 
-                  htmlFor="coAuthors" 
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
-                    <Users size={16} className="text-[#F7D117]" />
-                  </div>
-                  List of Co-Authors <span className="text-red-500">*</span>
-                  <span className="text-gray-500 font-normal text-xs ml-2">(If none, write "N/A")</span>
-                </label>
-                <textarea
-                  id="coAuthors"
-                  value={formData.coAuthors}
-                  onChange={(e) => handleInputChange('coAuthors', e.target.value)}
-                  rows={4}
-                  placeholder="Juan A. Dela Cruz, Jeon H. Womwoo, Choi J. Seungcheol"
-                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none resize-none text-[#071139] transition-all duration-300 ${
-                    errors.coAuthors
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  required
-                  aria-required="true"
-                  aria-invalid={!!errors.coAuthors}
-                />
-                {errors.coAuthors && (
-                  <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    <AlertCircle size={16} /> {errors.coAuthors}
-                  </p>
-                )}
-              </div>
-
               {/* Organization - Enhanced */}
               <div>
                 <label 
