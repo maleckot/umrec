@@ -15,13 +15,16 @@ export async function getSecretariatDashboardData() {
     // 1. Total submissions
     const { count: totalSubmissions } = await supabase
       .from('research_submissions')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact', head: true })
+      .eq('status','awaiting_classification ');
 
     // 2. Pending classification (new submissions not yet classified)
-    const { count: pendingClassification } = await supabase
-      .from('research_submissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'new_submission');
+    // Change this query (line ~22-25)
+  const { count: pendingClassification } = await supabase
+    .from('research_submissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'awaiting_classification'); // Changed from 'new_submission'
+
 
     // 3. Active reviewers
     const { data: activeReviewersData } = await supabase
@@ -32,17 +35,19 @@ export async function getSecretariatDashboardData() {
     const activeReviewers = new Set(activeReviewersData?.map(r => r.reviewer_id)).size;
 
     // 4. Completed classifications (all classified submissions)
-    const { count: completedClassifications } = await supabase
-      .from('research_submissions')
-      .select('*', { count: 'exact', head: true })
-      .not('classification_type', 'is', null);
+      const { count: completedClassifications } = await supabase
+        .from('research_submissions')
+        .select('*', { count: 'exact', head: true })
+        .not('classification_type', 'in', '("", null)'); // Exclude empty and null
 
-    // 5. Recent submissions (last 10)
+
     const { data: recentSubmissions } = await supabase
       .from('research_submissions')
       .select('id, submission_id, title, submitted_at, status')
+      .eq('status', 'awaiting_classification')
       .order('submitted_at', { ascending: false })
-      .limit(10);
+      .limit(5);
+
 
     // 6. Pending classification list with submitter info
     const { data: pendingClassificationList } = await supabase
@@ -54,11 +59,10 @@ export async function getSecretariatDashboardData() {
         submitted_at,
         profiles:user_id (full_name)
       `)
-      .eq('status', 'new_submission')
+      .eq('status', 'awaiting_classification') 
       .order('submitted_at', { ascending: true })
       .limit(5);
 
-    // 7. Overdue reviews (>7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 

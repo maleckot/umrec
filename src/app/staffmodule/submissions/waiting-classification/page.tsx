@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; // Add useRef
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -14,6 +14,7 @@ import { generatePdfFromDatabase } from '@/app/actions/generatePdfFromDatabase';
 import { createClient } from '@/utils/supabase/client';
 import { Suspense } from 'react';
 
+
 function WaitingClassificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -24,12 +25,16 @@ function WaitingClassificationContent() {
   const [data, setData] = useState<any>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  
+  const pdfGenerationAttempted = useRef(false);
+
 
   useEffect(() => {
     if (submissionId) {
       loadData();
     }
   }, [submissionId]);
+
 
   const loadData = async () => {
     if (!submissionId) return;
@@ -41,9 +46,9 @@ function WaitingClassificationContent() {
       if (result.success) {
         setData(result);
         
-        // Check if consolidated document exists
-        if (!result.consolidatedDocument) {
+        if (!result.consolidatedDocument && !pdfGenerationAttempted.current) {
           // PDF doesn't exist, generate it in background
+          pdfGenerationAttempted.current = true; // Mark as attempted
           generateConsolidatedPdf();
         }
       } else {
@@ -54,12 +59,18 @@ function WaitingClassificationContent() {
       console.error('Error:', error);
       alert('Failed to load submission details');
     } finally {
-      setLoading(false); // Page loads regardless of PDF status
+      setLoading(false);
     }
   };
 
+
   const generateConsolidatedPdf = async () => {
     if (!submissionId) return;
+
+    if (generatingPdf) {
+      console.log('⚠️ PDF generation already in progress, skipping...');
+      return;
+    }
 
     setGeneratingPdf(true);
     setPdfError(null);
@@ -132,10 +143,12 @@ function WaitingClassificationContent() {
     } catch (error) {
       console.error('❌ PDF generation error:', error);
       setPdfError(error instanceof Error ? error.message : 'Failed to generate PDF');
+      pdfGenerationAttempted.current = false; 
     } finally {
       setGeneratingPdf(false);
     }
   };
+
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';

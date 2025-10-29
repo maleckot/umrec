@@ -14,11 +14,11 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: strin
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
       onClick={onClose}
     >
-      <div 
+      <div
         className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -50,8 +50,8 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: strin
         <div className="p-6 max-h-96 overflow-y-auto">
           <ul className="space-y-3">
             {errors.map((error, index) => (
-              <li 
-                key={index} 
+              <li
+                key={index}
                 className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg"
               >
                 <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -100,6 +100,7 @@ export default function Step3ResearchProtocol() {
   const router = useRouter();
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // ✅ Initialize with empty strings to prevent uncontrolled input warning
   const [formData, setFormData] = useState({
@@ -149,28 +150,35 @@ export default function Step3ResearchProtocol() {
               statisticalTreatment: parsedData.formData.statisticalTreatment || '',
               references: parsedData.formData.references || '',
             });
+            console.log('✅ Loaded data from localStorage:', parsedData.formData);
           }
           if (parsedData.researchers && Array.isArray(parsedData.researchers)) {
-            setResearchers(parsedData.researchers.map((r: any) => ({ 
-              id: r.id || '1', 
-              name: r.name || '', 
-              signature: null 
+            setResearchers(parsedData.researchers.map((r: any) => ({
+              id: r.id || '1',
+              name: r.name || '',
+              signature: null
             })));
           }
+          setDataLoaded(true); // Mark data as loaded
         } catch (error) {
           console.error('Error loading saved data:', error);
+          setDataLoaded(true);
         }
       } else {
+        // If no saved data, try loading from step1
         const step1 = localStorage.getItem('step1Data');
         if (step1) {
           try {
             const step1Data = JSON.parse(step1);
-            setFormData(prev => ({
+            setFormData((prev) => ({
               ...prev,
               title: step1Data.title || ''
             }));
-            
-            const fullName = `${step1Data.projectLeaderFirstName || ''} ${step1Data.projectLeaderMiddleName || ''} ${step1Data.projectLeaderLastName || ''}`.trim();
+            const fullName = [
+              step1Data.projectLeaderFirstName,
+              step1Data.projectLeaderMiddleName,
+              step1Data.projectLeaderLastName
+            ].filter(Boolean).join(' ').trim();
             if (fullName) {
               setResearchers([{ id: '1', name: fullName, signature: null }]);
             }
@@ -178,10 +186,15 @@ export default function Step3ResearchProtocol() {
             console.error('Error loading step1 data:', error);
           }
         }
+        setDataLoaded(true);
       }
     }
-    isInitialMount.current = false;
+
+    setTimeout(() => {
+      isInitialMount.current = false;
+    }, 100);
   }, []);
+
 
   // Auto-save on data change
   useEffect(() => {
@@ -210,35 +223,35 @@ export default function Step3ResearchProtocol() {
   }, [formData, researchers]);
 
   // ✅ Validation function
-  const validateInput = (value: string, fieldName: string, allowNA: boolean = false): string | null => {
-    const trimmedValue = value.trim().toLowerCase();
-    
-    if (!trimmedValue) {
-      return `${fieldName} is required`;
-    }
+  // const validateInput = (value: string, fieldName: string, allowNA: boolean = false): string | null => {
+  //   const trimmedValue = value.trim().toLowerCase();
 
-    const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
-    if (!allowNA && naVariations.includes(trimmedValue)) {
-      return `${fieldName} cannot be "N/A". Please provide actual content or research details`;
-    }
+  //   if (!trimmedValue) {
+  //     return `${fieldName} is required`;
+  //   }
 
-    // const irrelevantPhrases = [
-    //   'i dont know', "i don't know", 'idk', 'working in progress',
-    //   'work in progress', 'wip', 'tbd', 'to be determined',
-    //   'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
-    //   '123', 'abc', 'unknown', 'temp', 'temporary'
-    // ];
+  //   const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
+  //   if (!allowNA && naVariations.includes(trimmedValue)) {
+  //     return `${fieldName} cannot be "N/A". Please provide actual content or research details`;
+  //   }
 
-    // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
-    //   return `${fieldName} contains invalid text. Please provide accurate information`;
-    // }
+  //   // const irrelevantPhrases = [
+  //   //   'i dont know', "i don't know", 'idk', 'working in progress',
+  //   //   'work in progress', 'wip', 'tbd', 'to be determined',
+  //   //   'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
+  //   //   '123', 'abc', 'unknown', 'temp', 'temporary'
+  //   // ];
 
-    if (trimmedValue.length < 10) {
-      return `${fieldName} must be at least 10 characters`;
-    }
+  //   // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
+  //   //   return `${fieldName} contains invalid text. Please provide accurate information`;
+  //   // }
 
-    return null;
-  };
+  //   if (trimmedValue.length < 10) {
+  //     return `${fieldName} must be at least 10 characters`;
+  //   }
+
+  //   return null;
+  // };
 
   const stripHtmlTags = (html: string): string => {
     const tmp = document.createElement('DIV');
@@ -246,11 +259,11 @@ export default function Step3ResearchProtocol() {
     return tmp.textContent || tmp.innerText || '';
   };
 
-const handleNext = () => {
+  const handleNext = () => {
     const newErrors: Record<string, string> = {};
     let hasError = false;
     let firstErrorField = '';
-    
+
     // Define all required fields
     const requiredFields = [
       { value: formData.title, name: 'Title of the Study', id: 'study-title', key: 'title' },
@@ -272,7 +285,7 @@ const handleNext = () => {
     for (const field of requiredFields) {
       if (!field.value.trim()) {
         newErrors[field.key] = `Please fill out this field`;
-        
+
         if (!hasError) {
           firstErrorField = field.id;
           hasError = true;
@@ -283,19 +296,19 @@ const handleNext = () => {
     // ✅ Check ALL researcher fields
     for (let index = 0; index < researchers.length; index++) {
       const researcher = researchers[index];
-      
+
       if (!researcher.name.trim()) {
         newErrors[`researcher_name_${researcher.id}`] = `Please fill out this field`;
-        
+
         if (!hasError) {
           firstErrorField = `researcher-name-${researcher.id}`;
           hasError = true;
         }
       }
-      
+
       if (!researcher.signature) {
         newErrors[`researcher_signature_${researcher.id}`] = `Please upload signature`;
-        
+
         if (!hasError) {
           firstErrorField = `researcher-signature-${researcher.id}`;
           hasError = true;
@@ -306,7 +319,7 @@ const handleNext = () => {
     // If there are any blank field errors, show them and scroll to first error
     if (hasError) {
       setErrors(newErrors);
-      
+
       // Scroll to the first error field
       const element = document.getElementById(firstErrorField);
       if (element) {
@@ -315,86 +328,86 @@ const handleNext = () => {
           element.focus();
         }, 500);
       }
-      
+
       return; // Stop here - don't proceed to content validation
     }
 
-    // ✅ Now validate content quality (N/A, invalid text, etc.) - only if all fields are filled
-    const contentErrors: Record<string, string> = {};
+    // // ✅ Now validate content quality (N/A, invalid text, etc.) - only if all fields are filled
+    // const contentErrors: Record<string, string> = {};
 
-    const titleError = validateInput(formData.title, 'Title of the Study');
-    if (titleError) contentErrors.title = titleError;
+    // const titleError = validateInput(formData.title, 'Title of the Study');
+    // if (titleError) contentErrors.title = titleError;
 
-    const introText = stripHtmlTags(formData.introduction);
-    const introError = validateInput(introText, 'Introduction');
-    if (introError) contentErrors.introduction = introError;
+    // const introText = stripHtmlTags(formData.introduction);
+    // const introError = validateInput(introText, 'Introduction');
+    // if (introError) contentErrors.introduction = introError;
 
-    const backgroundText = stripHtmlTags(formData.background);
-    const backgroundError = validateInput(backgroundText, 'Background of the Study');
-    if (backgroundError) contentErrors.background = backgroundError;
+    // const backgroundText = stripHtmlTags(formData.background);
+    // const backgroundError = validateInput(backgroundText, 'Background of the Study');
+    // if (backgroundError) contentErrors.background = backgroundError;
 
-    const problemText = stripHtmlTags(formData.problemStatement);
-    const problemError = validateInput(problemText, 'Statement of the Problem/Objectives');
-    if (problemError) contentErrors.problemStatement = problemError;
+    // const problemText = stripHtmlTags(formData.problemStatement);
+    // const problemError = validateInput(problemText, 'Statement of the Problem/Objectives');
+    // if (problemError) contentErrors.problemStatement = problemError;
 
-    const scopeText = stripHtmlTags(formData.scopeDelimitation);
-    const scopeError = validateInput(scopeText, 'Scope and Delimitation');
-    if (scopeError) contentErrors.scopeDelimitation = scopeError;
+    // const scopeText = stripHtmlTags(formData.scopeDelimitation);
+    // const scopeError = validateInput(scopeText, 'Scope and Delimitation');
+    // if (scopeError) contentErrors.scopeDelimitation = scopeError;
 
-    const literatureText = stripHtmlTags(formData.literatureReview);
-    const literatureError = validateInput(literatureText, 'Related Literature & Studies');
-    if (literatureError) contentErrors.literatureReview = literatureError;
+    // const literatureText = stripHtmlTags(formData.literatureReview);
+    // const literatureError = validateInput(literatureText, 'Related Literature & Studies');
+    // if (literatureError) contentErrors.literatureReview = literatureError;
 
-    const methodologyText = stripHtmlTags(formData.methodology);
-    const methodologyError = validateInput(methodologyText, 'Research Methodology');
-    if (methodologyError) contentErrors.methodology = methodologyError;
+    // const methodologyText = stripHtmlTags(formData.methodology);
+    // const methodologyError = validateInput(methodologyText, 'Research Methodology');
+    // if (methodologyError) contentErrors.methodology = methodologyError;
 
-    const populationText = stripHtmlTags(formData.population);
-    const populationError = validateInput(populationText, 'Population/Respondents/Sample Size');
-    if (populationError) contentErrors.population = populationError;
+    // const populationText = stripHtmlTags(formData.population);
+    // const populationError = validateInput(populationText, 'Population/Respondents/Sample Size');
+    // if (populationError) contentErrors.population = populationError;
 
-    const samplingText = stripHtmlTags(formData.samplingTechnique);
-    const samplingError = validateInput(samplingText, 'Sampling Technique/Criteria of Participants');
-    if (samplingError) contentErrors.samplingTechnique = samplingError;
+    // const samplingText = stripHtmlTags(formData.samplingTechnique);
+    // const samplingError = validateInput(samplingText, 'Sampling Technique/Criteria of Participants');
+    // if (samplingError) contentErrors.samplingTechnique = samplingError;
 
-    const instrumentText = stripHtmlTags(formData.researchInstrument);
-    const instrumentError = validateInput(instrumentText, 'Research Instrument and Validation');
-    if (instrumentError) contentErrors.researchInstrument = instrumentError;
+    // const instrumentText = stripHtmlTags(formData.researchInstrument);
+    // const instrumentError = validateInput(instrumentText, 'Research Instrument and Validation');
+    // if (instrumentError) contentErrors.researchInstrument = instrumentError;
 
-    const ethicalText = stripHtmlTags(formData.ethicalConsideration);
-    const ethicalError = validateInput(ethicalText, 'Ethical Consideration');
-    if (ethicalError) contentErrors.ethicalConsideration = ethicalError;
+    // const ethicalText = stripHtmlTags(formData.ethicalConsideration);
+    // const ethicalError = validateInput(ethicalText, 'Ethical Consideration');
+    // if (ethicalError) contentErrors.ethicalConsideration = ethicalError;
 
-    const statisticalText = stripHtmlTags(formData.statisticalTreatment);
-    const statisticalError = validateInput(statisticalText, 'Statistical Treatment of Data/Data Analysis');
-    if (statisticalError) contentErrors.statisticalTreatment = statisticalError;
+    // const statisticalText = stripHtmlTags(formData.statisticalTreatment);
+    // const statisticalError = validateInput(statisticalText, 'Statistical Treatment of Data/Data Analysis');
+    // if (statisticalError) contentErrors.statisticalTreatment = statisticalError;
 
-    const referencesText = stripHtmlTags(formData.references);
-    const referencesError = validateInput(referencesText, 'References');
-    if (referencesError) contentErrors.references = referencesError;
+    // const referencesText = stripHtmlTags(formData.references);
+    // const referencesError = validateInput(referencesText, 'References');
+    // if (referencesError) contentErrors.references = referencesError;
 
-    // Validate researchers content quality
-    researchers.forEach((researcher, index) => {
-      const nameError = validateInput(researcher.name, `Member ${index + 1} Name`, true);
-      if (nameError) {
-        contentErrors[`researcher_name_${researcher.id}`] = nameError;
-      }
-    });
+    // // Validate researchers content quality
+    // researchers.forEach((researcher, index) => {
+    //   const nameError = validateInput(researcher.name, `Member ${index + 1} Name`, true);
+    //   if (nameError) {
+    //     contentErrors[`researcher_name_${researcher.id}`] = nameError;
+    //   }
+    // });
 
-    // If there are content validation errors (N/A, invalid text, etc.), show modal
-    if (Object.keys(contentErrors).length > 0) {
-      setErrors(contentErrors);
-      setErrorList(Object.values(contentErrors));
-      setShowErrorModal(true);
-      
-      const firstErrorField = Object.keys(contentErrors)[0];
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      
-      return;
-    }
+    // // If there are content validation errors (N/A, invalid text, etc.), show modal
+    // if (Object.keys(contentErrors).length > 0) {
+    //   setErrors(contentErrors);
+    //   setErrorList(Object.values(contentErrors));
+    //   setShowErrorModal(true);
+
+    //   const firstErrorField = Object.keys(contentErrors)[0];
+    //   const element = document.getElementById(firstErrorField);
+    //   if (element) {
+    //     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    //   }
+
+    //   return;
+    // }
 
     // Clear errors and proceed
     setErrors({});
@@ -445,7 +458,7 @@ const handleNext = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
       <NavbarRoles role="researcher" />
-      
+
       <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-12 lg:px-20 xl:px-28 pb-8">
         <div className="max-w-[1400px] mx-auto">
           {/* Enhanced Header Section */}
@@ -458,12 +471,12 @@ const handleNext = () => {
               >
                 <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
               </button>
-              
+
               <div className="flex items-center gap-4 flex-1">
                 <div className="w-14 h-14 bg-gradient-to-br from-[#071139] to-[#003366] text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>3</span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Research Protocol
@@ -477,7 +490,7 @@ const handleNext = () => {
 
             {/* Enhanced Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
+              <div
                 className="bg-gradient-to-r from-[#F7D117] to-[#B8860B] h-3 transition-all duration-500 rounded-full shadow-lg"
                 style={{ width: '37.5%' }}
               />
@@ -494,8 +507,8 @@ const handleNext = () => {
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-<form className="space-y-6 sm:space-y-8">
-              {/* Instructions */}
+            <form className="space-y-6 sm:space-y-8">
+              {/* Instructions - Keep as is */}
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 p-4 sm:p-6 rounded-xl shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-md">
@@ -525,9 +538,9 @@ const handleNext = () => {
 
               {/* I. Title of the Study */}
               <div>
-                <label 
+                <label
                   htmlFor="study-title"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -543,15 +556,13 @@ const handleNext = () => {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                    errors.title 
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' 
-                      : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                  }`}
+                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   placeholder="Enter your research title"
-aria-required="true"
-
+                  aria-required="true"
                 />
                 {errors.title && (
                   <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -562,9 +573,9 @@ aria-required="true"
 
               {/* II. Introduction */}
               <div>
-                <label 
+                <label
                   htmlFor="introduction-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -577,6 +588,7 @@ aria-required="true"
                 </p>
                 <div className={errors.introduction ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`introduction-${dataLoaded}`}
                     label=""
                     value={formData.introduction}
                     onChange={(val) => setFormData({ ...formData, introduction: val })}
@@ -593,9 +605,9 @@ aria-required="true"
 
               {/* III. Background */}
               <div>
-                <label 
+                <label
                   htmlFor="background-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -608,12 +620,12 @@ aria-required="true"
                 </p>
                 <div className={errors.background ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`background-${dataLoaded}`}
                     label=""
                     value={formData.background}
                     onChange={(val) => setFormData({ ...formData, background: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.background && (
@@ -625,9 +637,9 @@ aria-required="true"
 
               {/* IV. Problem Statement */}
               <div>
-                <label 
+                <label
                   htmlFor="problem-statement-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -640,12 +652,12 @@ aria-required="true"
                 </p>
                 <div className={errors.problemStatement ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`problemStatement-${dataLoaded}`}
                     label=""
                     value={formData.problemStatement}
                     onChange={(val) => setFormData({ ...formData, problemStatement: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.problemStatement && (
@@ -657,9 +669,9 @@ aria-required="true"
 
               {/* V. Scope and Delimitation */}
               <div>
-                <label 
+                <label
                   htmlFor="scope-delimitation-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -672,12 +684,12 @@ aria-required="true"
                 </p>
                 <div className={errors.scopeDelimitation ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`scopeDelimitation-${dataLoaded}`}
                     label=""
                     value={formData.scopeDelimitation}
                     onChange={(val) => setFormData({ ...formData, scopeDelimitation: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.scopeDelimitation && (
@@ -689,9 +701,9 @@ aria-required="true"
 
               {/* VI. Literature Review */}
               <div>
-                <label 
+                <label
                   htmlFor="literature-review-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -704,12 +716,12 @@ aria-required="true"
                 </p>
                 <div className={errors.literatureReview ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`literatureReview-${dataLoaded}`}
                     label=""
                     value={formData.literatureReview}
                     onChange={(val) => setFormData({ ...formData, literatureReview: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.literatureReview && (
@@ -721,9 +733,9 @@ aria-required="true"
 
               {/* VII. Methodology */}
               <div>
-                <label 
+                <label
                   htmlFor="methodology-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -736,12 +748,12 @@ aria-required="true"
                 </p>
                 <div className={errors.methodology ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`methodology-${dataLoaded}`}
                     label=""
                     value={formData.methodology}
                     onChange={(val) => setFormData({ ...formData, methodology: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.methodology && (
@@ -753,9 +765,9 @@ aria-required="true"
 
               {/* VIII. Population */}
               <div>
-                <label 
+                <label
                   htmlFor="population-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -768,12 +780,12 @@ aria-required="true"
                 </p>
                 <div className={errors.population ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`population-${dataLoaded}`}
                     label=""
                     value={formData.population}
                     onChange={(val) => setFormData({ ...formData, population: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.population && (
@@ -785,9 +797,9 @@ aria-required="true"
 
               {/* IX. Sampling Technique */}
               <div>
-                <label 
+                <label
                   htmlFor="sampling-technique-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -800,12 +812,12 @@ aria-required="true"
                 </p>
                 <div className={errors.samplingTechnique ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`samplingTechnique-${dataLoaded}`}
                     label=""
                     value={formData.samplingTechnique}
                     onChange={(val) => setFormData({ ...formData, samplingTechnique: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.samplingTechnique && (
@@ -817,9 +829,9 @@ aria-required="true"
 
               {/* X. Research Instrument */}
               <div>
-                <label 
+                <label
                   htmlFor="research-instrument-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -832,12 +844,12 @@ aria-required="true"
                 </p>
                 <div className={errors.researchInstrument ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`researchInstrument-${dataLoaded}`}
                     label=""
                     value={formData.researchInstrument}
                     onChange={(val) => setFormData({ ...formData, researchInstrument: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.researchInstrument && (
@@ -849,9 +861,9 @@ aria-required="true"
 
               {/* XI. Ethical Consideration */}
               <div>
-                <label 
+                <label
                   htmlFor="ethical-consideration-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -864,12 +876,12 @@ aria-required="true"
                 </p>
                 <div className={errors.ethicalConsideration ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`ethicalConsideration-${dataLoaded}`}
                     label=""
                     value={formData.ethicalConsideration}
                     onChange={(val) => setFormData({ ...formData, ethicalConsideration: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.ethicalConsideration && (
@@ -881,9 +893,9 @@ aria-required="true"
 
               {/* XII. Statistical Treatment */}
               <div>
-                <label 
+                <label
                   htmlFor="statistical-treatment-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -896,12 +908,12 @@ aria-required="true"
                 </p>
                 <div className={errors.statisticalTreatment ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`statisticalTreatment-${dataLoaded}`}
                     label=""
                     value={formData.statisticalTreatment}
                     onChange={(val) => setFormData({ ...formData, statisticalTreatment: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.statisticalTreatment && (
@@ -913,9 +925,9 @@ aria-required="true"
 
               {/* XIII. References */}
               <div>
-                <label 
+                <label
                   htmlFor="references-editor"
-                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+                  className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -928,12 +940,12 @@ aria-required="true"
                 </p>
                 <div className={errors.references ? 'border-2 border-red-500 rounded-xl p-1' : ''}>
                   <RichTextEditor
+                    key={`references-${dataLoaded}`}
                     label=""
                     value={formData.references}
                     onChange={(val) => setFormData({ ...formData, references: val })}
                     helperText=""
                     maxWords={0}
-                    
                   />
                 </div>
                 {errors.references && (
@@ -996,9 +1008,9 @@ aria-required="true"
 
                       <div className="space-y-6">
                         <div>
-                          <label 
+                          <label
                             htmlFor={`researcher-name-${researcher.id}`}
-                            className="flex items-center gap-2 text-sm font-bold mb-3 text-[#071139]" 
+                            className="flex items-center gap-2 text-sm font-bold mb-3 text-[#071139]"
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
                             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -1012,11 +1024,10 @@ aria-required="true"
                             value={researcher.name}
                             onChange={(e) => updateResearcher(researcher.id, 'name', e.target.value)}
                             placeholder="Enter full name"
-                            className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${
-                              errors[`researcher_name_${researcher.id}`]
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                            }`}
+                            className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors[`researcher_name_${researcher.id}`]
+                              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                              : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                              }`}
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                             required
                             aria-required="true"
@@ -1029,9 +1040,9 @@ aria-required="true"
                         </div>
 
                         <div>
-                          <label 
+                          <label
                             htmlFor={`researcher-signature-${researcher.id}`}
-                            className="flex items-center gap-2 text-sm font-bold mb-3 text-[#071139]" 
+                            className="flex items-center gap-2 text-sm font-bold mb-3 text-[#071139]"
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
                             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -1099,8 +1110,8 @@ aria-required="true"
                 </button>
 
                 <button
-                   type="button"
-  onClick={handleNext}
+                  type="button"
+                  onClick={handleNext}
                   className="w-full sm:w-auto group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-[#071139] to-[#003366] text-white rounded-xl hover:from-[#003366] hover:to-[#071139] transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   aria-label="Proceed to next step"
@@ -1122,9 +1133,9 @@ aria-required="true"
       <Footer />
 
       {/* Custom Error Modal */}
-      <ErrorModal 
-        isOpen={showErrorModal} 
-        onClose={() => setShowErrorModal(false)} 
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
         errors={errorList}
       />
     </div>

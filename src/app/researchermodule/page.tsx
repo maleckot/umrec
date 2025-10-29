@@ -61,6 +61,28 @@ const getTimelineStage = (status: string) => {
   }
 };
 
+const handleDownload = async (url: string, filename: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the blob URL
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download failed:', error);
+    // Fallback: open in new tab if download fails
+    window.open(url, '_blank');
+  }
+};
+
 export default function ResearcherDashboard() {
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -122,7 +144,7 @@ export default function ResearcherDashboard() {
     }
     if (activeTab === 'pending') {
       if (submission.status === 'review_complete') {
-         return false;
+        return false;
       }
       const hasPendingDocs = submission.documents?.some(doc => doc.isApproved === null);
       return hasPendingDocs || submission.status === 'under_review';
@@ -263,7 +285,7 @@ export default function ResearcherDashboard() {
 
 
 
-            {/* Certificate & Documents Section - Keep your original code but add subtle enhancements */}
+            {/* Certificate & Documents Section */}
             {submissionsAwaitingOrApproved.length > 0 && (
               <>
                 <div className="mb-8 sm:mb-12">
@@ -312,37 +334,34 @@ export default function ResearcherDashboard() {
                           {certificatesReleased ? (
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                               {submission.certificateUrl && (
-                                <a
-                                  href={submission.certificateUrl}
-                                  download
-                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
+                                <button
+                                  onClick={() => handleDownload(submission.certificateUrl!, 'Certificate_of_Approval.pdf')}
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 cursor-pointer"
                                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                                 >
                                   <Download size={16} className="sm:w-5 sm:h-5" />
                                   <span className="text-xs sm:text-sm">Certificate of Approval</span>
-                                </a>
+                                </button>
                               )}
                               {submission.form0011Url && (
-                                <a
-                                  href={submission.form0011Url}
-                                  download
-                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
+                                <button
+                                  onClick={() => handleDownload(submission.form0011Url!, 'Form_0011.pdf')}
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 cursor-pointer"
                                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                                 >
                                   <Download size={16} className="sm:w-5 sm:h-5" />
                                   <span className="text-xs sm:text-sm">Form 0011</span>
-                                </a>
+                                </button>
                               )}
                               {submission.form0012Url && (
-                                <a
-                                  href={submission.form0012Url}
-                                  download
-                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105"
+                                <button
+                                  onClick={() => handleDownload(submission.form0012Url!, 'Form_0012.pdf')}
+                                  className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 sm:py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl transition-all duration-300 shadow-md hover:shadow-lg hover:scale-105 cursor-pointer"
                                   style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 600 }}
                                 >
                                   <Download size={16} className="sm:w-5 sm:h-5" />
                                   <span className="text-xs sm:text-sm">Form 0012</span>
-                                </a>
+                                </button>
                               )}
                             </div>
                           ) : (

@@ -47,7 +47,7 @@ export async function getSubmissionDetails(submissionId: string) {
           documentsWithUrls.push({
             id: doc.id,
             name: doc.file_name,
-            type: doc.document_type,
+            documentType: doc.document_type,  
             size: doc.file_size,
             url: urlData.signedUrl,
             createdAt: doc.uploaded_at,

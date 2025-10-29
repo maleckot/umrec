@@ -256,8 +256,8 @@ export default function SecretariatDashboard() {
         {recentSubmissions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              No submissions yet
-            </p>
+        No papers to classify yet           
+          </p>
           </div>
         ) : (
           <>

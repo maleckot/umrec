@@ -206,228 +206,228 @@ export default function Step4InformedConsent() {
     return null;
   };
 
-  const validateForm = (): boolean => {
-    const errors: string[] = [];
+  // const validateForm = (): boolean => {
+  //   const errors: string[] = [];
 
-    if (!consentType) {
-      errors.push('Please select participant type');
-    }
+  //   if (!consentType) {
+  //     errors.push('Please select participant type');
+  //   }
 
-    if (consentType === 'adult' || consentType === 'both') {
-      if (!adultLanguage) {
-        errors.push('Please select language for adult consent form');
-      }
+  //   if (consentType === 'adult' || consentType === 'both') {
+  //     if (!adultLanguage) {
+  //       errors.push('Please select language for adult consent form');
+  //     }
       
-      const participantError = validateInput(formData.participantGroupIdentity, 'Participant Group Identity');
-      if (participantError) errors.push(participantError);
+  //     const participantError = validateInput(formData.participantGroupIdentity, 'Participant Group Identity');
+  //     if (participantError) errors.push(participantError);
       
-      if (adultLanguage === 'english' || adultLanguage === 'both') {
-        const introText = stripHtmlTags(formData.introductionEnglish);
-        const introError = validateInput(introText, 'Introduction (English)');
-        if (introError) errors.push(introError);
+  //     if (adultLanguage === 'english' || adultLanguage === 'both') {
+  //       const introText = stripHtmlTags(formData.introductionEnglish);
+  //       const introError = validateInput(introText, 'Introduction (English)');
+  //       if (introError) errors.push(introError);
         
-        const purposeText = stripHtmlTags(formData.purposeEnglish);
-        const purposeError = validateInput(purposeText, 'Purpose (English)');
-        if (purposeError) errors.push(purposeError);
+  //       const purposeText = stripHtmlTags(formData.purposeEnglish);
+  //       const purposeError = validateInput(purposeText, 'Purpose (English)');
+  //       if (purposeError) errors.push(purposeError);
         
-        const interventionText = stripHtmlTags(formData.researchInterventionEnglish);
-        const interventionError = validateInput(interventionText, 'Research Intervention (English)');
-        if (interventionError) errors.push(interventionError);
+  //       const interventionText = stripHtmlTags(formData.researchInterventionEnglish);
+  //       const interventionError = validateInput(interventionText, 'Research Intervention (English)');
+  //       if (interventionError) errors.push(interventionError);
         
-        const selectionText = stripHtmlTags(formData.participantSelectionEnglish);
-        const selectionError = validateInput(selectionText, 'Participant Selection (English)');
-        if (selectionError) errors.push(selectionError);
+  //       const selectionText = stripHtmlTags(formData.participantSelectionEnglish);
+  //       const selectionError = validateInput(selectionText, 'Participant Selection (English)');
+  //       if (selectionError) errors.push(selectionError);
         
-        const voluntaryText = stripHtmlTags(formData.voluntaryParticipationEnglish);
-        const voluntaryError = validateInput(voluntaryText, 'Voluntary Participation (English)');
-        if (voluntaryError) errors.push(voluntaryError);
+  //       const voluntaryText = stripHtmlTags(formData.voluntaryParticipationEnglish);
+  //       const voluntaryError = validateInput(voluntaryText, 'Voluntary Participation (English)');
+  //       if (voluntaryError) errors.push(voluntaryError);
         
-        const proceduresText = stripHtmlTags(formData.proceduresEnglish);
-        const proceduresError = validateInput(proceduresText, 'Procedures (English)');
-        if (proceduresError) errors.push(proceduresError);
+  //       const proceduresText = stripHtmlTags(formData.proceduresEnglish);
+  //       const proceduresError = validateInput(proceduresText, 'Procedures (English)');
+  //       if (proceduresError) errors.push(proceduresError);
         
-        const durationText = stripHtmlTags(formData.durationEnglish);
-        const durationError = validateInput(durationText, 'Duration (English)');
-        if (durationError) errors.push(durationError);
+  //       const durationText = stripHtmlTags(formData.durationEnglish);
+  //       const durationError = validateInput(durationText, 'Duration (English)');
+  //       if (durationError) errors.push(durationError);
         
-        const risksText = stripHtmlTags(formData.risksEnglish);
-        const risksError = validateInput(risksText, 'Risks (English)');
-        if (risksError) errors.push(risksError);
+  //       const risksText = stripHtmlTags(formData.risksEnglish);
+  //       const risksError = validateInput(risksText, 'Risks (English)');
+  //       if (risksError) errors.push(risksError);
         
-        const benefitsText = stripHtmlTags(formData.benefitsEnglish);
-        const benefitsError = validateInput(benefitsText, 'Benefits (English)');
-        if (benefitsError) errors.push(benefitsError);
+  //       const benefitsText = stripHtmlTags(formData.benefitsEnglish);
+  //       const benefitsError = validateInput(benefitsText, 'Benefits (English)');
+  //       if (benefitsError) errors.push(benefitsError);
         
-        const reimbursementsText = stripHtmlTags(formData.reimbursementsEnglish);
-        const reimbursementsError = validateInput(reimbursementsText, 'Reimbursements (English)');
-        if (reimbursementsError) errors.push(reimbursementsError);
+  //       const reimbursementsText = stripHtmlTags(formData.reimbursementsEnglish);
+  //       const reimbursementsError = validateInput(reimbursementsText, 'Reimbursements (English)');
+  //       if (reimbursementsError) errors.push(reimbursementsError);
         
-        const confidentialityText = stripHtmlTags(formData.confidentialityEnglish);
-        const confidentialityError = validateInput(confidentialityText, 'Confidentiality (English)');
-        if (confidentialityError) errors.push(confidentialityError);
+  //       const confidentialityText = stripHtmlTags(formData.confidentialityEnglish);
+  //       const confidentialityError = validateInput(confidentialityText, 'Confidentiality (English)');
+  //       if (confidentialityError) errors.push(confidentialityError);
         
-        const sharingText = stripHtmlTags(formData.sharingResultsEnglish);
-        const sharingError = validateInput(sharingText, 'Sharing Results (English)');
-        if (sharingError) errors.push(sharingError);
+  //       const sharingText = stripHtmlTags(formData.sharingResultsEnglish);
+  //       const sharingError = validateInput(sharingText, 'Sharing Results (English)');
+  //       if (sharingError) errors.push(sharingError);
         
-        const refuseText = stripHtmlTags(formData.rightToRefuseEnglish);
-        const refuseError = validateInput(refuseText, 'Right to Refuse or Withdraw (English)');
-        if (refuseError) errors.push(refuseError);
+  //       const refuseText = stripHtmlTags(formData.rightToRefuseEnglish);
+  //       const refuseError = validateInput(refuseText, 'Right to Refuse or Withdraw (English)');
+  //       if (refuseError) errors.push(refuseError);
         
-        const contactText = stripHtmlTags(formData.whoToContactEnglish);
-        const contactError = validateInput(contactText, 'Who to Contact (English)');
-        if (contactError) errors.push(contactError);
-      }
+  //       const contactText = stripHtmlTags(formData.whoToContactEnglish);
+  //       const contactError = validateInput(contactText, 'Who to Contact (English)');
+  //       if (contactError) errors.push(contactError);
+  //     }
 
-      if (adultLanguage === 'tagalog' || adultLanguage === 'both') {
-        const introText = stripHtmlTags(formData.introductionTagalog);
-        const introError = validateInput(introText, 'Panimula (Tagalog)');
-        if (introError) errors.push(introError);
+  //     if (adultLanguage === 'tagalog' || adultLanguage === 'both') {
+  //       const introText = stripHtmlTags(formData.introductionTagalog);
+  //       const introError = validateInput(introText, 'Panimula (Tagalog)');
+  //       if (introError) errors.push(introError);
         
-        const purposeText = stripHtmlTags(formData.purposeTagalog);
-        const purposeError = validateInput(purposeText, 'Layunin ng Pananaliksik (Tagalog)');
-        if (purposeError) errors.push(purposeError);
+  //       const purposeText = stripHtmlTags(formData.purposeTagalog);
+  //       const purposeError = validateInput(purposeText, 'Layunin ng Pananaliksik (Tagalog)');
+  //       if (purposeError) errors.push(purposeError);
         
-        const interventionText = stripHtmlTags(formData.researchInterventionTagalog);
-        const interventionError = validateInput(interventionText, 'Uri ng Interbensyon (Tagalog)');
-        if (interventionError) errors.push(interventionError);
+  //       const interventionText = stripHtmlTags(formData.researchInterventionTagalog);
+  //       const interventionError = validateInput(interventionText, 'Uri ng Interbensyon (Tagalog)');
+  //       if (interventionError) errors.push(interventionError);
         
-        const selectionText = stripHtmlTags(formData.participantSelectionTagalog);
-        const selectionError = validateInput(selectionText, 'Pagpili ng Kalahok (Tagalog)');
-        if (selectionError) errors.push(selectionError);
+  //       const selectionText = stripHtmlTags(formData.participantSelectionTagalog);
+  //       const selectionError = validateInput(selectionText, 'Pagpili ng Kalahok (Tagalog)');
+  //       if (selectionError) errors.push(selectionError);
         
-        const voluntaryText = stripHtmlTags(formData.voluntaryParticipationTagalog);
-        const voluntaryError = validateInput(voluntaryText, 'Kusang-loob na Paglahok (Tagalog)');
-        if (voluntaryError) errors.push(voluntaryError);
+  //       const voluntaryText = stripHtmlTags(formData.voluntaryParticipationTagalog);
+  //       const voluntaryError = validateInput(voluntaryText, 'Kusang-loob na Paglahok (Tagalog)');
+  //       if (voluntaryError) errors.push(voluntaryError);
         
-        const proceduresText = stripHtmlTags(formData.proceduresTagalog);
-        const proceduresError = validateInput(proceduresText, 'Mga Pamamaraan (Tagalog)');
-        if (proceduresError) errors.push(proceduresError);
+  //       const proceduresText = stripHtmlTags(formData.proceduresTagalog);
+  //       const proceduresError = validateInput(proceduresText, 'Mga Pamamaraan (Tagalog)');
+  //       if (proceduresError) errors.push(proceduresError);
         
-        const durationText = stripHtmlTags(formData.durationTagalog);
-        const durationError = validateInput(durationText, 'Tagal ng Pag-aaral (Tagalog)');
-        if (durationError) errors.push(durationError);
+  //       const durationText = stripHtmlTags(formData.durationTagalog);
+  //       const durationError = validateInput(durationText, 'Tagal ng Pag-aaral (Tagalog)');
+  //       if (durationError) errors.push(durationError);
         
-        const risksText = stripHtmlTags(formData.risksTagalog);
-        const risksError = validateInput(risksText, 'Mga Panganib (Tagalog)');
-        if (risksError) errors.push(risksError);
+  //       const risksText = stripHtmlTags(formData.risksTagalog);
+  //       const risksError = validateInput(risksText, 'Mga Panganib (Tagalog)');
+  //       if (risksError) errors.push(risksError);
         
-        const benefitsText = stripHtmlTags(formData.benefitsTagalog);
-        const benefitsError = validateInput(benefitsText, 'Mga Benepisyo (Tagalog)');
-        if (benefitsError) errors.push(benefitsError);
+  //       const benefitsText = stripHtmlTags(formData.benefitsTagalog);
+  //       const benefitsError = validateInput(benefitsText, 'Mga Benepisyo (Tagalog)');
+  //       if (benefitsError) errors.push(benefitsError);
         
-        const reimbursementsText = stripHtmlTags(formData.reimbursementsTagalog);
-        const reimbursementsError = validateInput(reimbursementsText, 'Kabayaran (Tagalog)');
-        if (reimbursementsError) errors.push(reimbursementsError);
+  //       const reimbursementsText = stripHtmlTags(formData.reimbursementsTagalog);
+  //       const reimbursementsError = validateInput(reimbursementsText, 'Kabayaran (Tagalog)');
+  //       if (reimbursementsError) errors.push(reimbursementsError);
         
-        const confidentialityText = stripHtmlTags(formData.confidentialityTagalog);
-        const confidentialityError = validateInput(confidentialityText, 'Pagiging Kumpidensyal (Tagalog)');
-        if (confidentialityError) errors.push(confidentialityError);
+  //       const confidentialityText = stripHtmlTags(formData.confidentialityTagalog);
+  //       const confidentialityError = validateInput(confidentialityText, 'Pagiging Kumpidensyal (Tagalog)');
+  //       if (confidentialityError) errors.push(confidentialityError);
         
-        const sharingText = stripHtmlTags(formData.sharingResultsTagalog);
-        const sharingError = validateInput(sharingText, 'Pagbabahagi ng mga Resulta (Tagalog)');
-        if (sharingError) errors.push(sharingError);
+  //       const sharingText = stripHtmlTags(formData.sharingResultsTagalog);
+  //       const sharingError = validateInput(sharingText, 'Pagbabahagi ng mga Resulta (Tagalog)');
+  //       if (sharingError) errors.push(sharingError);
         
-        const refuseText = stripHtmlTags(formData.rightToRefuseTagalog);
-        const refuseError = validateInput(refuseText, 'Karapatan na Tumanggi o Umurong (Tagalog)');
-        if (refuseError) errors.push(refuseError);
+  //       const refuseText = stripHtmlTags(formData.rightToRefuseTagalog);
+  //       const refuseError = validateInput(refuseText, 'Karapatan na Tumanggi o Umurong (Tagalog)');
+  //       if (refuseError) errors.push(refuseError);
         
-        const contactText = stripHtmlTags(formData.whoToContactTagalog);
-        const contactError = validateInput(contactText, 'Sino ang Makikipag-ugnayan (Tagalog)');
-        if (contactError) errors.push(contactError);
-      }
-    }
+  //       const contactText = stripHtmlTags(formData.whoToContactTagalog);
+  //       const contactError = validateInput(contactText, 'Sino ang Makikipag-ugnayan (Tagalog)');
+  //       if (contactError) errors.push(contactError);
+  //     }
+  //   }
 
-    if (consentType === 'minor' || consentType === 'both') {
-      if (!minorLanguage) {
-        errors.push('Please select language for minor assent form');
-      }
+  //   if (consentType === 'minor' || consentType === 'both') {
+  //     if (!minorLanguage) {
+  //       errors.push('Please select language for minor assent form');
+  //     }
       
-      if (minorLanguage === 'english' || minorLanguage === 'both') {
-        const introText = stripHtmlTags(formData.introductionMinorEnglish);
-        const introError = validateInput(introText, 'Introduction - Minor (English)');
-        if (introError) errors.push(introError);
+  //     if (minorLanguage === 'english' || minorLanguage === 'both') {
+  //       const introText = stripHtmlTags(formData.introductionMinorEnglish);
+  //       const introError = validateInput(introText, 'Introduction - Minor (English)');
+  //       if (introError) errors.push(introError);
         
-        const purposeText = stripHtmlTags(formData.purposeMinorEnglish);
-        const purposeError = validateInput(purposeText, 'Purpose - Minor (English)');
-        if (purposeError) errors.push(purposeError);
+  //       const purposeText = stripHtmlTags(formData.purposeMinorEnglish);
+  //       const purposeError = validateInput(purposeText, 'Purpose - Minor (English)');
+  //       if (purposeError) errors.push(purposeError);
         
-        const choiceText = stripHtmlTags(formData.choiceOfParticipantsEnglish);
-        const choiceError = validateInput(choiceText, 'Choice of Participants - Minor (English)');
-        if (choiceError) errors.push(choiceError);
+  //       const choiceText = stripHtmlTags(formData.choiceOfParticipantsEnglish);
+  //       const choiceError = validateInput(choiceText, 'Choice of Participants - Minor (English)');
+  //       if (choiceError) errors.push(choiceError);
         
-        const voluntarinessText = stripHtmlTags(formData.voluntarinessMinorEnglish);
-        const voluntarinessError = validateInput(voluntarinessText, 'Voluntariness - Minor (English)');
-        if (voluntarinessError) errors.push(voluntarinessError);
+  //       const voluntarinessText = stripHtmlTags(formData.voluntarinessMinorEnglish);
+  //       const voluntarinessError = validateInput(voluntarinessText, 'Voluntariness - Minor (English)');
+  //       if (voluntarinessError) errors.push(voluntarinessError);
         
-        const proceduresText = stripHtmlTags(formData.proceduresMinorEnglish);
-        const proceduresError = validateInput(proceduresText, 'Procedures - Minor (English)');
-        if (proceduresError) errors.push(proceduresError);
+  //       const proceduresText = stripHtmlTags(formData.proceduresMinorEnglish);
+  //       const proceduresError = validateInput(proceduresText, 'Procedures - Minor (English)');
+  //       if (proceduresError) errors.push(proceduresError);
         
-        const risksText = stripHtmlTags(formData.risksMinorEnglish);
-        const risksError = validateInput(risksText, 'Risks - Minor (English)');
-        if (risksError) errors.push(risksError);
+  //       const risksText = stripHtmlTags(formData.risksMinorEnglish);
+  //       const risksError = validateInput(risksText, 'Risks - Minor (English)');
+  //       if (risksError) errors.push(risksError);
         
-        const benefitsText = stripHtmlTags(formData.benefitsMinorEnglish);
-        const benefitsError = validateInput(benefitsText, 'Benefits - Minor (English)');
-        if (benefitsError) errors.push(benefitsError);
+  //       const benefitsText = stripHtmlTags(formData.benefitsMinorEnglish);
+  //       const benefitsError = validateInput(benefitsText, 'Benefits - Minor (English)');
+  //       if (benefitsError) errors.push(benefitsError);
         
-        const confidentialityText = stripHtmlTags(formData.confidentialityMinorEnglish);
-        const confidentialityError = validateInput(confidentialityText, 'Confidentiality - Minor (English)');
-        if (confidentialityError) errors.push(confidentialityError);
+  //       const confidentialityText = stripHtmlTags(formData.confidentialityMinorEnglish);
+  //       const confidentialityError = validateInput(confidentialityText, 'Confidentiality - Minor (English)');
+  //       if (confidentialityError) errors.push(confidentialityError);
         
-        const sharingText = stripHtmlTags(formData.sharingFindingsEnglish);
-        const sharingError = validateInput(sharingText, 'Sharing Findings - Minor (English)');
-        if (sharingError) errors.push(sharingError);
-      }
+  //       const sharingText = stripHtmlTags(formData.sharingFindingsEnglish);
+  //       const sharingError = validateInput(sharingText, 'Sharing Findings - Minor (English)');
+  //       if (sharingError) errors.push(sharingError);
+  //     }
 
-      if (minorLanguage === 'tagalog' || minorLanguage === 'both') {
-        const introText = stripHtmlTags(formData.introductionMinorTagalog);
-        const introError = validateInput(introText, 'Panimula - Minor (Tagalog)');
-        if (introError) errors.push(introError);
+  //     if (minorLanguage === 'tagalog' || minorLanguage === 'both') {
+  //       const introText = stripHtmlTags(formData.introductionMinorTagalog);
+  //       const introError = validateInput(introText, 'Panimula - Minor (Tagalog)');
+  //       if (introError) errors.push(introError);
         
-        const purposeText = stripHtmlTags(formData.purposeMinorTagalog);
-        const purposeError = validateInput(purposeText, 'Layunin - Minor (Tagalog)');
-        if (purposeError) errors.push(purposeError);
+  //       const purposeText = stripHtmlTags(formData.purposeMinorTagalog);
+  //       const purposeError = validateInput(purposeText, 'Layunin - Minor (Tagalog)');
+  //       if (purposeError) errors.push(purposeError);
         
-        const choiceText = stripHtmlTags(formData.choiceOfParticipantsTagalog);
-        const choiceError = validateInput(choiceText, 'Pagpili ng Kalahok - Minor (Tagalog)');
-        if (choiceError) errors.push(choiceError);
+  //       const choiceText = stripHtmlTags(formData.choiceOfParticipantsTagalog);
+  //       const choiceError = validateInput(choiceText, 'Pagpili ng Kalahok - Minor (Tagalog)');
+  //       if (choiceError) errors.push(choiceError);
         
-        const voluntarinessText = stripHtmlTags(formData.voluntarinessMinorTagalog);
-        const voluntarinessError = validateInput(voluntarinessText, 'Kusang-loob - Minor (Tagalog)');
-        if (voluntarinessError) errors.push(voluntarinessError);
+  //       const voluntarinessText = stripHtmlTags(formData.voluntarinessMinorTagalog);
+  //       const voluntarinessError = validateInput(voluntarinessText, 'Kusang-loob - Minor (Tagalog)');
+  //       if (voluntarinessError) errors.push(voluntarinessError);
         
-        const proceduresText = stripHtmlTags(formData.proceduresMinorTagalog);
-        const proceduresError = validateInput(proceduresText, 'Mga Proseso - Minor (Tagalog)');
-        if (proceduresError) errors.push(proceduresError);
+  //       const proceduresText = stripHtmlTags(formData.proceduresMinorTagalog);
+  //       const proceduresError = validateInput(proceduresText, 'Mga Proseso - Minor (Tagalog)');
+  //       if (proceduresError) errors.push(proceduresError);
         
-        const risksText = stripHtmlTags(formData.risksMinorTagalog);
-        const risksError = validateInput(risksText, 'Mga Panganib - Minor (Tagalog)');
-        if (risksError) errors.push(risksError);
+  //       const risksText = stripHtmlTags(formData.risksMinorTagalog);
+  //       const risksError = validateInput(risksText, 'Mga Panganib - Minor (Tagalog)');
+  //       if (risksError) errors.push(risksError);
         
-        const benefitsText = stripHtmlTags(formData.benefitsMinorTagalog);
-        const benefitsError = validateInput(benefitsText, 'Mga Benepisyo - Minor (Tagalog)');
-        if (benefitsError) errors.push(benefitsError);
+  //       const benefitsText = stripHtmlTags(formData.benefitsMinorTagalog);
+  //       const benefitsError = validateInput(benefitsText, 'Mga Benepisyo - Minor (Tagalog)');
+  //       if (benefitsError) errors.push(benefitsError);
         
-        const confidentialityText = stripHtmlTags(formData.confidentialityMinorTagalog);
-        const confidentialityError = validateInput(confidentialityText, 'Kumpidensyal - Minor (Tagalog)');
-        if (confidentialityError) errors.push(confidentialityError);
+  //       const confidentialityText = stripHtmlTags(formData.confidentialityMinorTagalog);
+  //       const confidentialityError = validateInput(confidentialityText, 'Kumpidensyal - Minor (Tagalog)');
+  //       if (confidentialityError) errors.push(confidentialityError);
         
-        const sharingText = stripHtmlTags(formData.sharingFindingsTagalog);
-        const sharingError = validateInput(sharingText, 'Pagbabahagi - Minor (Tagalog)');
-        if (sharingError) errors.push(sharingError);
-      }
-    }
+  //       const sharingText = stripHtmlTags(formData.sharingFindingsTagalog);
+  //       const sharingError = validateInput(sharingText, 'Pagbabahagi - Minor (Tagalog)');
+  //       if (sharingError) errors.push(sharingError);
+  //     }
+  //   }
 
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      setShowErrorModal(true);
-      return false;
-    }
+  //   if (errors.length > 0) {
+  //     setValidationErrors(errors);
+  //     setShowErrorModal(true);
+  //     return false;
+  //   }
 
-    return true;
-  };
+  //   return true;
+  // };
 
  useEffect(() => {
   setIsClient(true);
@@ -503,9 +503,9 @@ export default function Step4InformedConsent() {
   }, [consentType, adultLanguage, minorLanguage, formData, isClient]);
 
   const handleNext = () => {
-    if (!validateForm()) {
-      return;
-    }
+    // if (!validateForm()) {
+    //   return;
+    // }
 
     const dataToSave = {
       consentType,

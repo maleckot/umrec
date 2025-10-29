@@ -8,7 +8,7 @@ import Pagination from '@/components/staff-secretariat-admin/Pagination';
 import { useState, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { getAllSubmissions } from '@/app/actions/secretariat-staff/getAllSubmissions';
+import { getSecretariatSubmissions } from '@/app/actions/secretariat-staff/secretariat/getSecretariatSubmissions';
 
 export default function SecretariatSubmissionsPage() {
   const router = useRouter();
@@ -29,30 +29,30 @@ export default function SecretariatSubmissionsPage() {
   }, [currentPage, searchQuery, sortBy, statusFilter, startDate, endDate]);
 
   const loadSubmissions = async () => {
-    setLoading(true);
-    try {
-      const result = await getAllSubmissions({
-        page: currentPage,
-        limit: itemsPerPage,
-        searchQuery,
-        sortBy,
-        statusFilter: statusFilter === 'All Statuses' ? undefined : statusFilter,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-      });
+  setLoading(true);
+  try {
+    const result = await getSecretariatSubmissions({
+      page: currentPage,
+      limit: itemsPerPage,
+      searchQuery,
+      sortBy,
+      statusFilter: statusFilter === 'All Statuses' ? undefined : statusFilter,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
+    });
 
-      if (result.success) {
-        setSubmissions(result.data || []);
-        setTotalCount(result.total || 0);
-      } else {
-        console.error('Failed to load submissions:', result.error);
-      }
-    } catch (error) {
-      console.error('Error loading submissions:', error);
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      setSubmissions(result.data || []);
+      setTotalCount(result.total || 0);
+    } else {
+      console.error('Failed to load submissions:', result.error);
     }
-  };
+  } catch (error) {
+    console.error('Error loading submissions:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const totalPages = Math.ceil(totalCount / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -141,12 +141,12 @@ export default function SecretariatSubmissionsPage() {
       router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
     } 
     else if (submission.status === 'classified') {
-      router.push(`/secretariatmodule/submissions/classified?id=${submission.id}`);
+        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
     } 
     else if (submission.status === 'under_review') {
       router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
     } 
-    else if (submission.status === 'approved') {
+    else if (submission.status === 'approved' || submission.status === 'review_complete') {
       router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
     } 
     else {
@@ -200,7 +200,6 @@ export default function SecretariatSubmissionsPage() {
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               <option value="All Statuses">All Statuses</option>
-              <option value="new_submission">New Submission</option>
               <option value="awaiting_classification">Under Classification</option>
               <option value="under_review">Under Review</option>
               <option value="review_complete">Review Complete</option>

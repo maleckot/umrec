@@ -181,12 +181,10 @@ const handleAssign = async (selectedReviewers: string[]) => {
   }
   
   try {
-    const result = await assignReviewers(submissionId!, selectedReviewers);
+    const result = await assignReviewers(submissionId!, selectedReviewers, reviewDueDate);
     
     if (result.success) {
-      console.log('Review due date will be:', reviewDueDate);
-      
-      alert(`Successfully assigned ${result.assignmentCount} reviewers!`);
+      alert(`Successfully assigned ${result.assignmentCount} reviewers! Email notifications have been sent.`);
       router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
     } else {
       alert(result.error || 'Failed to assign reviewers');
@@ -196,6 +194,7 @@ const handleAssign = async (selectedReviewers: string[]) => {
     alert('Failed to assign reviewers');
   }
 };
+
 
   const historyEvents = data ? [
     {

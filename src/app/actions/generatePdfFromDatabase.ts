@@ -15,6 +15,48 @@ export type PdfGenerationResult =
     success: false;
     error: string;
   };
+function stripHtmlAndSanitize(text: string): string {
+  if (!text) return '';
+  
+  let cleaned = text
+    // Convert common HTML tags to text equivalents
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<li>/gi, '\n• ')
+    .replace(/<\/li>/gi, '')
+    
+    // Remove all HTML tags
+    .replace(/<[^>]+>/g, '')
+    
+    // Decode HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+    
+    // Replace special characters
+    .replace(/[●○■□]/g, '•')
+    .replace(/[—–]/g, '-')
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/…/g, '...')
+    
+    // Clean whitespace
+    .replace(/  +/g, ' ')
+    .replace(/^ +| +$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    
+    // Remove non-WinAnsi characters
+    .replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, '');
+
+  return cleaned;
+}
 
 export async function generatePdfFromDatabase(submissionId: string): Promise<PdfGenerationResult> {
   try {
@@ -279,7 +321,7 @@ export async function generateApplicationFormPdf(
       if (!text || text.trim() === '') return [];
 
       // ✅ FIX: Handle newlines first
-      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
@@ -621,7 +663,7 @@ export async function generateResearchProtocolPdf(
       if (!text || text.trim() === '') return [];
 
       // ✅ FIX: Handle newlines first
-      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
@@ -804,9 +846,8 @@ export async function generateConsentFormPdf(
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
       if (!text || text.trim() === '') return [];
-
       // ✅ FIX: Handle newlines first
-      const sanitizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 

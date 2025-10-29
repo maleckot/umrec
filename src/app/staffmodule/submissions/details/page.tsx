@@ -16,9 +16,24 @@ import { verifySubmissionDocuments } from '@/app/actions/secretariat-staff/staff
 import { completeVerification } from '@/app/actions/completeVerification';
 import { Suspense } from 'react';
 
+function getDocumentDisplayName(documentType: string): string {
+  const displayNames: { [key: string]: string } = {
+    'application_form': 'Application For Ethics Review',
+    'research_protocol': 'Research Protocol',
+    'consent_form': 'Informed Consent Form',
+    'research_instrument': 'Research Instrument / Questionnaire',
+    'proposal_defense': 'Certificate of Approval / Proposal Defense',
+    'endorsement_letter': 'Endorsement Letter',
+    'consolidated_application': 'Consolidated Application',
+  };
+
+  return displayNames[documentType] || documentType.replace(/_/g, ' ').toUpperCase();
+}
+
 interface DocumentWithVerification {
   id: string;
   name: string;
+  documentType: string;
   isVerified: boolean | null;
   comment: string;
   fileUrl?: string;
@@ -27,8 +42,9 @@ interface DocumentWithVerification {
     comment: string;
   } | null;
 }
+
 function SubmissionVerificationContent() {
- const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -60,10 +76,11 @@ function SubmissionVerificationContent() {
         if (result.documents && result.documents.length > 0) {
           // Filter out consolidated files
           const mappedDocs: DocumentWithVerification[] = result.documents
-            .filter((doc: any) => !doc.name.toLowerCase().includes('consolidated'))
+            .filter((doc: any) => !doc.documentType?.includes('consolidated'))
             .map((doc: any) => ({
               id: doc.id,
               name: doc.name,
+              documentType: doc.documentType,
               isVerified: doc.isVerified,
               comment: doc.comment || '',
               fileUrl: doc.url,
@@ -298,7 +315,7 @@ function SubmissionVerificationContent() {
                 <DocumentVerificationList
                   documents={documents.map((doc, index) => ({
                     id: index,
-                    name: doc.name,
+                    name: getDocumentDisplayName(doc.documentType),
                     isVerified: doc.isVerified,
                     comment: doc.comment,
                     fileUrl: doc.fileUrl,
