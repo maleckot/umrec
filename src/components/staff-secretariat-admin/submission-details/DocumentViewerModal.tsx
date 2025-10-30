@@ -1,8 +1,8 @@
 // components/staff-secretariat-admin/submission-details/DocumentViewerModal.tsx
 'use client';
 
-import { X, Download, ZoomIn, ZoomOut } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { X, Download, ZoomIn, ZoomOut, Search } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 interface DocumentViewerModalProps {
@@ -20,6 +20,11 @@ export default function DocumentViewerModal({
 }: DocumentViewerModalProps) {
   const [zoom, setZoom] = useState(100);
   const [mounted, setMounted] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pdfUrl, setPdfUrl] = useState(documentUrl);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Handle client-side mounting
   useEffect(() => {
@@ -42,17 +47,72 @@ export default function DocumentViewerModal({
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        if (showSearch) {
+          setShowSearch(false);
+          setSearchTerm('');
+        } else {
+          onClose();
+        }
       }
     };
     if (mounted) {
       window.addEventListener('keydown', handleEscape);
       return () => window.removeEventListener('keydown', handleEscape);
     }
-  }, [isOpen, onClose, mounted]);
+  }, [isOpen, onClose, mounted, showSearch]);
+
+  // Ctrl+F / Cmd+F handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f' && isOpen) {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 100);
+      }
+    };
+
+    if (mounted) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, mounted]);
+
+  // Focus search input when opened
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
 
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 25, 50));
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) {
+      setPdfUrl(documentUrl);
+      return;
+    }
+
+    // Use PDF.js URL parameters for search
+    // This works with browser's built-in PDF viewer
+    const url = new URL(documentUrl, window.location.href);
+    const newUrl = `${documentUrl}#search=${encodeURIComponent(searchTerm)}`;
+    setPdfUrl(newUrl);
+    
+    // Reload iframe with search parameter
+    if (iframeRef.current) {
+      iframeRef.current.src = newUrl;
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setPdfUrl(documentUrl);
+    if (iframeRef.current) {
+      iframeRef.current.src = documentUrl;
+    }
+  };
 
   if (!mounted || !isOpen) return null;
 
@@ -116,6 +176,22 @@ export default function DocumentViewerModal({
 
           {/* Controls */}
           <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+            {/* Search Button */}
+            <button
+              onClick={() => {
+                setShowSearch(!showSearch);
+                if (!showSearch) {
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }
+              }}
+              className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
+                showSearch ? 'bg-white/20' : 'hover:bg-white/20'
+              }`}
+              title="Search (Ctrl+F)"
+            >
+              <Search size={18} className="text-white sm:w-5 sm:h-5" />
+            </button>
+
             {/* Desktop Zoom Controls */}
             <div className="hidden md:flex items-center gap-1 bg-white/10 rounded-lg p-1">
               <button
@@ -160,6 +236,57 @@ export default function DocumentViewerModal({
           </div>
         </div>
 
+        {/* Search Bar */}
+        {showSearch && (
+          <div className="bg-[#1a2d70] px-3 sm:px-4 lg:px-6 py-2 sm:py-3 border-b-2 border-white/10">
+            <form onSubmit={handleSearch} className="flex items-center gap-2">
+              <div className="flex-1 relative">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search in document... (Ctrl+F)"
+                  className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 text-sm"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-semibold flex items-center gap-2"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                <Search size={16} />
+                Find
+              </button>
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-semibold"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSearch(false);
+                  handleClearSearch();
+                }}
+                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                title="Close Search"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </form>
+            <p className="text-xs text-white/60 mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Tip: Use Ctrl+F in the PDF viewer for better search experience
+            </p>
+          </div>
+        )}
+
         {/* Document Viewer */}
         <div className="flex-1 bg-gray-900 overflow-hidden relative" style={{ minHeight: 0 }}>
           <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-4">
@@ -174,7 +301,8 @@ export default function DocumentViewerModal({
               }}
             >
               <iframe
-                src={documentUrl}
+                ref={iframeRef}
+                src={pdfUrl}
                 className="w-full h-full border-0"
                 title={documentName}
                 style={{

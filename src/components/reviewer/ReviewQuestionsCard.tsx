@@ -2,6 +2,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 interface OptionType {
   label: string;
@@ -25,6 +26,11 @@ interface ReviewQuestionsCardProps {
   onAnswersChange?: (answers: any) => void;
   isLastProtocolSection?: boolean;
   isLastICFSection?: boolean;
+  currentStep?: number;
+  totalSteps?: number;
+  onBack?: () => void;
+  onNext?: () => void;
+  progressPercentage?: number;
 }
 
 const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
@@ -34,6 +40,11 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
   onAnswersChange,
   isLastProtocolSection = false,
   isLastICFSection = false,
+  currentStep = 0,
+  totalSteps = 1,
+  onBack,
+  onNext,
+  progressPercentage = 0,
 }) => {
   const [answers, setAnswers] = useState<any>({});
 
@@ -73,17 +84,20 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
 
   return (
     <div className="bg-white rounded-2xl p-6 border-2 border-gray-200">
-      <h3 className="text-lg md:text-xl font-bold mb-2" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-        {title}
-      </h3>
+      {/* Header */}
+      <div className="mb-6">
+        <h3 className="text-lg md:text-xl font-bold mb-2" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+          {title}
+        </h3>
+        {subtitle && (
+          <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {subtitle}
+          </p>
+        )}
+      </div>
 
-      {subtitle && (
-        <p className="text-sm text-gray-600 mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          {subtitle}
-        </p>
-      )}
-
-      <div className="space-y-6">
+      {/* Questions - No scrolling, expands naturally */}
+      <div className="space-y-6 mb-6">
         {questions.map((question, index) => {
           if (!shouldShowQuestion(question)) {
             return null;
@@ -152,10 +166,9 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
           );
         })}
 
-        {/* ✅ Protocol Summary Section - ORIGINAL DESIGN */}
+        {/* Protocol Summary Section */}
         {isLastProtocolSection && (
           <div className="space-y-6 mt-6">
-            {/* Recommendation Radio Buttons - styled like regular questions */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Recommendation <span className="text-red-600 ml-1">*</span>
@@ -183,7 +196,6 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             </div>
 
-            {/* Disapproval Reasons */}
             {answers.protocol_recommendation === 'Disapproved' && (
               <div>
                 <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -201,7 +213,6 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             )}
 
-            {/* Ethics Review Recommendation */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Ethics Review Recommendation <span className="text-red-600 ml-1">*</span>
@@ -217,7 +228,6 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               />
             </div>
 
-            {/* Technical Suggestions */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Technical Suggestions
@@ -234,10 +244,9 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
           </div>
         )}
 
-        {/* ✅ ICF Summary Section - ORIGINAL DESIGN */}
+        {/* ICF Summary Section */}
         {isLastICFSection && (
           <div className="space-y-6 mt-6">
-            {/* Same structure as Protocol above, but with icf_ prefix */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Recommendation <span className="text-red-600 ml-1">*</span>
@@ -312,7 +321,70 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
             </div>
           </div>
         )}
+      </div>
 
+      {/* Navigation Buttons - Attached at bottom */}
+      <div className="border-t-2 border-gray-200 pt-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
+          <button
+            onClick={onBack}
+            className="flex-1 sm:flex-none px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            Back
+          </button>
+          <button
+            onClick={onNext}
+            className="flex-1 px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            {currentStep < totalSteps - 1 ? (
+              <>
+                Next
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                Submit Review
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Step Info */}
+        <div className="mb-4 pb-4 border-b border-gray-200">
+          <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            <span className="font-medium">
+              {currentStep === 0 ? 'First Step' : currentStep === totalSteps - 1 ? 'Final Step' : `Step ${currentStep + 1}`}
+            </span>
+            <span className="font-semibold text-[#101C50]">
+              {Math.round(progressPercentage)}% Complete
+            </span>
+          </div>
+        </div>
+
+        {/* Helper Info */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-4 border border-blue-200/50">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs sm:text-sm font-bold text-blue-900 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Review Tip
+              </p>
+              <p className="text-xs sm:text-sm text-blue-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {currentStep === totalSteps - 1 
+                  ? 'This is the final section. Review your answers before submitting.'
+                  : 'Answer all questions in this section to proceed to the next step.'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

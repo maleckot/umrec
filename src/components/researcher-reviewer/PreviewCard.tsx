@@ -27,11 +27,11 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ fileUrl, filename }) => {
         Preview
       </h3>
 
-      <div className="relative w-full bg-gray-200 rounded-xl overflow-hidden" style={{ minHeight: '500px' }}>
+      <div className="relative w-full bg-gray-200 rounded-xl overflow-hidden" style={{ height: '1000px' }}>
         {fileUrl ? (
           <>
             {loading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-200">
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-200 z-10">
                 <div className="flex flex-col items-center gap-3">
                   <div className="w-12 h-12 border-4 border-[#101C50] border-t-transparent rounded-full animate-spin"></div>
                   <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -61,8 +61,8 @@ const PreviewCard: React.FC<PreviewCardProps> = ({ fileUrl, filename }) => {
             ) : (
               <iframe
                 src={`${fileUrl}#view=FitH`}
-                className="w-full h-full"
-                style={{ minHeight: '1000px', border: 'none' }}
+                className="w-full h-full absolute inset-0"
+                style={{ border: 'none' }}
                 title={filename || 'File Preview'}
                 onLoad={handleLoad}
                 onError={handleError}
