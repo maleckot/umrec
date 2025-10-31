@@ -8,6 +8,7 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, FileText, AlertCircle, X, Plus, User, PenTool, Users, MessageSquare } from 'lucide-react';
 import RichTextEditor from '@/components/researcher/submission/RichTextEditor';
 import { FileUpload } from '@/components/researcher/submission/FormComponents';
+import { saveStep3Data } from '@/app/actions/lib/saveStep3';
 
 // Custom Error Modal Component
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: string[] }> = ({ isOpen, onClose, errors }) => {
@@ -143,63 +144,169 @@ export default function RevisionStep3() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorList, setErrorList] = useState<string[]>([]);
   const [revisionComments] = useState('Please expand the introduction section to provide more context about your research. Also ensure all methodology sections are clearly detailed with specific procedures.');
+  // ✅ FETCH RESEARCH PROTOCOL DATA + IMAGES + RESEARCHER SIGNATURES
+  useEffect(() => {
+    const fetchResearchProtocol = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const submissionId = searchParams.get('id');
 
+      if (!submissionId) return;
+
+      try {
+        const { createClient } = await import('@/utils/supabase/client');
+        const supabase = createClient();
+
+        // ✅ Fetch from research_protocols table
+        const { data: protocolData, error } = await supabase
+          .from('research_protocols')
+          .select('*')
+          .eq('submission_id', submissionId)
+          .single();
+
+        if (error) {
+          console.warn('Research protocol not found:', error.message);
+          return;
+        }
+
+        if (protocolData) {
+          console.log('📋 Loaded research protocol data:', protocolData);
+
+          const replaceImagePathsWithSignedUrls = async (htmlContent: string) => {
+            if (!htmlContent) return htmlContent;
+
+            let modifiedContent = htmlContent;
+            const pathRegex = /(?:src|href)=["']([a-f0-9\-]+\/protocol-images\/[^"']+)["']/g;
+
+            const matches = Array.from(htmlContent.matchAll(pathRegex));
+            console.log(`🔄 Fixing ${matches.length} storage paths to signed URLs`);
+
+            for (const match of matches) {
+              const storagePath = match[1];
+              try {
+                const { data: urlData } = await supabase.storage
+                  .from('research-documents')
+                  .createSignedUrl(storagePath, 3600);
+
+                if (urlData?.signedUrl) {
+                  modifiedContent = modifiedContent.replace(storagePath, urlData.signedUrl);
+                }
+              } catch (err) {
+                console.warn('Failed to sign URL:', storagePath);
+              }
+            }
+
+            return modifiedContent;
+          };
+
+          // ✅ Replace all image paths with signed URLs
+          const introduction = await replaceImagePathsWithSignedUrls(protocolData.introduction);
+          const background = await replaceImagePathsWithSignedUrls(protocolData.background);
+          const problemStatement = await replaceImagePathsWithSignedUrls(protocolData.problem_statement);
+          const scopeDelimitation = await replaceImagePathsWithSignedUrls(protocolData.scope_delimitation);
+          const literatureReview = await replaceImagePathsWithSignedUrls(protocolData.literature_review);
+          const methodology = await replaceImagePathsWithSignedUrls(protocolData.methodology);
+          const population = await replaceImagePathsWithSignedUrls(protocolData.population);
+          const samplingTechnique = await replaceImagePathsWithSignedUrls(protocolData.sampling_technique);
+          const researchInstrument = await replaceImagePathsWithSignedUrls(protocolData.research_instrument);
+          const statisticalTreatment = await replaceImagePathsWithSignedUrls(protocolData.statistical_treatment);
+
+          const references = await replaceImagePathsWithSignedUrls(protocolData.research_references);
+
+          console.log('📚 References loaded:', references);
+
+          setFormData(prev => ({
+            ...prev,
+            title: protocolData.title || prev.title,
+            introduction,
+            background,
+            problemStatement,
+            scopeDelimitation,
+            literatureReview,
+            methodology,
+            population,
+            samplingTechnique,
+            researchInstrument,
+            ethicalConsideration: protocolData.ethical_consideration || '',
+            statisticalTreatment,
+            references,
+          }));
+
+          if (protocolData.researchers && Array.isArray(protocolData.researchers)) {
+            const researchersWithSignatures = await Promise.all(
+              protocolData.researchers.map(async (r: any) => {
+                let displaySignature = null;
+
+                // ✅ Try to create signed URL from path
+                if (r.signaturePath && typeof r.signaturePath === 'string') {
+                  try {
+                    const { data: urlData } = await supabase.storage
+                      .from('research-documents')
+                      .createSignedUrl(r.signaturePath, 3600);
+                    displaySignature = urlData?.signedUrl || null;
+                    console.log(`✅ Created signed URL for ${r.name}`);
+                  } catch (err) {
+                    console.warn('Failed to create signed URL:', err);
+                    displaySignature = r.signatureBase64 || null;
+                  }
+                } else if (r.signatureBase64) {
+                  // Fallback to base64
+                  displaySignature = r.signatureBase64;
+                }
+
+                return {
+                  id: r.id || crypto.randomUUID(),
+                  name: r.name || '',
+                  signature: displaySignature,  // ✅ Set the SIGNED URL!
+                  signaturePath: r.signaturePath,
+                  signatureBase64: r.signatureBase64
+                };
+              })
+            );
+
+            console.log('👥 Researchers loaded:', researchersWithSignatures);
+            setResearchers(researchersWithSignatures);
+            isInitialMount.current = false;  // ✅ Mark as loaded
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching research protocol:', error);
+      }
+    };
+
+    if (isInitialMount.current) {
+      fetchResearchProtocol();
+    }
+  }, []);
   // Load saved data on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('revisionStep3Data');
-      if (saved) {
+
+      // Only load from localStorage if it's a FRESH visit (not fetched from DB)
+      if (saved && isInitialMount.current) {
         try {
           const parsedData = JSON.parse(saved);
-          if (parsedData.formData) {
-            setFormData({
-              title: parsedData.formData.title || '',
-              introduction: parsedData.formData.introduction || '',
-              background: parsedData.formData.background || '',
-              problemStatement: parsedData.formData.problemStatement || '',
-              scopeDelimitation: parsedData.formData.scopeDelimitation || '',
-              literatureReview: parsedData.formData.literatureReview || '',
-              methodology: parsedData.formData.methodology || '',
-              population: parsedData.formData.population || '',
-              samplingTechnique: parsedData.samplingTechnique || '',
-              researchInstrument: parsedData.formData.researchInstrument || '',
-              ethicalConsideration: parsedData.formData.ethicalConsideration || '',
-              statisticalTreatment: parsedData.formData.statisticalTreatment || '',
-              references: parsedData.formData.references || '',
-            });
-          }
-          if (parsedData.researchers && Array.isArray(parsedData.researchers)) {
-            setResearchers(parsedData.researchers.map((r: any) => ({
-              id: r.id || '1',
-              name: r.name || '',
-              signature: null
-            })));
+          if (parsedData.formData && Object.keys(parsedData.formData).length > 0) {
+            setFormData({ ...parsedData.formData });
+
+            if (parsedData.researchers && Array.isArray(parsedData.researchers)) {
+              setResearchers(parsedData.researchers.map((r: any) => ({
+                id: r.id || '1',
+                name: r.name || '',
+                signature: r.signature || null,
+                signaturePath: r.signaturePath || null,
+                signatureBase64: r.signatureBase64 || null // ✅ Also keep in localStorage
+              })));
+            }
           }
         } catch (error) {
           console.error('Error loading saved data:', error);
-        }
-      } else {
-        const step1 = localStorage.getItem('revisionStep1Data');
-        if (step1) {
-          try {
-            const step1Data = JSON.parse(step1);
-            setFormData(prev => ({
-              ...prev,
-              title: step1Data.title || ''
-            }));
-
-            const fullName = `${step1Data.projectLeaderFirstName || ''} ${step1Data.projectLeaderMiddleName || ''} ${step1Data.projectLeaderLastName || ''}`.trim();
-            if (fullName) {
-              setResearchers([{ id: '1', name: fullName, signature: null }]);
-            }
-          } catch (error) {
-            console.error('Error loading step1 data:', error);
-          }
         }
       }
     }
     isInitialMount.current = false;
   }, []);
+
 
   // Auto-save on data change
   useEffect(() => {
@@ -263,7 +370,7 @@ export default function RevisionStep3() {
     return tmp.textContent || tmp.innerText || '';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newErrors: Record<string, string> = {};
@@ -434,20 +541,97 @@ export default function RevisionStep3() {
       return;
     }
 
-    // Clear errors and save
+    // ✅ All validations passed - clear errors
     setErrors({});
-    const dataToSave = {
-      formData,
-      researchers: researchers.map(r => ({ id: r.id, name: r.name, signature: null }))
-    };
-    localStorage.setItem('revisionStep3Data', JSON.stringify(dataToSave));
 
-    alert('Changes saved successfully!');
-    router.push('/researchermodule/submissions');
+    try {
+      const submissionId = new URLSearchParams(window.location.search).get('id') || '';
+
+      if (!submissionId) {
+        alert('❌ Error: No submission ID found');
+        return;
+      }
+
+      // ✅ UPLOAD SIGNATURES TO STORAGE (matching getSubmissionActivity pattern)
+      const { createClient } = await import('@/utils/supabase/client');
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert('❌ User not authenticated');
+        return;
+      }
+
+      const uploadedResearchers = await Promise.all(
+        researchers.map(async (r) => {
+          // If signature is a File (new upload), save it to storage
+          if (r.signature instanceof File) {
+            const fileName = `${r.id}-${Date.now()}-signature`;
+            const { data, error } = await supabase.storage
+              .from('research-documents')
+              .upload(`signatures/${submissionId}/${fileName}`, r.signature);
+
+            if (error) {
+              console.error('Signature upload error:', error);
+              return { ...r, signature: r.signature }; // Keep old if fails
+            }
+
+            console.log('✅ Signature uploaded to:', data.path);
+            // ✅ Store as PATH (like getSubmissionActivity), not base64
+            return {
+              ...r,
+              signature: data.path
+            };
+          } else if (typeof r.signature === 'string') {
+            // Already a path or URL - keep as is
+            return r;
+          } else {
+            // null or undefined
+            return r;
+          }
+        })
+      );
+
+      console.log('✅ Researchers with signatures:', uploadedResearchers);
+
+      // ✅ Call saveStep3Data with uploaded signatures (paths only)
+      const result = await saveStep3Data({
+        submissionId,
+        formData: {
+          title: formData.title,
+          introduction: formData.introduction,
+          background: formData.background,
+          problemStatement: formData.problemStatement,
+          scopeDelimitation: formData.scopeDelimitation,
+          literatureReview: formData.literatureReview,
+          methodology: formData.methodology,
+          population: formData.population,
+          samplingTechnique: formData.samplingTechnique,
+          researchInstrument: formData.researchInstrument,
+          ethicalConsideration: formData.ethicalConsideration,
+          statisticalTreatment: formData.statisticalTreatment,
+          references: formData.references,
+        },
+        researchers: uploadedResearchers // ✅ Paths only
+      });
+
+      if (result.success) {
+        console.log('✅ Step 3 saved successfully!');
+        alert('✅ Changes saved successfully!');
+        router.push('/researchermodule');
+      } else {
+        console.error('❌ Save failed:', result.error);
+        alert('❌ Failed to save: ' + result.error);
+      }
+    } catch (error) {
+      console.error('❌ Error saving:', error);
+      alert('❌ Error saving to database');
+    }
   };
 
+
   const handleBack = () => {
-    router.push('/researchermodule/submissions');
+    router.push('/researchermodule');
   };
 
   const addResearcher = () => {
@@ -586,8 +770,8 @@ export default function RevisionStep3() {
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title
-                      ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                      : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
                     }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   placeholder="Enter your research title"
@@ -1041,8 +1225,8 @@ export default function RevisionStep3() {
                             onChange={(e) => updateResearcher(researcher.id, 'name', e.target.value)}
                             placeholder="Enter full name"
                             className={`w-full px-4 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors[`researcher_name_${researcher.id}`]
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
-                                : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
+                              ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20'
+                              : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
                               }`}
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                             required
@@ -1069,22 +1253,39 @@ export default function RevisionStep3() {
                           <p className="text-xs sm:text-sm text-gray-600 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                             Upload a scanned copy or digital signature (PNG, JPG, or PDF format, max 5MB)
                           </p>
+
+                          {/* ✅ Just pass the value - FileUpload handles everything! */}
                           <div className={errors[`researcher_signature_${researcher.id}`] ? 'border-2 border-red-500 rounded-xl p-2' : ''}>
                             <FileUpload
                               label=""
-                              value={researcher.signature}
+                              value={researcher.signature}  // Pass existing signature
                               onChange={(file) => updateResearcher(researcher.id, 'signature', file)}
                               accept="image/*,.pdf"
                               helperText=""
                               required
                             />
                           </div>
+
+                          {researcher.signature &&
+                            typeof researcher.signature === 'string' &&
+                            !String(researcher.signature).startsWith('data:') &&
+                            !String(researcher.signature).startsWith('data:') && (
+                              <div className="mt-3 p-3 bg-emerald-50 border border-emerald-300 rounded-lg flex items-center gap-2">
+                                <svg className="w-5 h-5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                <span className="text-emerald-700 font-medium text-sm">✓ Signature loaded from database</span>
+                              </div>
+                            )}
+
                           {errors[`researcher_signature_${researcher.id}`] && (
                             <p className="text-red-500 text-sm mt-2 flex items-center gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                               <AlertCircle size={16} /> {errors[`researcher_signature_${researcher.id}`]}
                             </p>
                           )}
+
                         </div>
+
                       </div>
                     </div>
                   ))}
@@ -1107,7 +1308,8 @@ export default function RevisionStep3() {
                     Save Changes
                   </span>
                 </button>
-              </div>              </form>
+              </div>
+            </form>
           </div>
         </div>
       </div>

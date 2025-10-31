@@ -304,8 +304,8 @@ function ActivityDetailsContent() {
                 </div>
               )}
 
-              {/* UNIFIED Revision Card - Shows only latest comment (deduplicated) */}
-              {(selectedDocument?.needsRevision || comments.length > 0) && (
+              {/* UNIFIED Revision Card - Shows ONLY for specific document that needs revision */}
+              {selectedDocument?.isApproved === false && (
                 <div className="bg-white rounded-xl p-6 border-2 border-red-200">
                   <div className="flex items-center gap-2 mb-4">
                     <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -326,8 +326,8 @@ function ActivityDetailsContent() {
                     Please review the feedback below and update the documents mentioned
                   </p>
 
-                  {/* Show only the LATEST comment (deduplicated) */}
-                  {comments.length > 0 && (
+                  {/* Show ONLY THIS DOCUMENT'S comment */}
+                  {selectedDocument?.revisionComment && (
                     <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -343,18 +343,12 @@ function ActivityDetailsContent() {
                             >
                               UMREC Review Committee
                             </p>
-                            <p 
-                              className="text-xs text-gray-500" 
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              {formatCommentDate(comments[0].createdAt)}
-                            </p>
                           </div>
                           <p 
                             className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium" 
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
-                            {comments[0].commentText}
+                            {selectedDocument.revisionComment}
                           </p>
                         </div>
                       </div>
@@ -370,10 +364,11 @@ function ActivityDetailsContent() {
                 </div>
               )}
 
-              {/* Show resubmit button if ANY document needs revision OR there are comments */}
-              {(documents.some(doc => doc.needsRevision) || comments.length > 0) && (
+              {/* Show resubmit button ONLY if this specific document needs revision */}
+              {selectedDocument?.needsRevision && (
                 <ResubmitButton onClick={handleResubmit} />
               )}
+
             </div>
           </div>
         </div>

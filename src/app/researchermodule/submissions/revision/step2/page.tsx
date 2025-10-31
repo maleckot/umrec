@@ -1,4 +1,5 @@
 // app/researchermodule/submissions/revision/step2/page.tsx
+
 'use client';
 
 import { useState, useEffect, useRef, Suspense } from 'react';
@@ -7,6 +8,43 @@ import { createClient } from '@/utils/supabase/client';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, User, Mail, Phone, Users, Building, AlertCircle, X, Info, Plus, Trash2, Calendar, FileText, CheckSquare, MessageSquare } from 'lucide-react';
+import { handleRevisionSubmit } from '@/app/actions/lib/saveStep2';
+
+
+const typeOfStudyMap: Record<string, string> = {
+  'genetic': 'genetic',
+  'stem_cell': 'stem_cell',
+  'biomedical': 'biomedical',
+  'public_health': 'public_health',
+  'social_behavioral': 'social_behavioral',
+  'health_operations': 'health_operations',
+  'clinical_trial_researcher': 'clinical_trial_researcher',
+  'clinical_trial_sponsored': 'clinical_trial_sponsored',
+  'others': 'others',
+};
+
+const sourceOfFundingMap: Record<string, string> = {
+  'self_funded': 'self_funded',
+  'government': 'government',
+  'scholarship': 'scholarship',
+  'institution': 'institution',
+  'pharmaceutical': 'pharmaceutical',
+  'others': 'others',
+};
+
+// ✅ Helper function
+const mapStoredValuesToOptions = (storedValue: any, mapObject: Record<string, string>) => {
+  if (!storedValue) return [];
+  if (Array.isArray(storedValue)) {
+    return storedValue.map(v => mapObject[v] || v).filter(Boolean);
+  }
+  if (typeof storedValue === 'string') {
+    return [mapObject[storedValue] || storedValue].filter(Boolean);
+  }
+  return [];
+};
+
+
 
 // Custom Error Modal Component
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: string[] }> = ({ isOpen, onClose, errors }) => {
@@ -146,6 +184,51 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
     </div>
   );
 };
+interface FormDataType {
+  title: string;
+  studySiteType: string;
+  studySite: string;
+  researcherFirstName: string;
+  researcherMiddleName: string;
+  researcherLastName: string;
+  project_leader_email: string;
+  faxNo: string;
+  telNo: string;
+  project_leader_contact: string;
+  college: string;
+  institution: string;
+  institutionAddress: string;
+  typeOfStudy: string[];
+  typeOfStudyOthers: string;
+  sourceOfFunding: string[];
+  pharmaceuticalSponsor: string;
+  fundingOthers: string;
+  startDate: string;
+  endDate: string;
+  numParticipants: string;
+  technicalReview: string;
+  submittedToOther: string;
+  hasApplicationForm: boolean;
+  hasResearchProtocol: boolean;
+  hasInformedConsent: boolean;
+  hasInformedConsentOthers: boolean;
+  informedConsentOthers: string;
+  hasAssentForm: boolean;
+  hasAssentFormOthers: boolean;
+  assentFormOthers: string;
+  hasEndorsementLetter: boolean;
+  hasQuestionnaire: boolean;
+  hasTechnicalReview: boolean;
+  hasDataCollectionForms: boolean;
+  hasProductBrochure: boolean;
+  hasFDAAuthorization: boolean;
+  hasCompanyPermit: boolean;
+  hasSpecialPopulationPermit: boolean;
+  specialPopulationPermitDetails: string;
+  hasOtherDocs: boolean;
+  otherDocsDetails: string;
+  technicalReviewFile: File | { name: string; url: string; size?: number } | null; // ✅ Add this
+}
 interface DocumentChecklist {
   hasApplicationForm?: boolean;
   hasResearchProtocol?: boolean;
@@ -177,7 +260,8 @@ function RevisionStep2Content() {
   const [isClient, setIsClient] = useState(false);
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
-  const [formData, setFormData] = useState({
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState<FormDataType>({
     // Research Information
     title: '',
     studySiteType: '',
@@ -296,99 +380,105 @@ function RevisionStep2Content() {
     return null;
   };
 
-  useEffect(() => {
-    if (!submissionId) {
-      alert('No submission ID found');
-      router.push('/researchermodule/submissions');
-      return;
-    }
+useEffect(() => {
+  if (!submissionId) {
+    alert('No submission ID found');
+    router.push('/researchermodule/submissions');
+    return;
+  }
 
-    const fetchSubmissionData = async () => {
-      const supabase = createClient();
+  const fetchSubmissionData = async () => {
+    const supabase = createClient();
 
-      try {
-        // Fetch from research_submissions
-        const { data, error } = await supabase
-          .from('research_submissions')
+    try {
+      const { data, error } = await supabase
+        .from('research_submissions')
+        .select('*')
+        .eq('id', submissionId)
+        .single();
+
+      if (error) throw error;
+
+      // ✅ Fetch technical review file
+      const { data: technicalReviewDoc } = await supabase
+        .from('uploaded_documents')
+        .select('file_url, file_name, file_size')
+        .eq('submission_id', submissionId)
+        .eq('document_type', 'technical_review')
+        .single();
+
+      let institutionAddressFromForm = '';
+      let studySiteTypeFromForm = '';
+      let collegeFromForm = '';
+      let numParticipantsFromForm = '';
+      let technicalReviewFromForm = '';
+      let documentChecklist: DocumentChecklist = {};
+
+      // ✅ FETCH FROM application_forms for typeOfStudy and sourceOfFunding
+      if (data) {
+        const { data: appFormData, error: appFormError } = await supabase
+          .from('application_forms')
           .select('*')
-          .eq('id', submissionId)
+          .eq('submission_id', submissionId)
           .single();
 
-        if (error) throw error;
+        if (!appFormError && appFormData) {
+          institutionAddressFromForm = appFormData.institution_address || '';
+          studySiteTypeFromForm = appFormData.study_site_type || '';
+          collegeFromForm = appFormData.college || '';
+          numParticipantsFromForm = String(appFormData.num_participants || '');
+          technicalReviewFromForm = (appFormData.technical_review || 'no').toLowerCase();
+          documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
 
-        // ✅ Fetch from application_forms with proper typing
-        let institutionAddressFromForm = '';
-        let studySiteTypeFromForm = ''; // ✅ ADD THIS
-        let documentChecklist: DocumentChecklist = {};
-
-        if (data) {
-          const { data: appFormData, error: appFormError } = await supabase
-            .from('application_forms')
-            .select('institution_address, study_site_type, document_checklist, co_researcher, technical_advisers') // ✅ ADD study_site_type
-            .eq('submission_id', submissionId)
-            .single();
-
-          if (!appFormError && appFormData) {
-            institutionAddressFromForm = appFormData.institution_address || '';
-            studySiteTypeFromForm = appFormData.study_site_type || ''; // ✅ ADD THIS
-            documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
-
-            console.log('📋 Document Checklist from application_forms:', documentChecklist);
-            console.log('🏢 Study Site Type from application_forms:', studySiteTypeFromForm); // ✅ ADD THIS LOG
-
-            // Load co-researchers from application_forms
-            if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
-              setCoResearchers(
-                appFormData.co_researcher.map((co: any) => ({
-                  name: co.name || '',
-                  contact: co.contact || '',
-                  email: co.email || '',
-                }))
-              );
-            }
-
-            // Load technical advisers from application_forms
-            if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
-              setTechnicalAdvisers(
-                appFormData.technical_advisers.map((ad: any) => ({
-                  name: ad.name || '',
-                  contact: ad.contact || '',
-                  email: ad.email || '',
-                }))
-              );
-            }
+          if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
+            setCoResearchers(
+              appFormData.co_researcher.map((co: any) => ({
+                name: co.fullName || co.name || '',
+                contact: co.contactNumber || co.contact || '',
+                email: co.emailAddress || co.email || '',
+              }))
+            );
           }
-        }
 
-        if (data) {
-          console.log('📊 Fetched from research_submissions:', data);
+          if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
+            setTechnicalAdvisers(
+              appFormData.technical_advisers.map((ad: any) => ({
+                name: ad.fullName || ad.name || '',
+                contact: ad.contactNumber || ad.contact || '',
+                email: ad.emailAddress || ad.email || '',
+              }))
+            );
+          }
 
-          setFormData({
+          // ✅ Map from application_forms
+          console.log('📊 From application_forms - type_of_study:', appFormData.type_of_study);
+          console.log('📊 From application_forms - source_of_funding:', appFormData.source_of_funding);
+
+          setFormData((prev) => ({
+            ...prev,
             title: data.title || '',
-            studySiteType: studySiteTypeFromForm || data.study_site_type || '', // ✅ CHANGE THIS - prioritize application_forms
-            studySite: data.study_site || '',
-            researcherFirstName: data.project_leader_first_name || '',
-            researcherMiddleName: data.project_leader_middle_name || '',
-            researcherLastName: data.project_leader_last_name || '',
-            project_leader_email: data.project_leader_email || '',
-            faxNo: data.fax_no || 'N/A',
-            telNo: data.tel_no || '',
-            project_leader_contact: data.project_leader_contact || '',
-            college: data.college || '',
-            institution: data.institution || 'University of Makati',
+            studySiteType: studySiteTypeFromForm,
+            studySite: appFormData.study_site || '',
+            researcherFirstName: appFormData.researcher_first_name || '',
+            researcherMiddleName: appFormData.researcher_middle_name || '',
+            researcherLastName: appFormData.researcher_last_name || '',
+            project_leader_email: appFormData.contact_info?.email || '',
+            faxNo: appFormData.contact_info?.fax_no || 'N/A',
+            telNo: appFormData.contact_info?.tel_no || '',
+            project_leader_contact: appFormData.contact_info?.mobile_no || '',
+            college: collegeFromForm,
+            institution: appFormData.institution || 'University of Makati',
             institutionAddress: institutionAddressFromForm,
-            typeOfStudy: Array.isArray(data.type_of_study) ? data.type_of_study : [],
-            typeOfStudyOthers: data.type_of_study_others || '',
-            sourceOfFunding: Array.isArray(data.source_of_funding) ? data.source_of_funding : [],
-            pharmaceuticalSponsor: data.pharmaceutical_sponsor || '',
-            fundingOthers: data.funding_others || '',
-            startDate: data.start_date || '',
-            endDate: data.end_date || '',
-            numParticipants: data.num_participants || '',
-            technicalReview: data.technical_review || '',
-            submittedToOther: data.submitted_to_other_umrec || '',
-
-            // ✅ Load checkboxes from document_checklist JSON
+            typeOfStudy: mapStoredValuesToOptions(appFormData.type_of_study, typeOfStudyMap) || [],
+            typeOfStudyOthers: appFormData.type_of_study_others || '',
+            sourceOfFunding: mapStoredValuesToOptions(appFormData.source_of_funding, sourceOfFundingMap) || [],
+            pharmaceuticalSponsor: appFormData.pharmaceutical_sponsor || '',
+            fundingOthers: appFormData.funding_others || '',
+            startDate: appFormData.study_duration?.start_date || '',
+            endDate: appFormData.study_duration?.end_date || '',
+            numParticipants: numParticipantsFromForm,
+            technicalReview: technicalReviewFromForm,
+            submittedToOther: appFormData.submitted_to_other || '',
             hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
             hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
             hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
@@ -408,296 +498,142 @@ function RevisionStep2Content() {
             specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
             hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
             otherDocsDetails: documentChecklist.otherDocsDetails || '',
-
-            technicalReviewFile: null,
-          });
-
-          console.log('✅ FormData set successfully');
-
-          // Load revision comments
-          const commentsResult = await supabase
-            .from('submission_comments')
-            .select('comment_text')
-            .eq('submission_id', submissionId)
-            .order('created_at', { ascending: false })
-            .limit(1);
-
-          if (commentsResult.data && commentsResult.data.length > 0) {
-            setRevisionComments(commentsResult.data[0].comment_text);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching submission data:', error);
-        alert('Failed to load submission data');
-      } finally {
-        setLoading(false);
-        setIsClient(true);
-        isInitialMount.current = false;
-      }
-    };
-
-    fetchSubmissionData();
-  }, [submissionId, router]);
-
-
-
-
-
-  useEffect(() => {
-    if (isInitialMount.current || !isClient) return;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      const dataToSave = { ...formData };
-      delete (dataToSave as any).technicalReviewFile;
-      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
-      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
-      console.log('💾 Revision Step 2 auto-saved');
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [formData, coResearchers, technicalAdvisers, isClient]);
-
-
-
-  useEffect(() => {
-    if (isInitialMount.current || !isClient) return;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      const dataToSave = { ...formData };
-      delete (dataToSave as any).technicalReviewFile;
-      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
-      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
-      console.log('💾 Revision Step 2 auto-saved');
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [formData, coResearchers, technicalAdvisers, isClient]);
-
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const newErrors: Record<string, string> = {};
-
-    // ✅ Validation
-    const titleError = validateInput(formData.title, 'Title');
-    if (titleError) newErrors.title = titleError;
-
-    const firstNameError = validateInput(formData.researcherFirstName, 'First Name');
-    if (firstNameError) newErrors.researcherFirstName = firstNameError;
-
-    const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
-    if (lastNameError) newErrors.researcherLastName = lastNameError;
-
-    const emailError = validateInput(formData.project_leader_email, 'Email');
-    if (emailError) newErrors.email = emailError;
-
-    const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
-    if (mobileError) newErrors.mobileNo = mobileError;
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      setErrorList(Object.values(newErrors));
-      setShowErrorModal(true);
-      const firstErrorField = Object.keys(newErrors)[0];
-      const element = document.getElementById(firstErrorField);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-      return;
-    }
-
-    const supabase = createClient();
-
-    try {
-      // ✅ 1. Handle Technical Review File Upload (if new file selected)
-      let technicalReviewPath = null;
-      if (formData.technicalReviewFile) {
-        const fileExtension = formData.technicalReviewFile.name.split('.').pop();
-        technicalReviewPath = `submissions/${submissionId}/technical_review.${fileExtension}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('research-documents')
-          .upload(technicalReviewPath, formData.technicalReviewFile, {
-            upsert: true,
-            contentType: formData.technicalReviewFile.type
-          });
-
-        if (uploadError) {
-          throw new Error(`Failed to upload technical review: ${uploadError.message}`);
+            technicalReviewFile: technicalReviewDoc
+              ? {
+                  name: technicalReviewDoc.file_name,
+                  url: technicalReviewDoc.file_url,
+                  size: technicalReviewDoc.file_size,
+                }
+              : null,
+          }));
         }
       }
-
-      // ✅ 2. Update `application_forms` table with document_checklist
-      const applicationFormsUpdate: any = {
-        study_site: formData.studySite,
-        researcher_first_name: formData.researcherFirstName,
-        researcher_middle_name: formData.researcherMiddleName,
-        researcher_last_name: formData.researcherLastName,
-        contact_info: {
-          email: formData.project_leader_email,
-          mobile_no: formData.project_leader_contact,
-          tel_no: formData.telNo,
-          fax_no: formData.faxNo,
-        },
-        co_researcher: coResearchers,
-        technical_advisers: technicalAdvisers, // ✅ Don't forget technical advisers
-        college: formData.college,
-        institution: formData.institution,
-        institution_address: formData.institutionAddress,
-        type_of_study: formData.typeOfStudy,
-        type_of_study_others: formData.typeOfStudyOthers,
-        study_site_type: formData.studySiteType,
-        source_of_funding: formData.sourceOfFunding,
-        pharmaceutical_sponsor: formData.pharmaceuticalSponsor,
-        funding_others: formData.fundingOthers,
-        study_duration: {
-          start_date: formData.startDate,
-          end_date: formData.endDate,
-        },
-        num_participants: parseInt(formData.numParticipants) || 0,
-        technical_review: formData.technicalReview,
-        submitted_to_other: formData.submittedToOther,
-
-        // ✅ Save all checkbox states to document_checklist JSONB column
-        document_checklist: {
-          hasApplicationForm: formData.hasApplicationForm,
-          hasResearchProtocol: formData.hasResearchProtocol,
-          hasInformedConsent: formData.hasInformedConsent,
-          hasInformedConsentOthers: formData.hasInformedConsentOthers,
-          informedConsentOthers: formData.informedConsentOthers,
-          hasAssentForm: formData.hasAssentForm,
-          hasAssentFormOthers: formData.hasAssentFormOthers,
-          assentFormOthers: formData.assentFormOthers,
-          hasEndorsementLetter: formData.hasEndorsementLetter,
-          hasQuestionnaire: formData.hasQuestionnaire,
-          hasTechnicalReview: formData.hasTechnicalReview,
-          hasDataCollectionForms: formData.hasDataCollectionForms,
-          hasProductBrochure: formData.hasProductBrochure,
-          hasFDAAuthorization: formData.hasFDAAuthorization,
-          hasCompanyPermit: formData.hasCompanyPermit,
-          hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
-          specialPopulationPermitDetails: formData.specialPopulationPermitDetails,
-          hasOtherDocs: formData.hasOtherDocs,
-          otherDocsDetails: formData.otherDocsDetails,
-        },
-      };
-
-      console.log('💾 Saving document_checklist:', applicationFormsUpdate.document_checklist);
-
-      const { error: appFormError } = await supabase
-        .from('application_forms')
-        .update(applicationFormsUpdate)
-        .eq('submission_id', submissionId);
-
-      if (appFormError) throw appFormError;
-
-      // ✅ 3. Reset verification for this specific document
-      if (docId) {
-        const { error: verificationError } = await supabase
-          .from('document_verifications')
-          .update({
-            is_approved: null,
-            verified_at: null,
-            feedback_comment: null,
-          })
-          .eq('document_id', docId);
-
-        if (verificationError) {
-          console.error('Error resetting verification:', verificationError);
-          // Don't throw - it's not critical if verification reset fails
-        }
-      } else {
-        console.warn('No docId provided - skipping verification reset');
-      }
-
-      // ✅ 4. CHECK ALL VERIFICATIONS FOR THIS SUBMISSION (after reset)
-      const { data: verificationData, error: verificationCheckError } = await supabase
-        .from('document_verifications')
-        .select('is_approved, document_id')
-        .eq('submission_id', submissionId);
-
-      if (verificationCheckError) {
-        throw new Error(`Failed to check verification status: ${verificationCheckError.message}`);
-      }
-
-      let newStatus = 'Resubmit';
-
-      if (!verificationData || verificationData.length === 0) {
-        // No verifications exist yet
-        newStatus = 'Pending';
-      } else {
-        // Check if ANY document is rejected (false) or not yet verified (null)
-        const hasRejected = verificationData.some(v => v.is_approved === false);
-        const hasUnverified = verificationData.some(v => v.is_approved === null);
-
-        if (!hasRejected && !hasUnverified) {
-          // All documents are approved (true)
-          newStatus = 'Pending';
-        } else if (hasRejected) {
-          // At least one document is rejected
-          newStatus = 'Resubmit';
-        } else if (hasUnverified) {
-          // Some documents not verified yet
-          newStatus = 'Pending';
-        }
-      }
-
-      // ✅ 5. Update `research_submissions` table with dynamic status
-      const researchSubmissionUpdate: any = {
-        title: formData.title,
-        status: newStatus,
-        updated_at: new Date().toISOString(),
-        co_authors: coResearchers,
-      };
-
-      if (technicalReviewPath) {
-        researchSubmissionUpdate.technical_review_file = technicalReviewPath;
-      }
-
-      const { error: submissionError } = await supabase
-        .from('research_submissions')
-        .update(researchSubmissionUpdate)
-        .eq('id', submissionId);
-
-      if (submissionError) throw submissionError;
-
-      // ✅ 6. Clear localStorage
-      localStorage.removeItem('revisionStep2Data');
-      localStorage.removeItem('revisionStep2CoResearchers');
-      localStorage.removeItem('revisionStep2TechnicalAdvisers');
-
-      // ✅ 7. Success!
-      const statusMessage = newStatus === 'Pending'
-        ? '✅ Changes saved and resubmitted successfully!'
-        : '✅ Changes saved! Please address the verification issues before resubmitting.';
-
-      alert(statusMessage);
-      router.push(`/researchermodule`);
-
-    } catch (error: any) {
-      console.error('Error saving changes:', error);
-      alert(`Failed to save changes: ${error.message || 'Please try again.'}`);
+    } catch (error) {
+      console.error('Error fetching submission data:', error);
+      alert('Failed to load submission data');
+    } finally {
+      setLoading(false);
+      setIsClient(true);
+      isInitialMount.current = false;
     }
   };
+
+  fetchSubmissionData();
+}, [submissionId, router]);
+
+
+
+  useEffect(() => {
+    if (isInitialMount.current || !isClient) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).technicalReviewFile;
+      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
+      console.log('💾 Revision Step 2 auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, coResearchers, technicalAdvisers, isClient]);
+
+
+
+  useEffect(() => {
+    if (isInitialMount.current || !isClient) return;
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      const dataToSave = { ...formData };
+      delete (dataToSave as any).technicalReviewFile;
+      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
+      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
+      console.log('💾 Revision Step 2 auto-saved');
+    }, 1000);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [formData, coResearchers, technicalAdvisers, isClient]);
+
+
+// ✅ SIMPLIFIED handleSubmit - calls the server action
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+
+  const newErrors: Record<string, string> = {};
+
+  // Validation
+  const titleError = validateInput(formData.title, 'Title');
+  if (titleError) newErrors.title = titleError;
+
+  const firstNameError = validateInput(formData.researcherFirstName, 'First Name');
+  if (firstNameError) newErrors.researcherFirstName = firstNameError;
+
+  const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
+  if (lastNameError) newErrors.researcherLastName = lastNameError;
+
+  const emailError = validateInput(formData.project_leader_email, 'Email');
+  if (emailError) newErrors.email = emailError;
+
+  const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
+  if (mobileError) newErrors.mobileNo = mobileError;
+
+  if (Object.keys(newErrors).length > 0) {
+    setErrors(newErrors);
+    setErrorList(Object.values(newErrors));
+    setShowErrorModal(true);
+    setIsSubmitting(false);
+    const firstErrorField = Object.keys(newErrors)[0];
+    const element = document.getElementById(firstErrorField);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    return;
+  }
+
+  try {
+    // ✅ Call server action
+    const result = await handleRevisionSubmit(
+      submissionId!,
+      formData,
+      coResearchers,
+      technicalAdvisers,
+      formData.technicalReviewFile instanceof File ? formData.technicalReviewFile : undefined
+    );
+
+    if (!result.success) throw new Error(result.error);
+
+    localStorage.removeItem('revisionStep2Data');
+    localStorage.removeItem('revisionStep2CoResearchers');
+    localStorage.removeItem('revisionStep2TechnicalAdvisers');
+
+    alert(result.message);
+    router.push(`/researchermodule`);
+  } catch (error: any) {
+    console.error('Error:', error);
+    alert(`Failed: ${error.message}`);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleBack = () => {
     router.push('/researchermodule/submissions');
@@ -961,7 +897,7 @@ function RevisionStep2Content() {
                     id="mobileNo"
                     type="tel"
                     value={formData.project_leader_contact}
-                    onChange={(e) => handleInputChange('mobileNo', e.target.value)}
+                    onChange={(e) => handleInputChange('project_leader_contact', e.target.value)}
                     className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.mobileNo ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
                       }`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -1561,80 +1497,81 @@ function RevisionStep2Content() {
                 </div>
 
                 {/* File Upload appears when "Yes" is selected */}
-                {formData.technicalReview === 'yes' && (
-                  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-                    <label className="block text-sm font-semibold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Upload Technical Review Results <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            if (file.size > 10 * 1024 * 1024) {
-                              alert('File size must be less than 10MB');
-                              e.target.value = '';
-                              return;
-                            }
-                            setFormData({ ...formData, technicalReviewFile: file });
-                          }
-                        }}
-                        className="hidden"
-                        id="technicalReviewFile"
-                        required
-                      />
-                      <label
-                        htmlFor="technicalReviewFile"
-                        className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-[#071139] rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300 group"
-                      >
-                        <svg className="w-8 h-8 text-[#071139] group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <div className="text-center">
-                          <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {formData.technicalReviewFile ? formData.technicalReviewFile.name : 'Click to upload file'}
-                          </p>
-                          <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            PDF, DOC, DOCX (max 10MB)
-                          </p>
-                        </div>
-                      </label>
-                    </div>
+{formData.technicalReview === 'yes' && (
+  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+    <label className="block text-sm font-semibold mb-4 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+      Upload Technical Review Results <span className="text-red-500">*</span>
+    </label>
 
-                    {/* Show selected file info */}
-                    {formData.technicalReviewFile && (
-                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <div>
-                            <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {formData.technicalReviewFile.name}
-                            </p>
-                            <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {(formData.technicalReviewFile.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, technicalReviewFile: null });
-                            const fileInput = document.getElementById('technicalReviewFile') as HTMLInputElement;
-                            if (fileInput) fileInput.value = '';
-                          }}
-                          className="p-2 text-red-500 hover:bg-red-100 rounded-lg transition-colors"
-                          aria-label="Remove file"
-                        >
-                          <X size={18} />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+    {/* File upload input - shows file name at top */}
+    <div className="relative">
+      <input
+        type="file"
+        accept=".pdf,.doc,.docx"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            if (file.size > 10 * 1024 * 1024) {
+              alert('File size must be less than 10MB');
+              e.target.value = '';
+              return;
+            }
+            setFormData({ ...formData, technicalReviewFile: file });
+          }
+        }}
+        className="hidden"
+        id="technicalReviewFile"
+      />
+      <label
+        htmlFor="technicalReviewFile"
+        className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300"
+      >
+        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+        </svg>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {formData.technicalReviewFile instanceof File 
+              ? formData.technicalReviewFile.name 
+              : (formData.technicalReviewFile?.name || 'Click to upload or drag and drop')}
+          </p>
+          <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            PDF, DOC, DOCX (max 10MB)
+          </p>
+        </div>
+      </label>
+    </div>
+
+    {/* Show selected file info */}
+    {formData.technicalReviewFile && (
+      <div className="mt-3 p-3 bg-green-50 border-2 border-green-200 rounded-lg flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <FileText size={20} className="text-green-600" />
+          <div>
+            <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {formData.technicalReviewFile.name}
+            </p>
+            <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {formData.technicalReviewFile.size ? `${(formData.technicalReviewFile.size / 1024 / 1024).toFixed(2)} MB` : ''}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setFormData({ ...formData, technicalReviewFile: null });
+            const fileInput = document.getElementById('technicalReviewFile') as HTMLInputElement;
+            if (fileInput) fileInput.value = '';
+          }}
+          className="p-2 text-red-500 hover:text-red-700 transition-colors"
+          aria-label="Remove file"
+        >
+          <X size={20} />
+        </button>
+      </div>
+    )}
+  </div>
+)}
               </div>
 
               {/* Submitted to Another UMREC */}

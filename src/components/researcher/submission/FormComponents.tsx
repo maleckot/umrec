@@ -231,7 +231,16 @@ export const RadioGroup: React.FC<RadioGroupProps> = ({
 
 interface FileUploadProps {
   label: string;
-  value: File | null;
+  value: File | string | null; // ✅ Accept string (path/filename) too!
+  onChange: (file: File | null) => void;
+  accept?: string;
+  required?: boolean;
+  helperText?: string;
+}
+
+interface FileUploadProps {
+  label: string;
+  value: File | string | null; // ✅ Accept string (path/filename) too!
   onChange: (file: File | null) => void;
   accept?: string;
   required?: boolean;
@@ -245,50 +254,65 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   accept = ".pdf,.doc,.docx",
   required = false,
   helperText
-}) => (
-  <div className="mb-6">
-    <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-      {label}
-      {required && <span className="text-red-600 ml-1">*</span>}
-    </label>
-    {helperText && (
-      <p className="text-xs text-[#64748B] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        {helperText}
-      </p>
-    )}
-    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#3B82F6] transition-colors">
-      <input
-        type="file"
-        accept={accept}
-        onChange={(e) => onChange(e.target.files ? e.target.files[0] : null)}
-        className="hidden"
-        id={`file-${label}`}
-        required={required}
-      />
-      <label htmlFor={`file-${label}`} className="cursor-pointer">
-        {value ? (
-          <div className="flex items-center justify-center gap-3">
-            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-green-600 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {value.name}
-            </span>
-          </div>
-        ) : (
-          <div>
-            <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <p className="text-[#1E293B] font-semibold mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Click to upload or drag and drop
-            </p>
-            <p className="text-xs text-[#64748B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              PDF, DOC, DOCX (max 10MB)
-            </p>
-          </div>
-        )}
+}) => {
+  const getDisplayName = () => {
+    if (value instanceof File) {
+      return value.name;
+    } else if (typeof value === 'string' && value) {
+      return value.split('/').pop()?.split('?')[0] || 'File';
+    }
+    return null;
+  };
+
+  const displayName = getDisplayName();
+
+  return (
+    <div className="mb-6">
+      <label className="block text-sm font-semibold mb-2 text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        {label}
+        {required && <span className="text-red-600 ml-1">*</span>}
       </label>
+      {helperText && (
+        <p className="text-xs text-[#64748B] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          {helperText}
+        </p>
+      )}
+      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#3B82F6] transition-colors">
+        <input
+          type="file"
+          accept={accept}
+          onChange={(e) => onChange(e.target.files ? e.target.files[0] : null)}
+          className="hidden"
+          id={`file-${label || 'upload'}`}
+          name={`file-${label || 'upload'}`}
+          required={required && !value} // ✅ Only required if no value exists
+        />
+        <label htmlFor={`file-${label || 'upload'}`} className="cursor-pointer">
+          {displayName ? (
+            <div className="flex items-center justify-center gap-3">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-green-600 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {displayName}
+              </span>
+            </div>
+          ) : (
+            <div>
+              <svg className="w-12 h-12 text-gray-400 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-[#1E293B] font-semibold mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Click to upload or drag and drop
+              </p>
+              <p className="text-xs text-[#64748B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                PDF, DOC, DOCX (max 10MB)
+              </p>
+            </div>
+          )}
+        </label>
+      </div>
     </div>
-  </div>
-);
+  );
+};
+

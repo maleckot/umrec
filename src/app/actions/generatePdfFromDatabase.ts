@@ -658,25 +658,45 @@ export async function generateResearchProtocolPdf(
     const pageHeight = 792;
     const margin = 50;
 
-    const embedImageFromUrl = async (imageUrl: string) => {
-      try {
-        const response = await fetch(imageUrl);
-        const imageBytes = await response.arrayBuffer();
+const embedImageFromUrl = async (imageUrl: string) => {
+  try {
+    const response = await fetch(imageUrl);
+    const imageBytes = await response.arrayBuffer();
 
-        // Check actual image type from content
-        const uint8Array = new Uint8Array(imageBytes);
-        const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50;
+    const uint8Array = new Uint8Array(imageBytes);
+    
+    // ✅ Better detection logic
+    const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4e;
+    const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8;
 
-        if (isPNG) {
+    console.log(`🖼️ Image bytes: [${uint8Array[0]}, ${uint8Array[1]}, ${uint8Array[2]}], isPNG: ${isPNG}, isJPEG: ${isJPEG}`);
+
+    try {
+      if (isPNG) {
+        console.log('📌 Embedding as PNG');
+        return await pdfDoc.embedPng(imageBytes);
+      } else if (isJPEG) {
+        console.log('📌 Embedding as JPEG');
+        return await pdfDoc.embedJpg(imageBytes);
+      } else {
+        // Try PNG first, then JPEG as fallback
+        console.log('❓ Unknown format, trying PNG first...');
+        try {
           return await pdfDoc.embedPng(imageBytes);
-        } else {
+        } catch {
+          console.log('⚠️ PNG failed, trying JPEG...');
           return await pdfDoc.embedJpg(imageBytes);
         }
-      } catch (error) {
-        console.error('Error embedding image:', error);
-        return null;
       }
-    };
+    } catch (embedError) {
+      console.error(`❌ Failed to embed image (${imageUrl}):`, embedError);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error fetching image:', error);
+    return null;
+  }
+};
 
 
     // ✅ Helper: Extract image URLs from HTML
@@ -764,68 +784,86 @@ export async function generateResearchProtocolPdf(
 
     const step1 = submissionData.step1;
     const step3 = submissionData.step3?.formData;
+        // ✅ Add debugging
+        console.log('🔍 Content check for introduction:');
+        console.log('Has <img tags?', step3?.introduction?.includes('<img'));
+        console.log('Image URLs found:', extractImageUrls(step3?.introduction || ''));
+        console.log('First 300 chars:', step3?.introduction?.substring(0, 300));
 
-    // ✅ Updated addSection with image support
-    const addSection = async (title: string, content: string) => {
-      if (!content) return;
+const addSection = async (title: string, content: string) => {
+  if (!content) return;
 
-      if (yPos < 120) {
-        page = pdfDoc.addPage([pageWidth, pageHeight]);
-        yPos = pageHeight - margin;
-      }
+  if (yPos < 120) {
+    page = pdfDoc.addPage([pageWidth, pageHeight]);
+    yPos = pageHeight - margin;
+  }
 
-      // Draw section header
-      page.drawRectangle({
-        x: margin,
-        y: yPos - 12,
-        width: pageWidth - 2 * margin,
-        height: 12,
-        color: rgb(0.95, 0.95, 0.95),
-      });
-      page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
-      yPos -= 20;
+  // ✅ EXTRACT IMAGES FIRST (before any HTML stripping!)
+  const imageUrls = extractImageUrls(content);
+  console.log('📸 Found images:', imageUrls);
 
-      // Draw text content
-      const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
-      for (const line of lines) {
-        if (yPos < 80) {
+  // Draw section header
+  page.drawRectangle({
+    x: margin,
+    y: yPos - 12,
+    width: pageWidth - 2 * margin,
+    height: 12,
+    color: rgb(0.95, 0.95, 0.95),
+  });
+  page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
+  yPos -= 20;
+
+  // Draw text (strips HTML)
+  const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
+  for (const line of lines) {
+    if (yPos < 80) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPos = pageHeight - margin;
+    }
+    page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
+    yPos -= 12;
+  }
+
+  // ✅ EMBED IMAGES
+  for (const imageUrl of imageUrls) {
+    if (!imageUrl) continue;
+    
+    console.log('🖼️ Embedding image:', imageUrl);
+    
+    try {
+      const embeddedImage = await embedImageFromUrl(imageUrl);
+
+      if (embeddedImage) {
+        const imgWidth = 300;
+        const imgHeight = (embeddedImage.height / embeddedImage.width) * imgWidth;
+
+        if (yPos - imgHeight < 80) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           yPos = pageHeight - margin;
         }
-        page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
-        yPos -= 12;
+
+        yPos -= imgHeight + 10;
+
+        page.drawImage(embeddedImage, {
+          x: margin + 5,
+          y: yPos,
+          width: imgWidth,
+          height: imgHeight,
+        });
+
+        console.log('✅ Image embedded');
+        yPos -= 10;
+      } else {
+        console.warn('⚠️ Failed to embed image');
       }
+    } catch (error) {
+      console.error('❌ Error embedding image:', error);
+    }
+  }
 
-      // ✅ Extract and embed images from HTML content
-      const imageUrls = extractImageUrls(content);
-      for (const imageUrl of imageUrls) {
-        const embeddedImage = await embedImageFromUrl(imageUrl);
+  yPos -= 10;
+};
 
-        if (embeddedImage) {
-          const imgWidth = 300; // Max width for embedded images
-          const imgHeight = (embeddedImage.height / embeddedImage.width) * imgWidth;
-
-          // Check if we need a new page
-          if (yPos - imgHeight < 80) {
-            page = pdfDoc.addPage([pageWidth, pageHeight]);
-            yPos = pageHeight - margin;
-          }
-
-          yPos -= imgHeight + 10;
-
-          page.drawImage(embeddedImage, {
-            x: margin + 5,
-            y: yPos,
-            width: imgWidth,
-            height: imgHeight,
-          });
-
-          yPos -= 10; // Space after image
-        }
-      }
-
-      yPos -= 10;
-    };
 
     // Add all sections with images
     await addSection('I. Title of the Study', step3?.title || step1?.title || 'N/A');
@@ -869,16 +907,22 @@ export async function generateResearchProtocolPdf(
         });
         yPos -= 15;
 
-        // ✅ Embed signature if available
-        if (researcher.signatureBase64 || researcher.signaturePath) {
+        // ✅ TRY signed URL FIRST, then fallback to base64
+        if (researcher.signature || researcher.signatureBase64) {
           try {
-            let signatureImage;
+            let signatureImage = null;
 
-            if (researcher.signatureBase64) {
+            // ✅ TRY SIGNED URL first
+            if (researcher.signature?.startsWith('http')) {
+              console.log('🔗 Trying signed URL for:', researcher.name);
+              signatureImage = await embedImageFromUrl(researcher.signature);
+            }
+
+            // ✅ FALLBACK to base64 if signed URL fails or doesn't exist
+            if (!signatureImage && researcher.signatureBase64) {
+              console.log('📸 Fallback to base64 for:', researcher.name);
               const base64Data = researcher.signatureBase64.split(',')[1];
               const signatureBytes = Buffer.from(base64Data, 'base64');
-
-              // ✅ Detect if PNG or JPG from base64 header
               const isPNG = researcher.signatureBase64.startsWith('data:image/png');
 
               if (isPNG) {
@@ -886,10 +930,6 @@ export async function generateResearchProtocolPdf(
               } else {
                 signatureImage = await pdfDoc.embedJpg(signatureBytes);
               }
-            } else if (researcher.signaturePath) {
-              const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-              const fullUrl = `${supabaseUrl}/storage/v1/object/public/research-documents/${researcher.signaturePath}`;
-              signatureImage = await embedImageFromUrl(fullUrl);
             }
 
             if (signatureImage) {
@@ -904,10 +944,13 @@ export async function generateResearchProtocolPdf(
               });
 
               yPos -= sigHeight + 5;
+              console.log('✅ Signature embedded for:', researcher.name);
+            } else {
+              throw new Error('Could not embed signature');
             }
           } catch (error) {
-            console.error('Error embedding signature:', error);
-            // Draw placeholder line if signature fails
+            console.error('❌ Error embedding signature:', error);
+            // Draw placeholder line
             page.drawLine({
               start: { x: margin + 5, y: yPos },
               end: { x: margin + 150, y: yPos },
@@ -915,8 +958,7 @@ export async function generateResearchProtocolPdf(
             });
             yPos -= 15;
           }
-        }
-        else {
+        } else {
           // No signature - draw line
           page.drawLine({
             start: { x: margin + 5, y: yPos },
@@ -934,7 +976,7 @@ export async function generateResearchProtocolPdf(
           color: rgb(0.5, 0.5, 0.5),
         });
 
-        yPos -= 25; // Space before next researcher
+        yPos -= 25;
       }
     } else {
       // Fallback if no researchers

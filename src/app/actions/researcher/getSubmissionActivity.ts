@@ -85,10 +85,10 @@ export async function getSubmissionActivity(submissionId: string) {
     const rejectedDocs = verifications?.filter(v => v.is_approved === false) || [];
     const revisionCount = rejectedDocs.length;
 
-    // ✅ COLLECT ALL FEEDBACK SOURCES
+   // ✅ COLLECT ONLY document verification feedbacks
     const allFeedback: Array<{ text: string; date: string; source: string }> = [];
     
-    // Add document verification feedbacks
+    // Add ONLY rejected document feedbacks
     rejectedDocs.forEach(doc => {
       if (doc.feedback_comment) {
         allFeedback.push({
@@ -99,25 +99,8 @@ export async function getSubmissionActivity(submissionId: string) {
       }
     });
     
-    // Add submission comments
-    if (commentsData && commentsData.length > 0) {
-      commentsData.forEach(comment => {
-        allFeedback.push({
-          text: comment.comment_text,
-          date: comment.created_at,
-          source: 'submission_comment'
-        });
-      });
-    }
-    
-    // Add general submission feedback if exists
-    // if (submission.verification_feedback) {
-    //   allFeedback.push({
-    //     text: submission.verification_feedback,
-    //     date: submission.updated_at || submission.created_at,
-    //     source: 'submission_feedback'
-    //   });
-    // }
+    // Do NOT add submission_comments here - they're global level comments
+    // Only add them if they exist AND show in revision card only for rejected docs
     
     // Sort by date (most recent first) and deduplicate
     const sortedFeedback = allFeedback
@@ -141,7 +124,7 @@ export async function getSubmissionActivity(submissionId: string) {
       revisionInfo: {
         needsRevision: submission.status === 'needs_revision',
         revisionCount: revisionCount,
-        message: uniqueFeedback[0]?.text || '', // Most recent feedback
+        message: uniqueFeedback[0]?.text || '', // Most recent from rejected docs only
       },  
       comments: uniqueFeedback.map((f, index) => ({
         id: `feedback-${index}`,
