@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, FileCheck, Eye, Send, FileText } from 'lucide-react';
+import { ArrowLeft, FileCheck, Eye, Send, FileText, CheckCircle, AlertCircle } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -15,8 +15,113 @@ import DocumentViewerModal from '@/components/staff-secretariat-admin/submission
 import { getApprovedDetails } from '@/app/actions/secretariat-staff/staff/getApprovedDetails';
 import { releaseApprovalDocuments } from '@/app/actions/secretariat-staff/staff/releaseApprovalDocuments';
 import { Suspense } from 'react';
+
+// Confirmation Modal Component
+function ConfirmationModal({ 
+  isOpen, 
+  onClose, 
+  onConfirm 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  onConfirm: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+            <AlertCircle className="w-10 h-10 text-yellow-600" />
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Confirm Release
+          </h3>
+          
+          <p className="text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Are you sure you want to release the approval documents to the researcher?
+          </p>
+          
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={onClose}
+              className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-semibold"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onConfirm();
+                onClose();
+              }}
+              className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+              style={{ fontFamily: 'Metropolis, sans-serif' }}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Success Modal Component
+function SuccessModal({ 
+  isOpen, 
+  onClose 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Success!
+          </h3>
+          
+          <p className="text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Documents and certificates released to researcher successfully!
+          </p>
+          
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StaffApprovedContent() {
-   const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
   
@@ -26,6 +131,8 @@ function StaffApprovedContent() {
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (submissionId) {
@@ -54,30 +161,29 @@ function StaffApprovedContent() {
     setIsModalOpen(true);
   };
 
-const handleReleaseDocuments = async () => {
-  if (!confirm('Are you sure you want to release the approval documents to the researcher?')) {
-    return;
-  }
-
-  setIsReleasing(true);
-  
-  try {
-    const result = await releaseApprovalDocuments(submissionId!);
+  const handleReleaseDocuments = async () => {
+    setIsReleasing(true);
     
-    if (result.success) {
-      alert('Documents released to researcher successfully!');
-      router.push('/staffmodule/submissions');
-    } else {
-      alert(`Failed to release documents: ${result.error}`);
+    try {
+      const result = await releaseApprovalDocuments(submissionId!);
+      
+      if (result.success) {
+        setShowSuccessModal(true);
+      } else {
+        alert(`Failed to release documents: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error releasing documents:', error);
+      alert('An error occurred while releasing documents');
+    } finally {
+      setIsReleasing(false);
     }
-  } catch (error) {
-    console.error('Error releasing documents:', error);
-    alert('An error occurred while releasing documents');
-  } finally {
-    setIsReleasing(false);
-  }
-};
+  };
 
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    router.push('/staffmodule/submissions');
+  };
 
   if (loading) {
     return (
@@ -99,7 +205,6 @@ const handleReleaseDocuments = async () => {
 
   const { submission, consolidatedDocument, originalDocuments, reviews, assignedReviewers, reviewsComplete, reviewsRequired } = data;
 
-  // ✅ Get ap  val documents from database with FileText icon
   const approvalDocuments = data.approvalDocuments?.map((doc: any) => ({
     ...doc,
     icon: FileText,
@@ -154,6 +259,17 @@ const handleReleaseDocuments = async () => {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+      {/* Modals */}
+      <ConfirmationModal 
+        isOpen={showConfirmModal} 
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleReleaseDocuments}
+      />
+      <SuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={handleSuccessClose}
+      />
+
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -232,7 +348,7 @@ const handleReleaseDocuments = async () => {
                 </div>
 
                 <button
-                  onClick={handleReleaseDocuments}
+                  onClick={() => setShowConfirmModal(true)}
                   disabled={isReleasing}
                   className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -308,6 +424,7 @@ const handleReleaseDocuments = async () => {
     </DashboardLayout>
   );
 }
+
 export default function StaffApprovedPage() {
   return (
     <Suspense fallback={

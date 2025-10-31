@@ -166,13 +166,13 @@ export default function SubmissionSidebar({
         </div>
       )}
 
-      {/* Action Button */}
+      {/* Action Button - GREEN COLOR */}
       {onAction && actionLabel && (
         <button
           onClick={onAction}
           className={`w-full py-2 sm:py-2.5 text-xs sm:text-sm font-semibold rounded-lg transition-colors ${
             actionType === 'primary'
-              ? 'bg-[#101C50] text-white hover:opacity-90'
+              ? 'bg-green-600 text-white hover:bg-green-700'
               : 'bg-gray-500 text-white hover:bg-gray-600'
           }`}
           style={{ fontFamily: 'Metropolis, sans-serif' }}

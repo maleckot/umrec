@@ -2,7 +2,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, FileText, Download } from 'lucide-react';
+import { Eye, FileText, Download, Award } from 'lucide-react';
 import DocumentViewerModal from './DocumentViewerModal';
 
 interface ConsolidatedDocumentProps {
@@ -21,7 +21,21 @@ export default function ConsolidatedDocument({
   originalDocuments = []
 }: ConsolidatedDocumentProps) {
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [certificateViewerOpen, setCertificateViewerOpen] = useState(false);
   const [showOriginals, setShowOriginals] = useState(false);
+  const [selectedCertificate, setSelectedCertificate] = useState<{ name: string; url: string } | null>(null);
+
+  // Certificates and Forms list
+  const certificatesAndForms = [
+    { name: 'Certificate of Approval.pdf', url: '/certificates/approval.pdf' },
+    { name: 'Form 0011 - Protocol Reviewer Worksheet.pdf', url: '/certificates/protocolreviewerworksheet.pdf' },
+    { name: 'Form 0012 - Informed Consent Checklist.pdf', url: '/certificates/informedconsentchecklist.pdf' },
+  ];
+
+  const handleViewCertificate = (cert: { name: string; url: string }) => {
+    setSelectedCertificate(cert);
+    setCertificateViewerOpen(true);
+  };
 
   return (
     <>
@@ -42,6 +56,54 @@ export default function ConsolidatedDocument({
               </p>
             </div>
           )}
+
+          {/* NEW: Certificates and Forms Section */}
+          <div className="bg-gradient-to-r from-amber-50 to-amber-100/30 border-2 border-amber-300 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="flex items-start gap-2 sm:gap-3 mb-3">
+              <Award size={20} className="text-amber-700 flex-shrink-0 sm:w-6 sm:h-6 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs sm:text-sm font-bold text-amber-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Certificates and Forms
+                </h4>
+                <p className="text-xs text-amber-700 mt-0.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  Official documents generated after review completion
+                </p>
+              </div>
+            </div>
+
+            {/* Certificates List */}
+            <div className="space-y-2">
+              {certificatesAndForms.map((cert, index) => (
+                <div key={index} className="bg-white/70 border border-amber-200 rounded-lg overflow-hidden hover:bg-white/90 transition-colors">
+                  <button
+                    onClick={() => handleViewCertificate(cert)}
+                    className="w-full flex items-center justify-between p-2 sm:p-3 gap-2"
+                  >
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <FileText size={16} className="text-amber-700 flex-shrink-0 sm:w-5 sm:h-5" />
+                      <span className="text-xs sm:text-sm font-semibold text-amber-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {cert.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <a
+                        href={cert.url}
+                        download
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 sm:p-1.5 hover:bg-amber-100 rounded transition-colors"
+                        title="Download"
+                      >
+                        <Download size={14} className="text-amber-700 sm:w-4 sm:h-4" />
+                      </a>
+                      <div className="p-1 sm:p-1.5 hover:bg-amber-100 rounded transition-colors">
+                        <Eye size={14} className="text-amber-700 sm:w-4 sm:h-4" />
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* Consolidated File Info */}
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
@@ -121,13 +183,26 @@ export default function ConsolidatedDocument({
         </div>
       </div>
 
-      {/* Document Viewer Modal */}
+      {/* Consolidated Document Viewer Modal */}
       <DocumentViewerModal
         isOpen={viewerOpen}
         onClose={() => setViewerOpen(false)}
         documentName="SUB-2025-001_Consolidated.pdf"
         documentUrl={fileUrl}
       />
+
+      {/* Certificate Viewer Modal */}
+      {selectedCertificate && (
+        <DocumentViewerModal
+          isOpen={certificateViewerOpen}
+          onClose={() => {
+            setCertificateViewerOpen(false);
+            setSelectedCertificate(null);
+          }}
+          documentName={selectedCertificate.name}
+          documentUrl={selectedCertificate.url}
+        />
+      )}
     </>
   );
 }

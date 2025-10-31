@@ -831,6 +831,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Introduction (English Version)"
                             value={formData.introductionEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, introductionEnglish: val})}
                             helperText="Briefly introduce the proponent and concerned organization, emphasize that this is an invitation to participate in a study/research and that they can take time to reflect on whether they want to participate or not. Assure the participant that they do not understand some of the words or concepts, that these will be explained and that they can ask questions at any time."
                             required
@@ -841,6 +842,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Panimula (Tagalog Version)"
                             value={formData.introductionTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, introductionTagalog: val})}
                             helperText="Ipakilala ang mga mananaliksik at organisasyon, at ipahayag na ito ay isang imbitasyon na lumahok sa pag-aaral."
                             required
@@ -859,6 +861,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Purpose (English Version)"
                             value={formData.purposeEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, purposeEnglish: val})}
                             helperText="Explain the research question in ordinary, non-technical terms. Use local and simplified words rather than scientific terms and professional jargon. Consider local beliefs and knowledge when deciding how best to provide the information."
                             maxWords={500}
@@ -870,6 +873,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Layunin ng Pananaliksik (Tagalog Version)"
                             value={formData.purposeTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, purposeTagalog: val})}
                             helperText="Ipaliwanag ang layunin ng pananaliksik sa simpleng wika."
                             maxWords={500}
@@ -889,6 +893,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Research Intervention (English Version)"
                             value={formData.researchInterventionEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, researchInterventionEnglish: val})}
                             helperText="Briefly state the type of intervention that will be undertaken. This will be expanded upon in the procedures section but it may be helpful and less confusing to the participant if they know from the very beginning whether, for example, the research involves a vaccine, an interview, a questionnaire, or a series of finger pricks."
                             maxWords={300}
@@ -900,6 +905,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Uri ng Interbensyon (Tagalog Version)"
                             value={formData.researchInterventionTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, researchInterventionTagalog: val})}
                             helperText="Banggitin ang uri ng interbensyon na gagawin sa pag-aaral."
                             maxWords={300}
@@ -919,6 +925,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Participant Selection (English Version)"
                             value={formData.participantSelectionEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, participantSelectionEnglish: val})}
                             helperText="Indicate why you have chosen this person to participate in this research. People wonder why they have been chosen and may be fearful, confused or concerned."
                             maxWords={300}
@@ -930,6 +937,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagpili ng Kalahok (Tagalog Version)"
                             value={formData.participantSelectionTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, participantSelectionTagalog: val})}
                             helperText="Ipaliwanag kung bakit napili ang taong ito bilang kalahok sa pananaliksik."
                             maxWords={300}
@@ -949,6 +957,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Voluntary Participation (English Version)"
                             value={formData.voluntaryParticipationEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, voluntaryParticipationEnglish: val})}
                             helperText="Indicate clearly that they can choose to participate or not. State, only if it is applicable, that they will still receive all the services they usually do if they choose not to participate."
                             maxWords={300}
@@ -960,6 +969,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Kusang-loob na Paglahok (Tagalog Version)"
                             value={formData.voluntaryParticipationTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, voluntaryParticipationTagalog: val})}
                             helperText="Ipahayag nang malinaw na ang paglahok ay kusang-loob at maaaring tumanggi o umurong anumang oras."
                             maxWords={300}
@@ -979,6 +989,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Procedures (English Version)"
                             value={formData.proceduresEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, proceduresEnglish: val})}
                             helperText="Provide a brief introduction to the format of the research study and explain the type of questions that participants are likely to be asked."
                             maxWords={500}
@@ -990,6 +1001,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Pamamaraan (Tagalog Version)"
                             value={formData.proceduresTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, proceduresTagalog: val})}
                             helperText="Ipaliwanag ang format ng pag-aaral at kung ano ang gagawin ng mga kalahok."
                             maxWords={500}
@@ -1009,6 +1021,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Duration (English Version)"
                             value={formData.durationEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, durationEnglish: val})}
                             helperText="Include a statement about the time commitments of the research for the participant including both the duration of the research and follow-up, if relevant."
                             maxWords={200}
@@ -1020,6 +1033,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Tagal ng Pag-aaral (Tagalog Version)"
                             value={formData.durationTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, durationTagalog: val})}
                             helperText="Ipahayag ang tagal ng paglahok sa pananaliksik."
                             maxWords={200}
@@ -1039,6 +1053,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Risks (English Version)"
                             value={formData.risksEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, risksEnglish: val})}
                             helperText="Explain and describe any risks that can be anticipated or that are possible. The risks depend upon the nature and type of qualitative intervention."
                             required
@@ -1049,6 +1064,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Panganib (Tagalog Version)"
                             value={formData.risksTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, risksTagalog: val})}
                             helperText="Ilarawan ang anumang mga panganib o abala na maaaring maranasan ng mga kalahok."
                             required
@@ -1067,6 +1083,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Benefits (English Version)"
                             value={formData.benefitsEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, benefitsEnglish: val})}
                             helperText="Benefits may be divided into benefits to the individual, benefits to the community in which the individual resides, and benefits to society as a whole."
                             required
@@ -1077,6 +1094,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Benepisyo (Tagalog Version)"
                             value={formData.benefitsTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, benefitsTagalog: val})}
                             helperText="Ilarawan ang mga benepisyo para sa kalahok, komunidad, at lipunan."
                             required
@@ -1095,6 +1113,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Reimbursements (English Version)"
                             value={formData.reimbursementsEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, reimbursementsEnglish: val})}
                             helperText="State clearly that the participants will not receive payments beyond reimbursements for expenses incurred because of their participation."
                             maxWords={200}
@@ -1106,6 +1125,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Kabayaran (Tagalog Version)"
                             value={formData.reimbursementsTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, reimbursementsTagalog: val})}
                             helperText="Ipahayag kung makakatanggap ng anumang kabayaran ang kalahok."
                             maxWords={200}
@@ -1125,6 +1145,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Confidentiality (English Version)"
                             value={formData.confidentialityEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, confidentialityEnglish: val})}
                             helperText="Explain how the research team will maintain the confidentiality of data with respect to both information about the participant and information that the participant shares."
                             required
@@ -1135,6 +1156,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagiging Kumpidensyal (Tagalog Version)"
                             value={formData.confidentialityTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, confidentialityTagalog: val})}
                             helperText="Ipaliwanag kung paano papanatilihing kumpidensyal ang impormasyon ng mga kalahok."
                             required
@@ -1153,6 +1175,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Sharing Results (English Version)"
                             value={formData.sharingResultsEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, sharingResultsEnglish: val})}
                             helperText="If there is a plan and a timeline for the sharing of information, include the details. The participant may also be informed that the research findings will be shared more broadly."
                             maxWords={300}
@@ -1164,6 +1187,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagbabahagi ng mga Resulta (Tagalog Version)"
                             value={formData.sharingResultsTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, sharingResultsTagalog: val})}
                             helperText="Ipaliwanag kung paano at kailan ibabahagi ang mga resulta ng pag-aaral."
                             maxWords={300}
@@ -1183,6 +1207,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Right to Refuse or Withdraw (English Version)"
                             value={formData.rightToRefuseEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, rightToRefuseEnglish: val})}
                             helperText="Reiterate that participation is voluntary and includes the right to withdraw. Tailor this section to ensure that it fits for the group for whom one is seeking consent."
                             maxWords={300}
@@ -1194,6 +1219,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Karapatan na Tumanggi o Umurong (Tagalog Version)"
                             value={formData.rightToRefuseTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, rightToRefuseTagalog: val})}
                             helperText="Ipahayag muli na ang paglahok ay kusang-loob at may karapatang umurong anumang oras."
                             maxWords={300}
@@ -1213,6 +1239,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Who to Contact (English Version)"
                             value={formData.whoToContactEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, whoToContactEnglish: val})}
                             helperText="Provide the name and contact information of someone who is involved, informed and accessible. State also the name of the local REC that has approved the proposal."
                             maxWords={300}
@@ -1224,6 +1251,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Sino ang Makikipag-ugnayan (Tagalog Version)"
                             value={formData.whoToContactTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, whoToContactTagalog: val})}
                             helperText="Ibigay ang pangalan at contact information ng mga taong maaaring lapitan para sa mga katanungan."
                             maxWords={300}
@@ -1353,6 +1381,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Introduction (English Version)"
                             value={formData.introductionMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, introductionMinorEnglish: val})}
                             helperText="Provide a brief description of the study, state the procedure, and explain the parental consent requirement. Use simple, child-friendly language."
                             maxWords={400}
@@ -1364,6 +1393,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Panimula (Tagalog Version)"
                             value={formData.introductionMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, introductionMinorTagalog: val})}
                             helperText="Magbigay ng maikling paglalarawan ng pag-aaral. Gumamit ng simple na wika na nauunawaan ng mga bata."
                             maxWords={400}
@@ -1383,6 +1413,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Purpose (English Version)"
                             value={formData.purposeMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, purposeMinorEnglish: val})}
                             helperText="Explain the purpose of research in simple terms that children can understand."
                             maxWords={300}
@@ -1394,6 +1425,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Layunin (Tagalog Version)"
                             value={formData.purposeMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, purposeMinorTagalog: val})}
                             helperText="Ipaliwanag ang layunin ng pananaliksik sa simpleng wika."
                             maxWords={300}
@@ -1413,6 +1445,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Choice of Participants (English Version)"
                             value={formData.choiceOfParticipantsEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, choiceOfParticipantsEnglish: val})}
                             helperText="Explain why the participants of the study were chosen."
                             maxWords={200}
@@ -1424,6 +1457,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagpili ng mga Kalahok (Tagalog Version)"
                             value={formData.choiceOfParticipantsTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, choiceOfParticipantsTagalog: val})}
                             helperText="Ipaliwanag kung bakit napili ang mga kalahok."
                             maxWords={200}
@@ -1443,6 +1477,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Voluntariness (English Version)"
                             value={formData.voluntarinessMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, voluntarinessMinorEnglish: val})}
                             helperText="State clearly that the choice to participate is voluntary and their decision not to participate might be over-ridden by parental consent."
                             maxWords={300}
@@ -1454,6 +1489,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Kusang-loob na Paglahok (Tagalog Version)"
                             value={formData.voluntarinessMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, voluntarinessMinorTagalog: val})}
                             helperText="Ipahayag na ang paglahok ay kusang-loob."
                             maxWords={300}
@@ -1473,6 +1509,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Procedures (English Version)"
                             value={formData.proceduresMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, proceduresMinorEnglish: val})}
                             helperText="Explain the procedures in simple terms."
                             maxWords={400}
@@ -1484,6 +1521,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Proseso (Tagalog Version)"
                             value={formData.proceduresMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, proceduresMinorTagalog: val})}
                             helperText="Ipaliwanag ang mga proseso sa simpleng wika."
                             maxWords={400}
@@ -1503,6 +1541,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Risks (English Version)"
                             value={formData.risksMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, risksMinorEnglish: val})}
                             helperText="Describe what has been found that causes worry and how you, as a researcher, ensure that it will be prevented from happening."
                             maxWords={300}
@@ -1514,6 +1553,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Panganib (Tagalog Version)"
                             value={formData.risksMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, risksMinorTagalog: val})}
                             helperText="Ilarawan ang mga panganib at kung paano ito maiiwasan."
                             maxWords={300}
@@ -1533,6 +1573,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Benefits (English Version)"
                             value={formData.benefitsMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, benefitsMinorEnglish: val})}
                             helperText="Describe any benefits to the child (and to others)."
                             maxWords={300}
@@ -1544,6 +1585,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Mga Benepisyo (Tagalog Version)"
                             value={formData.benefitsMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, benefitsMinorTagalog: val})}
                             helperText="Ilarawan ang mga benepisyo para sa bata."
                             maxWords={300}
@@ -1563,6 +1605,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Confidentiality (English Version)"
                             value={formData.confidentialityMinorEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, confidentialityMinorEnglish: val})}
                             helperText="State the limits and the scope of confidentiality of this research."
                             maxWords={300}
@@ -1574,6 +1617,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagiging Kumpidensyal (Tagalog Version)"
                             value={formData.confidentialityMinorTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, confidentialityMinorTagalog: val})}
                             helperText="Ipahayag ang saklaw ng pagiging kumpidensyal."
                             maxWords={300}
@@ -1593,6 +1637,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Sharing Findings (English Version)"
                             value={formData.sharingFindingsEnglish}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, sharingFindingsEnglish: val})}
                             helperText="Explain how the research findings will be shared in which confidential information will remain confidential."
                             maxWords={200}
@@ -1604,6 +1649,7 @@ export default function RevisionStep4() {
                           <RichTextEditor
                             label="Pagbabahagi ng mga Natuklasan (Tagalog Version)"
                             value={formData.sharingFindingsTagalog}
+                            hideImageUpload={true}
                             onChange={(val) => setFormData({...formData, sharingFindingsTagalog: val})}
                             helperText="Ipaliwanag kung paano ibabahagi ang mga natuklasan."
                             maxWords={200}

@@ -217,7 +217,7 @@ export default function ClassificationPanel({
 
       {/* Confirmation Modal */}
       {showModal && selectedCategory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(3, 2, 17, 0.91)' }}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center gap-3 mb-4">
               <AlertCircle size={32} className="text-blue-600" />

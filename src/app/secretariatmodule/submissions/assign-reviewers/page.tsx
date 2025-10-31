@@ -16,6 +16,57 @@ import { getReviewers } from '@/app/actions/secretariat-staff/secretariat/getRev
 import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/assignReviewers';
 import { Suspense } from 'react';
 
+// Success Modal Component
+function SuccessModal({ 
+  isOpen, 
+  onClose, 
+  reviewerCount 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  reviewerCount: number;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Reviewers Assigned Successfully!
+          </h3>
+          
+          <p className="text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Successfully assigned <span className="font-bold text-green-600">{reviewerCount}</span> {reviewerCount === 1 ? 'reviewer' : 'reviewers'}!
+          </p>
+          
+          <p className="text-sm text-gray-500 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Email notifications have been sent to all assigned reviewers.
+          </p>
+          
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AssignReviewersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -26,6 +77,8 @@ function AssignReviewersContent() {
   const [reviewers, setReviewers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [reviewDueDate, setReviewDueDate] = useState<string>('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [assignedCount, setAssignedCount] = useState(0);
 
   useEffect(() => {
     if (submissionId) {
@@ -170,31 +223,35 @@ function AssignReviewersContent() {
     }
   };
 
-const handleAssign = async (selectedReviewers: string[]) => {
-  console.log('Assigning reviewers:', selectedReviewers);
-  console.log('Review due date:', reviewDueDate);
-  
-  // Validate due date
-  if (!reviewDueDate && category !== 'Exempted') {
-    alert('Please select a review due date');
-    return;
-  }
-  
-  try {
-    const result = await assignReviewers(submissionId!, selectedReviewers, reviewDueDate);
+  const handleAssign = async (selectedReviewers: string[]) => {
+    console.log('Assigning reviewers:', selectedReviewers);
+    console.log('Review due date:', reviewDueDate);
     
-    if (result.success) {
-      alert(`Successfully assigned ${result.assignmentCount} reviewers! Email notifications have been sent.`);
-      router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
-    } else {
-      alert(result.error || 'Failed to assign reviewers');
+    // Validate due date
+    if (!reviewDueDate && category !== 'Exempted') {
+      alert('Please select a review due date');
+      return;
     }
-  } catch (error) {
-    console.error('Error:', error);
-    alert('Failed to assign reviewers');
-  }
-};
+    
+    try {
+      const result = await assignReviewers(submissionId!, selectedReviewers, reviewDueDate);
+      
+      if (result.success) {
+        setAssignedCount(result.assignmentCount || selectedReviewers.length);
+        setShowSuccessModal(true);
+      } else {
+        alert(result.error || 'Failed to assign reviewers');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to assign reviewers');
+    }
+  };
 
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.push(`/secretariatmodule/submissions/under-review?id=${submissionId}`);
+  };
 
   const historyEvents = data ? [
     {
@@ -248,6 +305,13 @@ const handleAssign = async (selectedReviewers: string[]) => {
 
   return (
     <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+      {/* Success Modal */}
+      <SuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={handleSuccessModalClose} 
+        reviewerCount={assignedCount}
+      />
+
       {/* Better Back Button */}
       <div className="mb-6">
         <button

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CheckCircle, X } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -43,6 +43,45 @@ interface DocumentWithVerification {
   } | null;
 }
 
+// Success Modal Component
+function SuccessModal({ isOpen, onClose, message }: { isOpen: boolean; onClose: () => void; message: string }) {
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+            <CheckCircle className="w-10 h-10 text-green-600" />
+          </div>
+          
+          <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            Success!
+          </h3>
+          
+          <p className="text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {message}
+          </p>
+          
+          <button
+            onClick={onClose}
+            className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SubmissionVerificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,6 +92,8 @@ function SubmissionVerificationContent() {
   const [submissionData, setSubmissionData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [documents, setDocuments] = useState<DocumentWithVerification[]>([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     console.log('📍 URL submission ID:', submissionId);
@@ -219,8 +260,8 @@ function SubmissionVerificationContent() {
       const result = await completeVerification(submissionId, verifications);
 
       if (result.success) {
-        alert('Documents verified and consolidated PDF generated successfully!');
-        router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
+        setSuccessMessage('Documents verified and consolidated PDF generated successfully!');
+        setShowSuccessModal(true);
       } else {
         alert(`Error: ${result.error}`);
       }
@@ -230,6 +271,11 @@ function SubmissionVerificationContent() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSuccessModalClose = () => {
+    setShowSuccessModal(false);
+    router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
   };
 
   const formatDate = (dateString: string) => {
@@ -286,6 +332,13 @@ function SubmissionVerificationContent() {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
+      {/* Success Modal */}
+      <SuccessModal 
+        isOpen={showSuccessModal} 
+        onClose={handleSuccessModalClose} 
+        message={successMessage}
+      />
+
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
