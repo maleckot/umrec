@@ -261,7 +261,11 @@ function RevisionStep2Content() {
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(true); // ✅ START true
+  const [revisionComments, setRevisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
+
   const [formData, setFormData] = useState<FormDataType>({
+
     // Research Information
     title: '',
     studySiteType: '',
@@ -323,7 +327,6 @@ function RevisionStep2Content() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorList, setErrorList] = useState<string[]>([]);
-  const [revisionComments, setRevisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
 
   const umakColleges = [
     'College of Liberal Arts and Sciences (CLAS)',
@@ -380,7 +383,7 @@ function RevisionStep2Content() {
     return null;
   };
 
-useEffect(() => {
+ useEffect(() => {
   if (!submissionId) {
     alert('No submission ID found');
     router.push('/researchermodule/submissions');
@@ -389,6 +392,7 @@ useEffect(() => {
 
   const fetchSubmissionData = async () => {
     const supabase = createClient();
+    setLoadingComments(true); // ✅ START LOADING
 
     try {
       const { data, error } = await supabase
@@ -399,7 +403,32 @@ useEffect(() => {
 
       if (error) throw error;
 
-      // ✅ Fetch technical review file
+      // ✅ FETCH REVIEWER COMMENTS - CHOOSE ONE BASED ON YOUR NEEDS:
+      
+      // Option A: If you have docId (quick revision from activity-details)
+      if (docId) {
+        const { data: verification } = await supabase
+          .from('document_verifications')
+          .select('feedback_comment')
+          .eq('document_id', docId)
+          .single();
+
+        if (verification?.feedback_comment) {
+          setRevisionComments(verification.feedback_comment);
+        } else {
+          setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+        }
+      } 
+      // Option B: If you DON'T have docId (regular revision from step1)
+      else {
+        if (data?.feedback_comments) {
+          setRevisionComments(data.feedback_comments);
+        } else {
+          setRevisionComments('No specific feedback provided. Please review the form for any general improvements.');
+        }
+      }
+
+      // ✅ Rest of your existing code...
       const { data: technicalReviewDoc } = await supabase
         .from('uploaded_documents')
         .select('file_url, file_name, file_size')
@@ -450,7 +479,6 @@ useEffect(() => {
             );
           }
 
-          // ✅ Map from application_forms
           console.log('📊 From application_forms - type_of_study:', appFormData.type_of_study);
           console.log('📊 From application_forms - source_of_funding:', appFormData.source_of_funding);
 
@@ -515,37 +543,12 @@ useEffect(() => {
       setLoading(false);
       setIsClient(true);
       isInitialMount.current = false;
+      setLoadingComments(false); // ✅ END LOADING
     }
   };
 
   fetchSubmissionData();
-}, [submissionId, router]);
-
-
-
-  useEffect(() => {
-    if (isInitialMount.current || !isClient) return;
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      const dataToSave = { ...formData };
-      delete (dataToSave as any).technicalReviewFile;
-      localStorage.setItem('revisionStep2Data', JSON.stringify(dataToSave));
-      localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
-      localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
-      console.log('💾 Revision Step 2 auto-saved');
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
-  }, [formData, coResearchers, technicalAdvisers, isClient]);
-
+}, [submissionId, docId, router]); // ✅ ADDED docId to dependency array
 
 
   useEffect(() => {
@@ -572,67 +575,67 @@ useEffect(() => {
   }, [formData, coResearchers, technicalAdvisers, isClient]);
 
 
-// ✅ SIMPLIFIED handleSubmit - calls the server action
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsSubmitting(true);
+  // ✅ SIMPLIFIED handleSubmit - calls the server action
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
 
-  const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string> = {};
 
-  // Validation
-  const titleError = validateInput(formData.title, 'Title');
-  if (titleError) newErrors.title = titleError;
+    // Validation
+    const titleError = validateInput(formData.title, 'Title');
+    if (titleError) newErrors.title = titleError;
 
-  const firstNameError = validateInput(formData.researcherFirstName, 'First Name');
-  if (firstNameError) newErrors.researcherFirstName = firstNameError;
+    const firstNameError = validateInput(formData.researcherFirstName, 'First Name');
+    if (firstNameError) newErrors.researcherFirstName = firstNameError;
 
-  const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
-  if (lastNameError) newErrors.researcherLastName = lastNameError;
+    const lastNameError = validateInput(formData.researcherLastName, 'Last Name');
+    if (lastNameError) newErrors.researcherLastName = lastNameError;
 
-  const emailError = validateInput(formData.project_leader_email, 'Email');
-  if (emailError) newErrors.email = emailError;
+    const emailError = validateInput(formData.project_leader_email, 'Email');
+    if (emailError) newErrors.email = emailError;
 
-  const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
-  if (mobileError) newErrors.mobileNo = mobileError;
+    const mobileError = validateInput(formData.project_leader_contact, 'Mobile Number');
+    if (mobileError) newErrors.mobileNo = mobileError;
 
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    setErrorList(Object.values(newErrors));
-    setShowErrorModal(true);
-    setIsSubmitting(false);
-    const firstErrorField = Object.keys(newErrors)[0];
-    const element = document.getElementById(firstErrorField);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setErrorList(Object.values(newErrors));
+      setShowErrorModal(true);
+      setIsSubmitting(false);
+      const firstErrorField = Object.keys(newErrors)[0];
+      const element = document.getElementById(firstErrorField);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
     }
-    return;
-  }
 
-  try {
-    // ✅ Call server action
-    const result = await handleRevisionSubmit(
-      submissionId!,
-      formData,
-      coResearchers,
-      technicalAdvisers,
-      formData.technicalReviewFile instanceof File ? formData.technicalReviewFile : undefined
-    );
+    try {
+      // ✅ Call server action
+      const result = await handleRevisionSubmit(
+        submissionId!,
+        formData,
+        coResearchers,
+        technicalAdvisers,
+        formData.technicalReviewFile instanceof File ? formData.technicalReviewFile : undefined
+      );
 
-    if (!result.success) throw new Error(result.error);
+      if (!result.success) throw new Error(result.error);
 
-    localStorage.removeItem('revisionStep2Data');
-    localStorage.removeItem('revisionStep2CoResearchers');
-    localStorage.removeItem('revisionStep2TechnicalAdvisers');
+      localStorage.removeItem('revisionStep2Data');
+      localStorage.removeItem('revisionStep2CoResearchers');
+      localStorage.removeItem('revisionStep2TechnicalAdvisers');
 
-    alert(result.message);
-    router.push(`/researchermodule`);
-  } catch (error: any) {
-    console.error('Error:', error);
-    alert(`Failed: ${error.message}`);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+      alert(result.message);
+      router.push(`/researchermodule`);
+    } catch (error: any) {
+      console.error('Error:', error);
+      alert(`Failed: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
 
   const handleBack = () => {
@@ -748,9 +751,22 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-            {/* Revision Comment Box */}
-            <RevisionCommentBox comments={revisionComments} />
+            {/* Revision Comment Box - PLACED HERE */}
+            {loadingComments ? (
+              <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RevisionCommentBox comments={revisionComments} />
+            )}
 
+            {/* Then the form */}
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
 
               {/* Section 1 Header */}
@@ -1497,81 +1513,81 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
 
                 {/* File Upload appears when "Yes" is selected */}
-{formData.technicalReview === 'yes' && (
-  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
-    <label className="block text-sm font-semibold mb-4 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-      Upload Technical Review Results <span className="text-red-500">*</span>
-    </label>
+                {formData.technicalReview === 'yes' && (
+                  <div className="mt-4 p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <label className="block text-sm font-semibold mb-4 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Upload Technical Review Results <span className="text-red-500">*</span>
+                    </label>
 
-    {/* File upload input - shows file name at top */}
-    <div className="relative">
-      <input
-        type="file"
-        accept=".pdf,.doc,.docx"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            if (file.size > 10 * 1024 * 1024) {
-              alert('File size must be less than 10MB');
-              e.target.value = '';
-              return;
-            }
-            setFormData({ ...formData, technicalReviewFile: file });
-          }
-        }}
-        className="hidden"
-        id="technicalReviewFile"
-      />
-      <label
-        htmlFor="technicalReviewFile"
-        className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300"
-      >
-        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-        </svg>
-        <div className="text-center">
-          <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {formData.technicalReviewFile instanceof File 
-              ? formData.technicalReviewFile.name 
-              : (formData.technicalReviewFile?.name || 'Click to upload or drag and drop')}
-          </p>
-          <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            PDF, DOC, DOCX (max 10MB)
-          </p>
-        </div>
-      </label>
-    </div>
+                    {/* File upload input - shows file name at top */}
+                    <div className="relative">
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert('File size must be less than 10MB');
+                              e.target.value = '';
+                              return;
+                            }
+                            setFormData({ ...formData, technicalReviewFile: file });
+                          }
+                        }}
+                        className="hidden"
+                        id="technicalReviewFile"
+                      />
+                      <label
+                        htmlFor="technicalReviewFile"
+                        className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300"
+                      >
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            {formData.technicalReviewFile instanceof File
+                              ? formData.technicalReviewFile.name
+                              : (formData.technicalReviewFile?.name || 'Click to upload or drag and drop')}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                            PDF, DOC, DOCX (max 10MB)
+                          </p>
+                        </div>
+                      </label>
+                    </div>
 
-    {/* Show selected file info */}
-    {formData.technicalReviewFile && (
-      <div className="mt-3 p-3 bg-green-50 border-2 border-green-200 rounded-lg flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <FileText size={20} className="text-green-600" />
-          <div>
-            <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {formData.technicalReviewFile.name}
-            </p>
-            <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              {formData.technicalReviewFile.size ? `${(formData.technicalReviewFile.size / 1024 / 1024).toFixed(2)} MB` : ''}
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setFormData({ ...formData, technicalReviewFile: null });
-            const fileInput = document.getElementById('technicalReviewFile') as HTMLInputElement;
-            if (fileInput) fileInput.value = '';
-          }}
-          className="p-2 text-red-500 hover:text-red-700 transition-colors"
-          aria-label="Remove file"
-        >
-          <X size={20} />
-        </button>
-      </div>
-    )}
-  </div>
-)}
+                    {/* Show selected file info */}
+                    {formData.technicalReviewFile && (
+                      <div className="mt-3 p-3 bg-green-50 border-2 border-green-200 rounded-lg flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <FileText size={20} className="text-green-600" />
+                          <div>
+                            <p className="text-sm font-semibold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {formData.technicalReviewFile.name}
+                            </p>
+                            <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {formData.technicalReviewFile.size ? `${(formData.technicalReviewFile.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, technicalReviewFile: null });
+                            const fileInput = document.getElementById('technicalReviewFile') as HTMLInputElement;
+                            if (fileInput) fileInput.value = '';
+                          }}
+                          className="p-2 text-red-500 hover:text-red-700 transition-colors"
+                          aria-label="Remove file"
+                        >
+                          <X size={20} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Submitted to Another UMREC */}

@@ -1040,14 +1040,13 @@ export async function generateConsentFormPdf(
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
       if (!text || text.trim() === '') return [];
-      // ✅ FIX: Handle newlines first
       const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
       for (const paragraph of paragraphs) {
         if (!paragraph.trim()) {
-          allLines.push(''); // Preserve empty lines
+          allLines.push('');
           continue;
         }
 
@@ -1056,8 +1055,6 @@ export async function generateConsentFormPdf(
 
         for (const word of words) {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-
-          // ✅ Now safe to measure - no newlines in testLine
           const width = helvetica.widthOfTextAtSize(testLine, fontSize);
 
           if (width > maxWidth) {
@@ -1079,7 +1076,6 @@ export async function generateConsentFormPdf(
 
       return allLines;
     };
-
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -1114,7 +1110,7 @@ export async function generateConsentFormPdf(
     yPos -= 70;
 
     // PARTICIPANT GROUP
-    const informedConsentFor = submissionData.step4?.informedConsentFor || step4?.participantGroupIdentity;
+    const informedConsentFor = step4?.participantGroupIdentity;
     if (informedConsentFor) {
       page.drawText('Informed Consent Form for:', {
         x: margin,
@@ -1133,9 +1129,8 @@ export async function generateConsentFormPdf(
     }
 
     // PROJECT AND RESEARCHER INFO
-    const step1 = submissionData.step1;
     const step2 = submissionData.step2;
-    if (step1 || step2) {
+    if (step2) {
       page.drawText('PROJECT AND RESEARCHER INFORMATION', {
         x: margin,
         y: yPos,
@@ -1144,7 +1139,7 @@ export async function generateConsentFormPdf(
       });
       yPos -= 15;
 
-      const leadName = `${step1?.projectLeaderFirstName || step2?.researcherFirstName || ''} ${step1?.projectLeaderMiddleName || step2?.researcherMiddleName || ''} ${step1?.projectLeaderLastName || step2?.researcherLastName || ''}`.trim();
+      const leadName = `${step2.project_leader_first_name || ''} ${step2.project_leader_last_name || ''}`.trim();
       if (leadName) {
         page.drawText(`Principal Investigator: ${leadName}`, {
           x: margin,
@@ -1154,7 +1149,7 @@ export async function generateConsentFormPdf(
         });
         yPos -= 12;
 
-        const institution = step2?.institution || step1?.organization || 'University of Makati';
+        const institution = step2.organization || 'University of Makati';
         page.drawText(`Organization: ${institution}`, {
           x: margin,
           y: yPos,
@@ -1163,10 +1158,9 @@ export async function generateConsentFormPdf(
         });
         yPos -= 12;
 
-        const contact = step1?.projectLeaderContact || step2?.mobileNo || '';
-        const email = step1?.projectLeaderEmail || step2?.email || '';
-        if (contact || email) {
-          page.drawText(`Contact: ${contact} | ${email}`, {
+        const email = step2.project_leader_email || '';
+        if (email) {
+          page.drawText(`Email: ${email}`, {
             x: margin,
             y: yPos,
             size: 9,
@@ -1176,7 +1170,7 @@ export async function generateConsentFormPdf(
         }
       }
 
-      const projectTitle = step1?.title || step2?.title || '';
+      const projectTitle = step2.title || '';
       if (projectTitle) {
         yPos -= 5;
         page.drawText('Project Title:', {
@@ -1226,18 +1220,54 @@ export async function generateConsentFormPdf(
       yPos -= 15;
     };
 
-    // ADULT CONSENT ENGLISH
-    if (step4?.purposeEnglish) {
-      addConsentSection('PURPOSE OF THE STUDY', step4.purposeEnglish);
-      addConsentSection('RISKS AND INCONVENIENCES', step4.risksEnglish);
-      addConsentSection('BENEFITS', step4.benefitsEnglish);
-      addConsentSection('PROCEDURES', step4.proceduresEnglish);
-      addConsentSection('VOLUNTARINESS', step4.voluntarinessEnglish);
-      addConsentSection('CONFIDENTIALITY', step4.confidentialityEnglish);
+    // ========== ADULT CONSENT - ENGLISH ==========
+    if (step4?.adultLanguage === 'english' || step4?.adultLanguage === 'both') {
+      if (step4?.introductionEnglish) {
+        addConsentSection('1. INTRODUCTION', step4.introductionEnglish);
+      }
+      if (step4?.purposeEnglish) {
+        addConsentSection('2. PURPOSE OF THE STUDY', step4.purposeEnglish);
+      }
+      if (step4?.researchInterventionEnglish) {
+        addConsentSection('3. TYPE OF RESEARCH INTERVENTION', step4.researchInterventionEnglish);
+      }
+      if (step4?.participantSelectionEnglish) {
+        addConsentSection('4. PARTICIPANT SELECTION', step4.participantSelectionEnglish);
+      }
+      if (step4?.voluntaryParticipationEnglish) {
+        addConsentSection('5. VOLUNTARY PARTICIPATION', step4.voluntaryParticipationEnglish);
+      }
+      if (step4?.proceduresEnglish) {
+        addConsentSection('6. PROCEDURES', step4.proceduresEnglish);
+      }
+      if (step4?.durationEnglish) {
+        addConsentSection('7. DURATION', step4.durationEnglish);
+      }
+      if (step4?.risksEnglish) {
+        addConsentSection('8. RISKS AND INCONVENIENCES', step4.risksEnglish);
+      }
+      if (step4?.benefitsEnglish) {
+        addConsentSection('9. BENEFITS', step4.benefitsEnglish);
+      }
+      if (step4?.reimbursementsEnglish) {
+        addConsentSection('10. REIMBURSEMENTS', step4.reimbursementsEnglish);
+      }
+      if (step4?.confidentialityEnglish) {
+        addConsentSection('11. CONFIDENTIALITY', step4.confidentialityEnglish);
+      }
+      if (step4?.sharingResultsEnglish) {
+        addConsentSection('12. SHARING THE RESULTS', step4.sharingResultsEnglish);
+      }
+      if (step4?.rightToRefuseEnglish) {
+        addConsentSection('13. RIGHT TO REFUSE OR WITHDRAW', step4.rightToRefuseEnglish);
+      }
+      if (step4?.whoToContactEnglish) {
+        addConsentSection('14. WHO TO CONTACT', step4.whoToContactEnglish);
+      }
     }
 
-    // ADULT CONSENT TAGALOG
-    if (step4?.purposeTagalog) {
+    // ========== ADULT CONSENT - TAGALOG ==========
+    if (step4?.adultLanguage === 'tagalog' || step4?.adultLanguage === 'both') {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
@@ -1251,22 +1281,58 @@ export async function generateConsentFormPdf(
       });
       yPos -= 20;
 
-      addConsentSection('LAYUNIN NG PAG-AARAL', step4.purposeTagalog);
-      addConsentSection('MGA PANGANIB AT ABALA', step4.risksTagalog);
-      addConsentSection('MGA BENEPISYO', step4.benefitsTagalog);
-      addConsentSection('MGA PAMAMARAAN', step4.proceduresTagalog);
-      addConsentSection('KUSANG-LOOB', step4.voluntarinessTagalog);
-      addConsentSection('PAGIGING KUMPIDENSYAL', step4.confidentialityTagalog);
+      if (step4?.introductionTagalog) {
+        addConsentSection('1. PAMBUNGAD', step4.introductionTagalog);
+      }
+      if (step4?.purposeTagalog) {
+        addConsentSection('2. LAYUNIN NG PANANALIKSIK', step4.purposeTagalog);
+      }
+      if (step4?.researchInterventionTagalog) {
+        addConsentSection('3. URI NG PANANALIKSIK NA PAKIKIBAHAGI', step4.researchInterventionTagalog);
+      }
+      if (step4?.participantSelectionTagalog) {
+        addConsentSection('4. PAGPILI NG KALAHOK', step4.participantSelectionTagalog);
+      }
+      if (step4?.voluntaryParticipationTagalog) {
+        addConsentSection('5. KUSANG PAKIKIBAHAGI', step4.voluntaryParticipationTagalog);
+      }
+      if (step4?.proceduresTagalog) {
+        addConsentSection('6. MGA PAMAMARAAN', step4.proceduresTagalog);
+      }
+      if (step4?.durationTagalog) {
+        addConsentSection('7. TAGAL', step4.durationTagalog);
+      }
+      if (step4?.risksTagalog) {
+        addConsentSection('8. MGA PANGANIB AT ABALA', step4.risksTagalog);
+      }
+      if (step4?.benefitsTagalog) {
+        addConsentSection('9. MGA BENEPISYO', step4.benefitsTagalog);
+      }
+      if (step4?.reimbursementsTagalog) {
+        addConsentSection('10. PAGBABAYAD-BAYAD', step4.reimbursementsTagalog);
+      }
+      if (step4?.confidentialityTagalog) {
+        addConsentSection('11. PAGIGING KUMPIDENSYAL', step4.confidentialityTagalog);
+      }
+      if (step4?.sharingResultsTagalog) {
+        addConsentSection('12. PAGBABAHAGI NG MGA RESULTA', step4.sharingResultsTagalog);
+      }
+      if (step4?.rightToRefuseTagalog) {
+        addConsentSection('13. KARAPATAN NA TUMANGGI O LUMABAS', step4.rightToRefuseTagalog);
+      }
+      if (step4?.whoToContactTagalog) {
+        addConsentSection('14. SINO ANG MAKAKAUSAP', step4.whoToContactTagalog);
+      }
     }
 
-    // MINOR ASSENT
-    if (step4?.introduction) {
+    // ========== MINOR ASSENT - ENGLISH ==========
+    if (step4?.minorLanguage === 'english' || step4?.minorLanguage === 'both') {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
       }
 
-      page.drawText('MINOR ASSENT FORM', {
+      page.drawText('INFORMED ASSENT FORM (MINOR)', {
         x: margin,
         y: yPos,
         size: 11,
@@ -1274,20 +1340,80 @@ export async function generateConsentFormPdf(
       });
       yPos -= 20;
 
-      addConsentSection('INTRODUCTION', step4.introduction);
-      addConsentSection('PURPOSE OF RESEARCH', step4.purpose);
-      addConsentSection('CHOICE OF PARTICIPANTS', step4.choiceOfParticipants);
-      addConsentSection('VOLUNTARINESS OF PARTICIPATION', step4.voluntariness);
-      addConsentSection('PROCEDURES', step4.procedures);
-      addConsentSection('RISKS AND INCONVENIENCES', step4.risks);
-      addConsentSection('POSSIBLE BENEFITS', step4.benefits);
-      addConsentSection('CONFIDENTIALITY', step4.confidentiality);
-      addConsentSection('SHARING THE FINDINGS', step4.sharingFindings);
-      if (step4.certificateAssent) {
-        addConsentSection('CERTIFICATE OF ASSENT', step4.certificateAssent);
+      if (step4?.introductionMinorEnglish) {
+        addConsentSection('1. INTRODUCTION', step4.introductionMinorEnglish);
+      }
+      if (step4?.purposeMinorEnglish) {
+        addConsentSection('2. PURPOSE OF RESEARCH', step4.purposeMinorEnglish);
+      }
+      if (step4?.choiceOfParticipantsEnglish) {
+        addConsentSection('3. CHOICE OF PARTICIPANTS', step4.choiceOfParticipantsEnglish);
+      }
+      if (step4?.voluntarinessMinorEnglish) {
+        addConsentSection('4. VOLUNTARINESS OF PARTICIPATION', step4.voluntarinessMinorEnglish);
+      }
+      if (step4?.proceduresMinorEnglish) {
+        addConsentSection('5. PROCEDURES', step4.proceduresMinorEnglish);
+      }
+      if (step4?.risksMinorEnglish) {
+        addConsentSection('6. RISKS AND INCONVENIENCES', step4.risksMinorEnglish);
+      }
+      if (step4?.benefitsMinorEnglish) {
+        addConsentSection('7. POSSIBLE BENEFITS', step4.benefitsMinorEnglish);
+      }
+      if (step4?.confidentialityMinorEnglish) {
+        addConsentSection('8. CONFIDENTIALITY', step4.confidentialityMinorEnglish);
+      }
+      if (step4?.sharingFindingsEnglish) {
+        addConsentSection('9. SHARING THE FINDINGS', step4.sharingFindingsEnglish);
       }
     }
 
+    // ========== MINOR ASSENT - TAGALOG ==========
+    if (step4?.minorLanguage === 'tagalog' || step4?.minorLanguage === 'both') {
+      if (yPos < 600) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        yPos = pageHeight - margin;
+      }
+
+      page.drawText('PAHINTULOT NA MAY KAALAMAN PARA SA BATA (TAGALOG)', {
+        x: margin,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+      });
+      yPos -= 20;
+
+      if (step4?.introductionMinorTagalog) {
+        addConsentSection('1. PAMBUNGAD', step4.introductionMinorTagalog);
+      }
+      if (step4?.purposeMinorTagalog) {
+        addConsentSection('2. LAYUNIN NG PANANALIKSIK', step4.purposeMinorTagalog);
+      }
+      if (step4?.choiceOfParticipantsTagalog) {
+        addConsentSection('3. PAGPILI NG KALAHOK', step4.choiceOfParticipantsTagalog);
+      }
+      if (step4?.voluntarinessMinorTagalog) {
+        addConsentSection('4. KUSANG PAKIKIBAHAGI', step4.voluntarinessMinorTagalog);
+      }
+      if (step4?.proceduresMinorTagalog) {
+        addConsentSection('5. MGA PAMAMARAAN', step4.proceduresMinorTagalog);
+      }
+      if (step4?.risksMinorTagalog) {
+        addConsentSection('6. MGA PANGANIB AT ABALA', step4.risksMinorTagalog);
+      }
+      if (step4?.benefitsMinorTagalog) {
+        addConsentSection('7. POSIBLENG MGA BENEPISYO', step4.benefitsMinorTagalog);
+      }
+      if (step4?.confidentialityMinorTagalog) {
+        addConsentSection('8. PAGIGING KUMPIDENSYAL', step4.confidentialityMinorTagalog);
+      }
+      if (step4?.sharingFindingsTagalog) {
+        addConsentSection('9. PAGBABAHAGI NG MGA NATUKLASAN', step4.sharingFindingsTagalog);
+      }
+    }
+
+    // CONTACT INFORMATION
     if (step4?.contactPerson || step4?.contactNumber) {
       if (yPos < 80) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -1307,6 +1433,7 @@ export async function generateConsentFormPdf(
       }
     }
 
+    // PAGE NUMBERS
     const pages = pdfDoc.getPages();
     pages.forEach((page, index) => {
       page.drawText(`Page ${index + 1} of ${pages.length}`, {

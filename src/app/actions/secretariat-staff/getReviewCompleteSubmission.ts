@@ -1,4 +1,4 @@
-//app/actions/secretariat-staffstaff/getReviewCompleteSubmission.ts
+// app/actions/secretariat-staff/getReviewCompleteSubmission.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -24,12 +24,11 @@ export async function getReviewCompleteDetails(submissionId: string) {
       return { success: false, error: 'Submission not found' };
     }
 
-    console.log('Submission data:', submission); // ✅ Debug log
+    console.log('Submission data:', submission);
 
-    // ✅ Try to find the researcher ID - check what column name is used
+    // ✅ Try to find the researcher ID
     const researcherId = submission.researcher_id || submission.user_id || submission.created_by;
-    
-    console.log('Looking for researcher with ID:', researcherId); // ✅ Debug log
+    console.log('Looking for researcher with ID:', researcherId);
 
     // Get researcher profile
     let researcher = null;
@@ -40,11 +39,10 @@ export async function getReviewCompleteDetails(submissionId: string) {
         .eq('id', researcherId)
         .single();
       
-      console.log('Researcher query result:', resData, resError); // ✅ Debug log
+      console.log('Researcher query result:', resData, resError);
       researcher = resData;
     }
 
-    // Rest of your code stays the same...
     // Get documents
     const { data: documents } = await supabase
       .from('uploaded_documents')
@@ -55,7 +53,14 @@ export async function getReviewCompleteDetails(submissionId: string) {
     const consolidatedDoc = documents?.find(doc => doc.document_type === 'consolidated_application');
     const originalDocs = documents?.filter(doc => doc.document_type !== 'consolidated_application') || [];
 
-    // Get signed URL
+    // ✅ NEW: Get certificates from documents
+    const certificates = documents?.filter(doc => 
+      ['certificate_of_approval', 'form_0011', 'form_0012'].includes(doc.document_type)
+    ) || [];
+
+    console.log('Certificates found:', certificates); // ✅ Debug log
+
+    // Get signed URL for consolidated document
     let consolidatedUrl = null;
     if (consolidatedDoc?.file_url) {
       const { data: urlData } = await supabase.storage
@@ -63,6 +68,29 @@ export async function getReviewCompleteDetails(submissionId: string) {
         .createSignedUrl(consolidatedDoc.file_url, 3600);
       consolidatedUrl = urlData?.signedUrl || null;
     }
+
+    // ✅ NEW: Get signed URLs for certificates
+    const certificatesWithUrls = await Promise.all(
+      certificates.map(async (cert) => {
+        if (cert.file_url) {
+          const { data: urlData } = await supabase.storage
+            .from('research-documents')
+            .createSignedUrl(cert.file_url, 3600);
+          return {
+            id: cert.id,
+            name: cert.file_name,
+            url: urlData?.signedUrl || cert.file_url,
+            type: cert.document_type,
+          };
+        }
+        return {
+          id: cert.id,
+          name: cert.file_name,
+          url: cert.file_url,
+          type: cert.document_type,
+        };
+      })
+    );
 
     // Get reviews and reviewers
     const { data: reviews } = await supabase
@@ -139,6 +167,7 @@ export async function getReviewCompleteDetails(submissionId: string) {
       assignedReviewers: assignedReviewers?.map(r => r.full_name || r.email || 'Unknown') || [],
       reviewsComplete: reviews?.length || 0,
       reviewsRequired: assignments?.length || 0,
+      certificates: certificatesWithUrls, // ✅ ADD THIS
     };
 
   } catch (error) {
@@ -149,4 +178,3 @@ export async function getReviewCompleteDetails(submissionId: string) {
     };
   }
 }
-

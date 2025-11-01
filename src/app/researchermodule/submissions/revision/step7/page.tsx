@@ -1,12 +1,13 @@
 // app/researchermodule/submissions/revision/step7/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, AlertCircle, MessageSquare, Upload, FileText, Mail, CheckCircle } from 'lucide-react';
 import PDFUploadValidator from '@/components/researcher/submission/PDFUploadValidator';
+import { createClient } from '@/utils/supabase/client';
 
 // Revision Comment Box Component
 const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
@@ -29,26 +30,63 @@ const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
   );
 };
 
-export default function RevisionStep7() {
+function RevisionStep7Content() {
   const router = useRouter();
-  const [file, setFile] = useState<File | null>(null);
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id');
+  const docId = searchParams.get('docId');
+  const docType = searchParams.get('docType');
 
-  const [revisionComments] = useState(
-    'The endorsement letter must include specific mention of the revisions made to the research protocol. Please provide an updated endorsement letter from your adviser that acknowledges the changes and confirms their support for the revised version. The letter should be dated after the revision feedback was received.'
-  );
+  const isQuickRevision = !!docId && docType === 'endorsement_letter';
+
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [revisionComments, setRevisionComments] = useState<string>('');
+  const [loadingComments, setLoadingComments] = useState(true);
+  const supabase = createClient();
+
+  // ✅ FETCH REVIEWER COMMENTS FROM DATABASE
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        if (!docId) {
+          setLoadingComments(false);
+          return;
+        }
+
+        const { data: verification } = await supabase
+          .from('document_verifications')
+          .select('feedback_comment')
+          .eq('document_id', docId)
+          .single();
+
+        if (verification?.feedback_comment) {
+          setRevisionComments(verification.feedback_comment);
+        } else {
+          setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+        }
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        setRevisionComments('Unable to load feedback comments.');
+      } finally {
+        setLoadingComments(false);
+      }
+    };
+
+    fetchComments();
+  }, [docId, supabase]);
 
   useEffect(() => {
     const saved = localStorage.getItem('revisionStep7Data');
     if (saved) {
       const parsedData = JSON.parse(saved);
       if (parsedData.fileName) {
-        // File reference exists but actual file needs to be re-uploaded
         console.log('Previous file:', parsedData.fileName);
       }
     }
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!file) {
@@ -56,28 +94,124 @@ export default function RevisionStep7() {
       return;
     }
 
-    // Convert file to base64 and store in sessionStorage
-    const reader = new FileReader();
-    reader.onload = () => {
-      sessionStorage.setItem('revisionStep7File', reader.result as string);
+    // ✅ QUICK REVISION: Upload directly and update database
+    if (isQuickRevision && submissionId && docId) {
+      setUploading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          alert('Not authenticated');
+          setUploading(false);
+          return;
+        }
 
-      const dataToSave = {
-        fileName: file.name,
-        fileSize: file.size,
-        uploadedAt: new Date().toISOString(),
+        // ✅ FETCH OLD FILE URL FIRST
+        const { data: existingDoc } = await supabase
+          .from('uploaded_documents')
+          .select('file_url')
+          .eq('id', docId)
+          .single();
+
+        // ✅ DELETE OLD FILE FROM STORAGE
+        if (existingDoc?.file_url) {
+          try {
+            await supabase.storage
+              .from('research-documents')
+              .remove([existingDoc.file_url]);
+            console.log('✅ Deleted old endorsement letter file');
+          } catch (err) {
+            console.warn('⚠️ Could not delete old file:', err);
+          }
+        }
+
+        // ✅ UPLOAD NEW FILE
+        const filePath = `${user.id}/${submissionId}/endorsement_letter_${Date.now()}.pdf`;
+        const { error: uploadError } = await supabase.storage
+          .from('research-documents')
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // ✅ UPDATE DOCUMENT RECORD WITH NEW PATH
+        const { error: updateError } = await supabase
+          .from('uploaded_documents')
+          .update({
+            file_url: filePath,
+            file_name: file.name,
+            file_size: file.size,
+            uploaded_at: new Date().toISOString(),
+          })
+          .eq('id', docId);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // ✅ RESET VERIFICATION STATUS
+        const { error: verifyError } = await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
+          })
+          .eq('document_id', docId);
+
+        if (verifyError) {
+          console.error('Failed to reset verification:', verifyError);
+        }
+
+        // ✅ UPDATE SUBMISSION STATUS
+        const { error: statusError } = await supabase
+          .from('research_submissions')
+          .update({
+            status: 'Resubmit',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', submissionId);
+
+        if (statusError) {
+          console.error('Failed to update status:', statusError);
+        }
+
+        alert('✅ Endorsement Letter updated successfully! Your submission has been resubmitted for review.');
+        router.push(`/researchermodule`);
+
+      } catch (error) {
+        console.error('Error uploading:', error);
+        alert('Failed to upload document. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    }
+    // ✅ NORMAL MULTI-STEP FLOW
+    else {
+      const reader = new FileReader();
+      reader.onload = () => {
+        sessionStorage.setItem('revisionStep7File', reader.result as string);
+
+        const dataToSave = {
+          fileName: file.name,
+          fileSize: file.size,
+          uploadedAt: new Date().toISOString(),
+        };
+        localStorage.setItem('revisionStep7Data', JSON.stringify(dataToSave));
+        console.log('💾 Revision Step 7 data saved');
+        router.push(`/researchermodule/submissions/revision/step8?mode=revision&id=${submissionId}`);
       };
-      localStorage.setItem('revisionStep7Data', JSON.stringify(dataToSave));
-      console.log('💾 Revision Step 7 data saved');
-      router.push('/researchermodule/submissions/revision/step8');
-    };
-    reader.readAsDataURL(file);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleBack = () => {
-    router.push('/researchermodule/submissions/revision/step6');
+    if (isQuickRevision && submissionId) {
+      router.push(`/researchermodule/activity-details?id=${submissionId}`);
+    } else {
+      router.push(`/researchermodule/submissions/revision/step6?mode=revision&id=${submissionId}`);
+    }
   };
-
-  const isNextDisabled = file === null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
@@ -103,36 +237,54 @@ export default function RevisionStep7() {
                 
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Endorsement Letter from Research Adviser - Revision
+                    Endorsement Letter - {isQuickRevision ? 'Quick Revision' : 'Revision'}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Upload an updated endorsement letter for your revised protocol
+                    {isQuickRevision
+                      ? 'Upload your updated endorsement letter and submit immediately'
+                      : 'Upload an updated endorsement letter for your revised protocol'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Enhanced Progress Bar */}
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
-                className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
-                style={{ width: '87.5%' }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Step 7 of 8
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                87.5% Complete
-              </span>
-            </div>
+            {/* Enhanced Progress Bar - Only in multi-step */}
+            {!isQuickRevision && (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                    style={{ width: '87.5%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Step 7 of 8
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    87.5% Complete
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-            {/* Reviewer Comments Box */}
-            <RevisionCommentBox comments={revisionComments} />
+            {/* Reviewer Comments Box - WITH LOADING STATE */}
+            {loadingComments ? (
+              <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RevisionCommentBox comments={revisionComments} />
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               {/* Instructions */}
@@ -248,23 +400,40 @@ export default function RevisionStep7() {
                 </ul>
               </div>
 
-             {/* SINGLE ORANGE SAVE BUTTON */}
-<div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
-  <button
-    type="submit"
-    className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
-    style={{ fontFamily: 'Metropolis, sans-serif' }}
-    aria-label="Save changes"
-  >
-    <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
-    <span className="relative z-10 flex items-center justify-center gap-2">
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-      </svg>
-      Save Changes
-    </span>
-  </button>
-</div>  
+              {/* ORANGE SAVE BUTTON */}
+              <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
+                <button
+                  type="submit"
+                  disabled={uploading || !file}
+                  className={`group relative px-10 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden transition-all duration-300 ${
+                    !file || uploading 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700'
+                  }`}
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  aria-label={isQuickRevision ? "Submit revision" : "Save changes"}
+                >
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {isQuickRevision ? 'Submit Revision' : 'Save Changes'}
+                      </>
+                    )}
+                  </span>
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -272,5 +441,17 @@ export default function RevisionStep7() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function RevisionStep7() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    }>
+      <RevisionStep7Content />
+    </Suspense>
   );
 }

@@ -7,6 +7,9 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, FileText, AlertCircle, X, Info, MessageSquare } from 'lucide-react';
 import RichTextEditor from '@/components/researcher/submission/RichTextEditor';
+import { createClient } from '@/utils/supabase/client';  // ✅ ADD THIS!
+import { saveStep4Data } from '@/app/actions/lib/saveStep4';  // ✅ ADD THIS!
+
 import { RadioGroup } from '@/components/researcher/submission/FormComponents';
 
 // Custom Error Modal Component
@@ -155,19 +158,34 @@ export default function RevisionStep4() {
   const [isClient, setIsClient] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-
+  const [submissionId, setSubmissionId] = useState('');  // ✅ ADD!
+  const [loading, setLoading] = useState(true);  // ✅ ADD!
   const [consentType, setConsentType] = useState<'adult' | 'minor' | 'both' | ''>('');
   const [adultLanguage, setAdultLanguage] = useState<'english' | 'tagalog' | 'both' | ''>('');
   const [minorLanguage, setMinorLanguage] = useState<'english' | 'tagalog' | 'both' | ''>('');
-  
+  const [saving, setSaving] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(true);
+  const [revisionComments, setRevisionComments] = useState('');
   const [step2Data, setStep2Data] = useState<any>(null);
   const [step3Data, setStep3Data] = useState<any>(null);
   const [reviewerComments, setReviewerComments] = useState('');
+  const [docId, setDocId] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState({
-    // Header Information
+// For Step 2 info display
+const [step2Info, setStep2Info] = useState({
+  title: '',
+  projectLeader: '',
+  email: '',
+  organization: '',
+  college: '',
+});
+
+ const [formData, setFormData] = useState({
     participantGroupIdentity: '',
-    // Adult Consent Form
+    contactPerson: '',
+    contactNumber: '',
+    
+    // Adult form fields
     introductionEnglish: '',
     introductionTagalog: '',
     purposeEnglish: '',
@@ -196,10 +214,8 @@ export default function RevisionStep4() {
     rightToRefuseTagalog: '',
     whoToContactEnglish: '',
     whoToContactTagalog: '',
-    // Part II Certificate
-    certificateConsentEnglish: '',
-    certificateConsentTagalog: '',
-    // Minor Assent Form
+    
+    // Minor form fields
     introductionMinorEnglish: '',
     introductionMinorTagalog: '',
     purposeMinorEnglish: '',
@@ -218,8 +234,6 @@ export default function RevisionStep4() {
     confidentialityMinorTagalog: '',
     sharingFindingsEnglish: '',
     sharingFindingsTagalog: '',
-    contactPerson: '',
-    contactNumber: ''
   });
 
   // ✅ HELPER FUNCTIONS INSIDE COMPONENT
@@ -488,9 +502,14 @@ export default function RevisionStep4() {
     return true;
   };
 
-  useEffect(() => {
-    setIsClient(true);
-    
+useEffect(() => {
+  setIsClient(true);
+
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+
+  // ✅ If NO ID - load from localStorage (new submission)
+  if (!id) {
     const savedStep2 = localStorage.getItem('revisionStep2Data');
     if (savedStep2) {
       try {
@@ -516,7 +535,7 @@ export default function RevisionStep4() {
         if (parsedData.consentType) setConsentType(parsedData.consentType);
         if (parsedData.adultLanguage) setAdultLanguage(parsedData.adultLanguage);
         if (parsedData.minorLanguage) setMinorLanguage(parsedData.minorLanguage);
-        if (parsedData.reviewerComments) setReviewerComments(parsedData.reviewerComments);
+        if (parsedData.revisionComments) setRevisionComments(parsedData.revisionComments);
         
         if (parsedData.formData) {
           setFormData(prev => ({
@@ -530,41 +549,168 @@ export default function RevisionStep4() {
         console.error('Error loading saved data:', error);
       }
     }
+    return; // ✅ EXIT - Don't fetch from API
+  }
 
-    // TODO: Fetch reviewer comments from API
-    const mockReviewerComments = "Please provide more detailed information about the participant selection criteria and ensure all consent form sections are complete in both English and Tagalog where applicable.";
-    setReviewerComments(mockReviewerComments);
-  }, []);
+  // ✅ If ID EXISTS - fetch from API (revision mode)
+  setSubmissionId(id);
+  setLoading(true);
 
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+  const fetchData = async () => {
+   try {
+  const supabase = createClient();
+
+  // ✅ 1. Find the consent form DOCUMENT from the 'uploaded_documents' table
+  //    (You must have a way to identify it, like 'document_type')
+  const { data: documentData, error: docError } = await supabase
+    .from('uploaded_documents')
+    .select('id') // This is the correct document_id
+    .eq('submission_id', id)
+    .eq('document_type', 'consent_form') // ASSUMPTION: You have a column like this
+    .single();
+
+  if (docError || !documentData) {
+    console.error('Could not find the consent form document entry:', docError);
+    setRevisionComments('Error: Could not find matching consent form document.');
+    return;
+  }
+
+  const correctDocumentId = documentData.id;
+
+  // ✅ 2. FETCH REVISION COMMENTS using the correctDocumentId
+  try {
+    setLoadingComments(true);
+    const { data: verification } = await supabase
+      .from('document_verifications')
+      .select('feedback_comment')
+      .eq('document_id', correctDocumentId) // Use the ID from uploaded_documents
+      .single();
+
+    if (verification?.feedback_comment) {
+      console.log('✅ Consent form comments:', verification.feedback_comment);
+      setRevisionComments(verification.feedback_comment);
+    } else {
+      setRevisionComments('Please review and update your consent forms based on the feedback provided.');
     }
+  } catch (err) {
+    console.warn('Error fetching comments:', err);
+    setRevisionComments('Unable to load reviewer comments.');
+  } finally {
+    setLoadingComments(false);
+  }
 
-    if (!isClient) return;
+  // ✅ 3. FETCH CONSENT FORM *DATA* (This part was already OK)
+  const { data: consentData } = await supabase
+    .from('consent_forms')
+    .select('*') // You don't need 'id' from here for comments
+    .eq('submission_id', id)
+    .single();
 
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
+      // ✅ FETCH STEP 2 DATA
+      const { data: step2Data } = await supabase
+        .from('research_submissions')
+        .select('title, project_leader_first_name, project_leader_last_name, project_leader_email, organization, college')
+        .eq('id', id)
+        .single();
 
-    saveTimeoutRef.current = setTimeout(() => {
-      const dataToSave = {
-        consentType,
-        adultLanguage,
-        minorLanguage,
-        reviewerComments,
-        formData
-      };
-      localStorage.setItem('revisionStep4Data', JSON.stringify(dataToSave));
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
+      if (step2Data) {
+        console.log('📋 Loaded Step 2 data:', step2Data);
+        setStep2Info({
+          title: step2Data.title || 'Not provided',
+          projectLeader: `${step2Data.project_leader_first_name || ''} ${step2Data.project_leader_last_name || ''}`.trim(),
+          email: step2Data.project_leader_email || '',
+          organization: step2Data.organization || 'N/A',
+          college: step2Data.college || 'N/A',
+        });
       }
-    };
-  }, [consentType, adultLanguage, minorLanguage, reviewerComments, formData, isClient]);
+
+      // ✅ Process consent form data
+      if (consentData) {
+        console.log('📋 Loaded consent form:', consentData);
+        
+        setConsentType(consentData.consent_type || 'adult');
+        
+        if (consentData.adult_consent?.adultLanguage) {
+          console.log('✅ Adult language:', consentData.adult_consent.adultLanguage);
+          setAdultLanguage(consentData.adult_consent.adultLanguage);
+        }
+        
+        if (consentData.minor_assent?.minorLanguage) {
+          console.log('✅ Minor language:', consentData.minor_assent.minorLanguage);
+          setMinorLanguage(consentData.minor_assent.minorLanguage);
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          participantGroupIdentity: consentData.informed_consent_for || '',
+          contactPerson: consentData.contact_person || '',
+          contactNumber: consentData.contact_number || '',
+          
+          ...(consentData.adult_consent && {
+            introductionEnglish: consentData.adult_consent.introductionEnglish || '',
+            introductionTagalog: consentData.adult_consent.introductionTagalog || '',
+            purposeEnglish: consentData.adult_consent.purposeEnglish || '',
+            purposeTagalog: consentData.adult_consent.purposeTagalog || '',
+            researchInterventionEnglish: consentData.adult_consent.researchInterventionEnglish || '',
+            researchInterventionTagalog: consentData.adult_consent.researchInterventionTagalog || '',
+            participantSelectionEnglish: consentData.adult_consent.participantSelectionEnglish || '',
+            participantSelectionTagalog: consentData.adult_consent.participantSelectionTagalog || '',
+            voluntaryParticipationEnglish: consentData.adult_consent.voluntaryParticipationEnglish || '',
+            voluntaryParticipationTagalog: consentData.adult_consent.voluntaryParticipationTagalog || '',
+            proceduresEnglish: consentData.adult_consent.proceduresEnglish || '',
+            proceduresTagalog: consentData.adult_consent.proceduresTagalog || '',
+            durationEnglish: consentData.adult_consent.durationEnglish || '',
+            durationTagalog: consentData.adult_consent.durationTagalog || '',
+            risksEnglish: consentData.adult_consent.risksEnglish || '',
+            risksTagalog: consentData.adult_consent.risksTagalog || '',
+            benefitsEnglish: consentData.adult_consent.benefitsEnglish || '',
+            benefitsTagalog: consentData.adult_consent.benefitsTagalog || '',
+            reimbursementsEnglish: consentData.adult_consent.reimbursementsEnglish || '',
+            reimbursementsTagalog: consentData.adult_consent.reimbursementsTagalog || '',
+            confidentialityEnglish: consentData.adult_consent.confidentialityEnglish || '',
+            confidentialityTagalog: consentData.adult_consent.confidentialityTagalog || '',
+            sharingResultsEnglish: consentData.adult_consent.sharingResultsEnglish || '',
+            sharingResultsTagalog: consentData.adult_consent.sharingResultsTagalog || '',
+            rightToRefuseEnglish: consentData.adult_consent.rightToRefuseEnglish || '',
+            rightToRefuseTagalog: consentData.adult_consent.rightToRefuseTagalog || '',
+            whoToContactEnglish: consentData.adult_consent.whoToContactEnglish || '',
+            whoToContactTagalog: consentData.adult_consent.whoToContactTagalog || '',
+          }),
+          
+          ...(consentData.minor_assent && {
+            introductionMinorEnglish: consentData.minor_assent.introductionMinorEnglish || '',
+            introductionMinorTagalog: consentData.minor_assent.introductionMinorTagalog || '',
+            purposeMinorEnglish: consentData.minor_assent.purposeMinorEnglish || '',
+            purposeMinorTagalog: consentData.minor_assent.purposeMinorTagalog || '',
+            choiceOfParticipantsEnglish: consentData.minor_assent.choiceOfParticipantsEnglish || '',
+            choiceOfParticipantsTagalog: consentData.minor_assent.choiceOfParticipantsTagalog || '',
+            voluntarinessMinorEnglish: consentData.minor_assent.voluntarinessMinorEnglish || '',
+            voluntarinessMinorTagalog: consentData.minor_assent.voluntarinessMinorTagalog || '',
+            proceduresMinorEnglish: consentData.minor_assent.proceduresMinorEnglish || '',
+            proceduresMinorTagalog: consentData.minor_assent.proceduresMinorTagalog || '',
+            risksMinorEnglish: consentData.minor_assent.risksMinorEnglish || '',
+            risksMinorTagalog: consentData.minor_assent.risksMinorTagalog || '',
+            benefitsMinorEnglish: consentData.minor_assent.benefitsMinorEnglish || '',
+            benefitsMinorTagalog: consentData.minor_assent.benefitsMinorTagalog || '',
+            confidentialityMinorEnglish: consentData.minor_assent.confidentialityMinorEnglish || '',
+            confidentialityMinorTagalog: consentData.minor_assent.confidentialityMinorTagalog || '',
+            sharingFindingsEnglish: consentData.minor_assent.sharingFindingsEnglish || '',
+            sharingFindingsTagalog: consentData.minor_assent.sharingFindingsTagalog || '',
+          })
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, []);
+
+
+
 
   const handleNext = () => {
     if (!validateForm()) {
@@ -596,6 +742,34 @@ export default function RevisionStep4() {
 
   const showAdultForm = consentType === 'adult' || consentType === 'both';
   const showMinorForm = consentType === 'minor' || consentType === 'both';
+ // ✅ SAVE
+ const handleSave = async () => {
+  setSaving(true);
+  try {
+    const result = await saveStep4Data({
+      submissionId,
+      formData: {
+        consentType,
+        adultLanguage,
+        minorLanguage,
+        ...formData
+      }
+    });
+
+    if (result.success) {
+      alert('✅ Revisions saved successfully!');
+      router.push('/researchermodule'); // Go back to submissions list
+    } else {
+      alert(`❌ Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert('Failed to save');
+    console.error(err);
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   if (!isClient) {
     return (
@@ -670,8 +844,18 @@ export default function RevisionStep4() {
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
             {/* Reviewer Comments Box */}
-            {reviewerComments && (
-              <RevisionCommentBox comments={reviewerComments} />
+            {loadingComments ? (
+              <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RevisionCommentBox comments={revisionComments} />
             )}
 
             <form className="space-y-6 sm:space-y-8">
@@ -687,131 +871,118 @@ export default function RevisionStep4() {
               </div>
 
               {/* Consent Type Selection */}
-              <div>
-                <RadioGroup
-                  label="Select Participant Type"
-                  options={[
-                    { value: 'adult', label: 'Adult Participants Only (Informed Consent Form)' },
-                    { value: 'minor', label: 'Minors/Children 12-15 years old Only (Informed Assent Form)' },
-                    { value: 'both', label: 'Both Adult and Minor Participants' }
-                  ]}
-                  selected={consentType}
-                  onChange={(val) => {
-                    setConsentType(val as 'adult' | 'minor' | 'both');
-                    if (val !== 'adult' && val !== 'both') setAdultLanguage('');
-                    if (val !== 'minor' && val !== 'both') setMinorLanguage('');
-                  }}
-                  required
-                />
-              </div>
+            <div>
+                  <RadioGroup
+                    label="Select Participant Type"
+                    options={[
+                      { value: 'adult', label: 'Adult Participants Only (Informed Consent Form)' },
+                      { value: 'minor', label: 'Minors/Children 12-15 years old Only (Informed Assent Form)' },
+                      { value: 'both', label: 'Both Adult and Minor Participants' }
+                    ]}
+                    selected={consentType}  // ✅ DISPLAYS SAVED VALUE!
+                    onChange={(val) => {
+                      setConsentType(val as 'adult' | 'minor' | 'both');
+                      if (val !== 'adult' && val !== 'both') setAdultLanguage('');
+                      if (val !== 'minor' && val !== 'both') setMinorLanguage('');
+                    }}
+                    required
+                  />
+                </div>
 
-              {/* Adult Consent Form */}
-              {showAdultForm && (
-                <div className="space-y-6 sm:space-y-8">
-                  <div className="bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-orange-500 p-4 sm:p-5 rounded-r-lg">
-                    <h4 className="font-bold text-[#071139] text-sm sm:text-base mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Informed Consent Form (Adult Participants)
-                    </h4>
-                    <p className="text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Select the language(s) you will provide for adult participants.
-                    </p>
-                  </div>
 
-                  {/* Language Selection for Adults */}
-                  <div>
-                    <RadioGroup
-                      label="Select Language for Adult Consent Form"
-                      options={[
-                        { value: 'english', label: 'English Only' },
-                        { value: 'tagalog', label: 'Tagalog Only' },
-                        { value: 'both', label: 'Both English and Tagalog' }
-                      ]}
-                      selected={adultLanguage}
-                      onChange={(val) => setAdultLanguage(val as 'english' | 'tagalog' | 'both')}
-                      required
-                    />
-                  </div>
+            {/* ✅ ADULT FORM - Shows if adult selected */}
+{(consentType === 'adult' || consentType === 'both') && (
+  <div className="space-y-6 sm:space-y-8">
+    <div className="bg-gradient-to-r from-orange-50 to-orange-100/50 border-l-4 border-orange-500 p-4 sm:p-5 rounded-r-lg">
+      <h4 className="font-bold text-[#071139] text-sm sm:text-base mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        Informed Consent Form (Adult Participants)
+      </h4>
+      <p className="text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        Select the language(s) you will provide for adult participants.
+      </p>
+    </div>
 
-                  {adultLanguage && (
-                    <>
-                      {/* HEADER SECTION */}
-                      <div className="bg-orange-50 border-l-4 border-orange-500 p-4 sm:p-5 rounded-r-lg">
-                        <h5 className="font-bold text-[#071139] text-sm sm:text-base mb-1 uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          Header Information
-                        </h5>
-                        <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          This section appears at the top of your consent form
-                        </p>
-                      </div>
+    {/* ✅ ADULT LANGUAGE SELECTION */}
+    <div>
+      <RadioGroup
+        label="Select Language for Adult Consent Form"
+        options={[
+          { value: 'english', label: 'English Only' },
+          { value: 'tagalog', label: 'Tagalog Only' },
+          { value: 'both', label: 'Both English and Tagalog' }
+        ]}
+        selected={adultLanguage}  // ✅ DISPLAYS SAVED VALUE!
+        onChange={(val) => setAdultLanguage(val as 'english' | 'tagalog' | 'both')}
+        required
+      />
+    </div>
 
-                      {/* Participant Group Identity */}
-                      <div>
-                        <label 
-                          htmlFor="participantGroupIdentity"
-                          className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
-                            <FileText size={16} className="text-white" />
-                          </div>
-                          Informed Consent Form for: <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          id="participantGroupIdentity"
-                          type="text"
-                          value={formData.participantGroupIdentity}
-                          onChange={(e) => setFormData({...formData, participantGroupIdentity: e.target.value})}
-                          placeholder="e.g., clients, patients, community leaders, service providers"
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                          required
-                        />
-                        <p className="text-xs text-gray-600 mt-2 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-orange-500" />
-                          Identity of the particular group of individuals in the project for whom this consent is intended
-                        </p>
-                      </div>
+                 {adultLanguage && (
+      <>
+        {/* ✅ PARTICIPANT GROUP IDENTITY */}
+        <div>
+          <label 
+            htmlFor="participantGroupIdentity"
+            className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" 
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-md">
+              <FileText size={16} className="text-white" />
+            </div>
+            Informed Consent Form for: <span className="text-red-500">*</span>
+          </label>
+          <input
+            id="participantGroupIdentity"
+            type="text"
+            value={formData.participantGroupIdentity}
+            onChange={(e) => setFormData({...formData, participantGroupIdentity: e.target.value})}
+            placeholder="e.g., clients, patients, community leaders, service providers"
+            className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none text-[#071139] transition-all duration-300 hover:border-gray-400"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            required
+          />
+          <p className="text-xs text-gray-600 mt-2 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            <AlertCircle size={14} className="flex-shrink-0 mt-0.5 text-orange-500" />
+            Identity of the particular group of individuals in the project for whom this consent is intended
+          </p>
+        </div>
 
                       {/* Display Project and Researcher Information from Step 2 */}
-                      {step2Data && (
-                        <div className="bg-orange-50/30 border border-orange-200 rounded-xl p-4 sm:p-6">
-                          <h6 className="font-bold text-[#071139] text-sm mb-4 flex items-center gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            <FileText size={18} className="text-orange-600" />
-                            Project and Researcher Information (from Step 2)
-                          </h6>
-                          <div className="space-y-4 text-xs sm:text-sm text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {step2Data.authors && step2Data.authors.length > 0 && (
-                              <div className="space-y-4">
-                                {step2Data.authors.map((author: any, index: number) => (
-                                  <div key={index} className="border-b border-orange-200 pb-4 last:border-b-0">
-                                    <div className="bg-white p-4 rounded-lg shadow-sm">
-                                      <div className="mb-2"><strong className="text-[#071139]">[Name of {index === 0 ? 'Principal' : 'Co-'}Investigator/Author]</strong></div>
-                                      <div className="mb-3 text-[#071139]">{author.name}</div>
-                                      <div className="mb-2"><strong className="text-[#071139]">[Name of Organization]</strong></div>
-                                      <div className="mb-3 text-[#071139]">{author.organization || 'N/A'}</div>
-                                      <div className="mb-2"><strong className="text-[#071139]">[Contact Number and Email]</strong></div>
-                                      <div className="text-[#071139]">{author.phone || 'N/A'} | {author.email || 'N/A'}</div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            
-                            <div className="mt-4 pt-4 border-t border-orange-200">
-                              <div className="bg-white p-4 rounded-lg shadow-sm">
-                                <strong className="text-[#071139]">[Name of Project and Research]</strong>
-                                <div className="mt-2 text-[#071139]">{step2Data.projectTitle || 'Not provided'}</div>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-4 p-3 bg-orange-100 rounded-lg border border-orange-300">
-                            <p className="text-xs text-orange-800 flex items-start gap-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              <AlertCircle size={14} className="flex-shrink-0 mt-0.5" />
-                              This information will automatically appear at the top of your consent form.
-                            </p>
-                          </div>
-                        </div>
-                      )}
+                     {/* Display Project and Researcher Information from Step 2 */}
+{step2Info.title && (
+  <div className="bg-orange-50/30 border border-orange-200 rounded-xl p-4 sm:p-6 mb-8">
+    <h6 className="font-bold text-[#071139] text-sm mb-4 flex items-center gap-2">
+      <FileText size={18} className="text-orange-600" />
+      Project and Researcher Information (from Step 2)
+    </h6>
+    <div className="space-y-3 text-xs sm:text-sm text-gray-700">
+      <div>
+        <p className="font-semibold text-[#071139]">[Name of Project and Research]</p>
+        <p className="text-gray-600">{step2Info.title}</p>
+      </div>
+      <div>
+        <p className="font-semibold text-[#071139]">Project Leader</p>
+        <p className="text-gray-600">{step2Info.projectLeader}</p>
+      </div>
+      <div>
+        <p className="font-semibold text-[#071139]">Email</p>
+        <p className="text-gray-600">{step2Info.email}</p>
+      </div>
+      <div>
+        <p className="font-semibold text-[#071139]">Organization</p>
+        <p className="text-gray-600">{step2Info.organization || 'N/A'}</p>
+      </div>
+      <div>
+        <p className="font-semibold text-[#071139]">College</p>
+        <p className="text-gray-600">{step2Info.college || 'N/A'}</p>
+      </div>
+    </div>
+    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded flex items-start gap-2">
+      <AlertCircle size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+      <p className="text-xs text-yellow-800">This information will automatically appear at the top of your consent form.</p>
+    </div>
+  </div>
+)}
 
                       {/* PART I: INFORMATION SHEET Header */}
                       <div className="bg-gradient-to-r from-orange-100 to-orange-50 border-l-4 border-orange-600 p-4 sm:p-5 rounded-r-lg mt-8">
@@ -1662,11 +1833,12 @@ export default function RevisionStep4() {
                 </div>
               )}
 
-              {/* SINGLE ORANGE SAVE BUTTON */}
+          {/* ✅ SINGLE ORANGE SAVE BUTTON */}
 <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
   <button
-    type="submit"
-    className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
+    onClick={handleSave}
+    disabled={saving}
+    className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
     style={{ fontFamily: 'Metropolis, sans-serif' }}
     aria-label="Save changes"
   >
@@ -1675,10 +1847,11 @@ export default function RevisionStep4() {
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
       </svg>
-      Save Changes
+      {saving ? 'Saving...' : 'Save Changes'}
     </span>
   </button>
-</div>     
+</div>
+
             </form>
           </div>
         </div>

@@ -5,22 +5,15 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import RegistrationForm from '@/components/registration/RegistrationForm';
-import EmailConfirmationModal from '@/components/registration/EmailConfirmationModal';
+import EmailVerificationModal from '@/components/registration/EmailVerificationModal';
 
 export default function RegisterPage() {
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showVerificationModal, setShowVerificationModal] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  const [userId, setUserId] = useState('');
 
   const handleRegistrationSuccess = (email: string, id: string) => {
     setUserEmail(email);
-    setUserId(id);
-    setShowConfirmationModal(true);
-  };
-
-  const handleResendEmail = async () => {
-    console.log('Resending confirmation email to:', userEmail);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    setShowVerificationModal(true);
   };
 
   return (
@@ -163,12 +156,11 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Email Confirmation Modal */}
-      {showConfirmationModal && (
-        <EmailConfirmationModal
+      {/* Email Verification Modal */}
+      {showVerificationModal && (
+        <EmailVerificationModal
           email={userEmail}
-          onResendEmail={handleResendEmail}
-          onClose={() => setShowConfirmationModal(false)}
+          onClose={() => setShowVerificationModal(false)}
         />
       )}
 

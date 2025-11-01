@@ -2,6 +2,7 @@
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { createServiceClient } from '@/utils/supabase/service';
 
 interface RegisterResearcherData {
   lastName: string;
@@ -25,7 +26,7 @@ export async function registerResearcher(data: RegisterResearcherData) {
   try {
     const supabase = await createClient();
 
-    // 1. Check if username already exists
+    // 1. Check if username exists
     const { data: existingUsername } = await supabase
       .from('profiles')
       .select('username')
@@ -36,7 +37,7 @@ export async function registerResearcher(data: RegisterResearcherData) {
       return { success: false, error: 'Username already taken' };
     }
 
-    // 2. Check if email already exists
+    // 2. Check if email exists
     const { data: existingEmail } = await supabase
       .from('profiles')
       .select('email')
@@ -47,35 +48,26 @@ export async function registerResearcher(data: RegisterResearcherData) {
       return { success: false, error: 'Email already registered' };
     }
 
-    // 3. Create Supabase Auth user
+    // 3. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
-        data: {
-          username: data.username,
-        }
-      }
     });
 
-    if (authError) {
+    if (authError || !authData.user) {
       console.error('❌ Auth error:', authError);
-      return { success: false, error: authError.message };
-    }
-
-    if (!authData.user) {
-      return { success: false, error: 'User creation failed' };
+      return { success: false, error: authError?.message || 'User creation failed' };
     }
 
     // 4. Build full name
     const fullName = `${data.firstName} ${data.middleName ? data.middleName + ' ' : ''}${data.lastName}`.trim();
 
-    // 5. Wait a moment for trigger to create basic profile
+    // 5. Wait for trigger to create profile
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // 6. Update profile with additional researcher data
-    const { error: profileError } = await supabase
+    // 6. Use SERVICE CLIENT to insert full profile
+    const serviceClient = createServiceClient();
+    const { error: profileError } = await serviceClient
       .from('profiles')
       .update({
         full_name: fullName,
@@ -94,22 +86,16 @@ export async function registerResearcher(data: RegisterResearcherData) {
       .eq('id', authData.user.id);
 
     if (profileError) {
-      console.error('❌ Profile update error:', profileError);
-      // Don't delete user, they can complete profile later
-      return { 
-        success: true, 
-        message: 'Account created! Please complete your profile after email verification.',
-        userId: authData.user.id 
-      };
+      console.error('❌ Profile error:', profileError);
     }
 
-    console.log('✅ Researcher registered successfully:', data.email);
+    console.log('✅ Researcher registered:', data.email);
 
     return {
       success: true,
-      message: 'Registration successful! Please check your email to verify your account.',
+      message: 'Registration successful! Check your email for OTP.',
       userId: authData.user.id,
-      needsEmailConfirmation: true,
+      needsOtpConfirmation: true,
     };
 
   } catch (error) {

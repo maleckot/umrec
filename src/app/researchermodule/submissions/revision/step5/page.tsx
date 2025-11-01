@@ -37,16 +37,44 @@ function RevisionStep5Content() {
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
   
-  // ✅ DETECT QUICK REVISION MODE
   const isQuickRevision = !!docId && docType === 'research_instrument';
   
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [revisionComments, setRevisionComments] = useState<string>('');
+  const [loadingComments, setLoadingComments] = useState(true);
   const supabase = createClient();
 
-  const [revisionComments] = useState(
-    'The research instrument needs to include clearer instructions for participants. Please add demographic questions at the beginning and ensure all Likert scale items are properly formatted. The validation certificate should be included or referenced.'
-  );
+  // ✅ FETCH REVIEWER COMMENTS FROM DATABASE
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        if (!docId) {
+          setLoadingComments(false);
+          return;
+        }
+
+        const { data: verification } = await supabase
+          .from('document_verifications')
+          .select('feedback_comment')
+          .eq('document_id', docId)
+          .single();
+
+        if (verification?.feedback_comment) {
+          setRevisionComments(verification.feedback_comment);
+        } else {
+          setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+        }
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        setRevisionComments('Unable to load feedback comments.');
+      } finally {
+        setLoadingComments(false);
+      }
+    };
+
+    fetchComments();
+  }, [docId, supabase]);
 
   useEffect(() => {
     const saved = localStorage.getItem('revisionStep5Data');
@@ -56,7 +84,7 @@ function RevisionStep5Content() {
         console.log('Previous file:', parsedData.fileName);
       }
     }
-  }, []);
+  }, []); 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +105,26 @@ function RevisionStep5Content() {
           return;
         }
 
-        // Upload to storage
+        // ✅ FETCH OLD FILE URL FIRST
+        const { data: existingDoc } = await supabase
+          .from('uploaded_documents')
+          .select('file_url')
+          .eq('id', docId)
+          .single();
+
+        // ✅ DELETE OLD FILE FROM STORAGE
+        if (existingDoc?.file_url) {
+          try {
+            await supabase.storage
+              .from('research-documents')
+              .remove([existingDoc.file_url]);
+            console.log('✅ Deleted old research instrument file');
+          } catch (err) {
+            console.warn('⚠️ Could not delete old file:', err);
+          }
+        }
+
+        // ✅ UPLOAD NEW FILE
         const filePath = `${user.id}/${submissionId}/research_instrument_${Date.now()}.pdf`;
         const { error: uploadError } = await supabase.storage
           .from('research-documents')
@@ -87,7 +134,7 @@ function RevisionStep5Content() {
           throw uploadError;
         }
 
-        // Update the document record
+        // ✅ UPDATE DOCUMENT RECORD WITH NEW PATH
         const { error: updateError } = await supabase
           .from('uploaded_documents')
           .update({
@@ -102,7 +149,7 @@ function RevisionStep5Content() {
           throw updateError;
         }
 
-        // Reset the verification status
+        // ✅ RESET VERIFICATION STATUS
         const { error: verifyError } = await supabase
           .from('document_verifications')
           .update({
@@ -116,7 +163,7 @@ function RevisionStep5Content() {
           console.error('Failed to reset verification:', verifyError);
         }
 
-        // Update submission status back to under_review
+        // ✅ UPDATE SUBMISSION STATUS
         const { error: statusError } = await supabase
           .from('research_submissions')
           .update({
@@ -130,7 +177,7 @@ function RevisionStep5Content() {
         }
 
         alert('✅ Research Instrument updated successfully! Your submission has been resubmitted for review.');
-        router.push(`/researchermodule/activity-details?id=${submissionId}`);
+        router.push(`/researchermodule`);
 
       } catch (error) {
         console.error('Error uploading:', error);
@@ -138,7 +185,7 @@ function RevisionStep5Content() {
       } finally {
         setUploading(false);
       }
-    } 
+    }
     // ✅ NORMAL MULTI-STEP FLOW: Save to sessionStorage and go to next step
     else {
       const reader = new FileReader();
@@ -184,19 +231,19 @@ function RevisionStep5Content() {
               >
                 <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
               </button>
-              
+
               <div className="flex items-center gap-4 flex-1">
                 <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>5</span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Validated Research Instrument - {isQuickRevision ? 'Quick Revision' : 'Revision'}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {isQuickRevision 
-                      ? 'Upload your updated research instrument and submit immediately' 
+                    {isQuickRevision
+                      ? 'Upload your updated research instrument and submit immediately'
                       : 'Review and upload your updated research instrument'}
                   </p>
                 </div>
@@ -207,7 +254,7 @@ function RevisionStep5Content() {
             {!isQuickRevision && (
               <>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                  <div 
+                  <div
                     className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
                     style={{ width: '62.5%' }}
                   />
@@ -226,8 +273,20 @@ function RevisionStep5Content() {
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-            {/* Reviewer Comments Box */}
-            <RevisionCommentBox comments={revisionComments} />
+          {/* Reviewer Comments Box */}
+            {loadingComments ? (
+              <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <RevisionCommentBox comments={revisionComments} />
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
               {/* Instructions */}
@@ -275,7 +334,7 @@ function RevisionStep5Content() {
                     </p>
                   </div>
                 </div>
-                
+
                 <PDFUploadValidator
                   label="Research Instrument Document"
                   description="Upload your revised and validated survey form, questionnaire, or other research measurement tools. Ensure all requested changes have been incorporated."

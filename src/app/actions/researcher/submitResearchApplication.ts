@@ -463,46 +463,103 @@ export async function submitResearchApplication(
       }
     }
 
-    // 4. Insert consent forms
-    if (formData.step4?.consentType) {
-      const { error: consentError } = await supabase
-        .from('consent_forms')
-        .insert({
-          submission_id: submission.id,
-          consent_type: formData.step4.consentType,
-          informed_consent_for: formData.step4.formData?.participantGroupIdentity,
-          adult_consent: formData.step4.consentType === 'adult' || formData.step4.consentType === 'both' ? {
-            purposeEnglish: formData.step4.formData?.purposeEnglish || '',
-            purposeTagalog: formData.step4.formData?.purposeTagalog || '',
-            risksEnglish: formData.step4.formData?.risksEnglish || '',
-            risksTagalog: formData.step4.formData?.risksTagalog || '',
-            benefitsEnglish: formData.step4.formData?.benefitsEnglish || '',
-            benefitsTagalog: formData.step4.formData?.benefitsTagalog || '',
-            proceduresEnglish: formData.step4.formData?.proceduresEnglish || '',
-            proceduresTagalog: formData.step4.formData?.proceduresTagalog || '',
-            voluntarinessEnglish: formData.step4.formData?.voluntarinessEnglish || '',
-            voluntarinessTagalog: formData.step4.formData?.voluntarinessTagalog || '',
-            confidentialityEnglish: formData.step4.formData?.confidentialityEnglish || '',
-            confidentialityTagalog: formData.step4.formData?.confidentialityTagalog || '',
-          } : null,
-          minor_assent: formData.step4.consentType === 'minor' || formData.step4.consentType === 'both' ? {
-            introduction: formData.step4.formData?.introduction || '',
-            purpose: formData.step4.formData?.purpose || '',
-            choiceOfParticipants: formData.step4.formData?.choiceOfParticipants || '',
-            voluntariness: formData.step4.formData?.voluntariness || '',
-            procedures: formData.step4.formData?.procedures || '',
-            risks: formData.step4.formData?.risks || '',
-            benefits: formData.step4.formData?.benefits || '',
-            confidentiality: formData.step4.formData?.confidentiality || '',
-            sharingFindings: formData.step4.formData?.sharingFindings || '',
-            certificateAssent: formData.step4.formData?.certificateAssent || '',
-          } : null,
-          contact_person: safeString(formData.step4.formData?.contactPerson),
-          contact_number: safeString(formData.step4.formData?.contactNumber),
-        });
+   // 4. Insert consent forms
+if (formData.step4?.consentType) {
+  const { error: consentError } = await supabase
+    .from('consent_forms')
+    .insert({
+      submission_id: submission.id,
+      consent_type: formData.step4.consentType,
+      informed_consent_for: formData.step4.formData?.participantGroupIdentity,
+      
 
-      if (consentError) throw consentError;
-    }
+      
+      // ✅ ADULT CONSENT - ALL 14 SECTIONS
+  adult_consent: formData.step4.consentType === 'adult' || formData.step4.consentType === 'both' ? {
+        adultLanguage: formData.step4.adultLanguage || 'english', // ✅ Save 'english' or 'tagalog' or 'both'        // ✅ ALWAYS save BOTH languages regardless of selection!
+
+        introductionEnglish: formData.step4.formData?.introductionEnglish || '',
+        introductionTagalog: formData.step4.formData?.introductionTagalog || '',
+        
+        purposeEnglish: formData.step4.formData?.purposeEnglish || '',
+        purposeTagalog: formData.step4.formData?.purposeTagalog || '',
+        
+        researchInterventionEnglish: formData.step4.formData?.researchInterventionEnglish || '',
+        researchInterventionTagalog: formData.step4.formData?.researchInterventionTagalog || '',
+        
+        participantSelectionEnglish: formData.step4.formData?.participantSelectionEnglish || '',
+        participantSelectionTagalog: formData.step4.formData?.participantSelectionTagalog || '',
+        
+        voluntaryParticipationEnglish: formData.step4.formData?.voluntaryParticipationEnglish || '',
+        voluntaryParticipationTagalog: formData.step4.formData?.voluntaryParticipationTagalog || '',
+        
+        proceduresEnglish: formData.step4.formData?.proceduresEnglish || '',
+        proceduresTagalog: formData.step4.formData?.proceduresTagalog || '',
+        
+        durationEnglish: formData.step4.formData?.durationEnglish || '',
+        durationTagalog: formData.step4.formData?.durationTagalog || '',
+        
+        risksEnglish: formData.step4.formData?.risksEnglish || '',
+        risksTagalog: formData.step4.formData?.risksTagalog || '',
+        
+        benefitsEnglish: formData.step4.formData?.benefitsEnglish || '',
+        benefitsTagalog: formData.step4.formData?.benefitsTagalog || '',
+        
+        reimbursementsEnglish: formData.step4.formData?.reimbursementsEnglish || '',
+        reimbursementsTagalog: formData.step4.formData?.reimbursementsTagalog || '',
+        
+        confidentialityEnglish: formData.step4.formData?.confidentialityEnglish || '',
+        confidentialityTagalog: formData.step4.formData?.confidentialityTagalog || '',
+        
+        sharingResultsEnglish: formData.step4.formData?.sharingResultsEnglish || '',
+        sharingResultsTagalog: formData.step4.formData?.sharingResultsTagalog || '',
+        
+        rightToRefuseEnglish: formData.step4.formData?.rightToRefuseEnglish || '',
+        rightToRefuseTagalog: formData.step4.formData?.rightToRefuseTagalog || '',
+        
+        whoToContactEnglish: formData.step4.formData?.whoToContactEnglish || '',
+        whoToContactTagalog: formData.step4.formData?.whoToContactTagalog || '',
+      } : null,
+      
+      // ✅ MINOR ASSENT - ALL 9 SECTIONS
+        minor_assent: formData.step4.consentType === 'minor' || formData.step4.consentType === 'both' ? {
+        minorLanguage: formData.step4.minorLanguage || 'english', // ✅ Save 'english' or 'tagalog' or 'both'        // ✅ ALWAYS save BOTH languages regardless of selection!
+
+        introductionMinorEnglish: formData.step4.formData?.introductionMinorEnglish || '',
+        introductionMinorTagalog: formData.step4.formData?.introductionMinorTagalog || '',
+        
+        purposeMinorEnglish: formData.step4.formData?.purposeMinorEnglish || '',
+        purposeMinorTagalog: formData.step4.formData?.purposeMinorTagalog || '',
+        
+        choiceOfParticipantsEnglish: formData.step4.formData?.choiceOfParticipantsEnglish || '',
+        choiceOfParticipantsTagalog: formData.step4.formData?.choiceOfParticipantsTagalog || '',
+        
+        voluntarinessMinorEnglish: formData.step4.formData?.voluntarinessMinorEnglish || '',
+        voluntarinessMinorTagalog: formData.step4.formData?.voluntarinessMinorTagalog || '',
+        
+        proceduresMinorEnglish: formData.step4.formData?.proceduresMinorEnglish || '',
+        proceduresMinorTagalog: formData.step4.formData?.proceduresMinorTagalog || '',
+        
+        risksMinorEnglish: formData.step4.formData?.risksMinorEnglish || '',
+        risksMinorTagalog: formData.step4.formData?.risksMinorTagalog || '',
+        
+        benefitsMinorEnglish: formData.step4.formData?.benefitsMinorEnglish || '',
+        benefitsMinorTagalog: formData.step4.formData?.benefitsMinorTagalog || '',
+        
+        confidentialityMinorEnglish: formData.step4.formData?.confidentialityMinorEnglish || '',
+        confidentialityMinorTagalog: formData.step4.formData?.confidentialityMinorTagalog || '',
+        
+        sharingFindingsEnglish: formData.step4.formData?.sharingFindingsEnglish || '',
+        sharingFindingsTagalog: formData.step4.formData?.sharingFindingsTagalog || '',
+      } : null,
+      
+      contact_person: safeString(formData.step4.formData?.contactPerson),
+      contact_number: safeString(formData.step4.formData?.contactNumber),
+    });
+
+  if (consentError) throw consentError;
+}
+
 
     // 5. Upload files and save metadata
     const documentInserts = [];

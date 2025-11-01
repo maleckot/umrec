@@ -1,8 +1,9 @@
+// app/staffmodule/submissions/review-complete/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Award, FileText, Download, Eye } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
 import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
@@ -10,6 +11,7 @@ import ConsolidatedDocument from '@/components/staff-secretariat-admin/submissio
 import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
 import ReviewsTab from '@/components/staff-secretariat-admin/submission-details/ReviewsTab';
 import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewCompleteDetails } from '@/app/actions/secretariat-staff/getReviewCompleteSubmission';
 import { Suspense } from 'react';
 
@@ -17,10 +19,12 @@ function ReviewCompleteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  
+
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [selectedCertificate, setSelectedCertificate] = useState<{ name: string; url: string } | null>(null);
+  const [certificateViewerOpen, setCertificateViewerOpen] = useState(false);
 
   useEffect(() => {
     if (submissionId) {
@@ -33,7 +37,7 @@ function ReviewCompleteContent() {
     try {
       const result = await getReviewCompleteDetails(submissionId!);
       if (result.success) {
-        console.log('Loaded data:', result); // ✅ Debug log
+        console.log('Loaded data:', result);
         setData(result);
       } else {
         console.error('Failed to load:', result.error);
@@ -43,6 +47,11 @@ function ReviewCompleteContent() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewCertificate = (cert: { name: string; url: string }) => {
+    setSelectedCertificate(cert);
+    setCertificateViewerOpen(true);
   };
 
   if (loading) {
@@ -63,23 +72,19 @@ function ReviewCompleteContent() {
     );
   }
 
-  const { submission, consolidatedDocument, originalDocuments, reviews, assignedReviewers, reviewsComplete, reviewsRequired } = data;
+  const { submission, consolidatedDocument, originalDocuments, reviews, assignedReviewers, reviewsComplete, reviewsRequired, certificates } = data;
 
-  // ✅ Safe access to researcher data with fallbacks
+  // ✅ Get certificates from database (NOT hardcoded)
+  const certificatesAndForms = (certificates || []).map((cert: any) => ({
+    name: cert.name,
+    url: cert.url,
+  })) || [];
+
   const researcherName = submission?.researcher?.fullName || 'Unknown Researcher';
   const researcherEmail = submission?.researcher?.email || 'N/A';
   const researcherOrg = submission?.researcher?.organization || 'N/A';
   const researcherSchool = submission?.researcher?.school || 'N/A';
   const researchercollege = submission?.researcher?.college || 'N/A';
-  // Original documents list
-  const originalDocsList = originalDocuments?.map((doc: any) => doc.name) || [
-    'Application Form Ethics Review.pdf',
-    'Research Protocol.pdf',
-    'Informed Consent Form.pdf',
-    'Validated Research Instrument.pdf',
-    'Endorsement Letter.pdf',
-    'Proposal defense certification/evaluation.pdf',
-  ];
 
   const historyEvents = [
     {
@@ -126,7 +131,7 @@ function ReviewCompleteContent() {
 
   return (
     <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
-      {/* Better Back Button */}
+      {/* Back Button */}
       <div className="mb-6">
         <button
           onClick={() => router.push('/staffmodule/submissions')}
@@ -154,6 +159,55 @@ function ReviewCompleteContent() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
+              {/* ✅ Certificates and Forms at the TOP - FROM DATABASE */}
+              {certificatesAndForms.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-50 to-amber-100/30 border-2 border-amber-300 rounded-lg p-3 sm:p-4">
+                  <div className="flex items-start gap-2 sm:gap-3 mb-3">
+                    <Award size={20} className="text-amber-700 flex-shrink-0 sm:w-6 sm:h-6 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs sm:text-sm font-bold text-amber-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Certificates and Forms
+                      </h4>
+                      <p className="text-xs text-amber-700 mt-0.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Official documents generated after review completion
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {certificatesAndForms.map((cert: any, index: number) => (
+                      <div key={index} className="bg-white/70 border border-amber-200 rounded-lg overflow-hidden hover:bg-white/90 transition-colors">
+                        <button
+                          onClick={() => handleViewCertificate(cert)}
+                          className="w-full flex items-center justify-between p-2 sm:p-3 gap-2"
+                        >
+                          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                            <FileText size={16} className="text-amber-700 flex-shrink-0 sm:w-5 sm:h-5" />
+                            <span className="text-xs sm:text-sm font-semibold text-amber-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {cert.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <a
+                              href={cert.url}
+                              download
+                              onClick={(e) => e.stopPropagation()}
+                              className="p-1 sm:p-1.5 hover:bg-amber-100 rounded transition-colors"
+                              title="Download"
+                            >
+                              <Download size={14} className="text-amber-700 sm:w-4 sm:h-4" />
+                            </a>
+                            <div className="p-1 sm:p-1.5 hover:bg-amber-100 rounded transition-colors">
+                              <Eye size={14} className="text-amber-700 sm:w-4 sm:h-4" />
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Completion Notice */}
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-xl p-6">
                 <div className="flex items-start gap-4">
@@ -174,7 +228,7 @@ function ReviewCompleteContent() {
                 description="All reviews have been completed. You can view the final assessments in the Reviews tab."
                 consolidatedDate={consolidatedDocument?.uploadedAt || submission?.submittedAt || 'N/A'}
                 fileUrl={consolidatedDocument?.url || '/sample-document.pdf'}
-                originalDocuments={originalDocsList}
+                originalDocuments={originalDocuments || []}
               />
             </>
           )}
@@ -217,9 +271,23 @@ function ReviewCompleteContent() {
           </div>
         )}
       </div>
+
+      {/* Certificate Viewer Modal */}
+      {selectedCertificate && (
+        <DocumentViewerModal
+          isOpen={certificateViewerOpen}
+          onClose={() => {
+            setCertificateViewerOpen(false);
+            setSelectedCertificate(null);
+          }}
+          documentName={selectedCertificate.name}
+          documentUrl={selectedCertificate.url}
+        />
+      )}
     </DashboardLayout>
   );
 }
+
 export default function ReviewCompletePage() {
   return (
     <Suspense fallback={
