@@ -70,6 +70,7 @@ export default function SecretariatSubmissionsPage() {
       'rejected': 'Rejected',
       'needs_revision': 'Needs Revision',
       'revision_requested': 'Revision Requested',
+      'resubmit': 'Resubmit',
     };
     return statusMap[status] || status;
   }
@@ -84,6 +85,7 @@ export default function SecretariatSubmissionsPage() {
       'review_complete': 'bg-green-50 text-green-600',
       'approved': 'bg-green-50 text-green-600',
       'rejected': 'bg-red-50 text-red-600',
+      'resubmit': 'bg-amber-50 text-amber-600',
       'needs_revision': 'bg-red-50 text-red-600',
       'revision_requested': 'bg-orange-50 text-orange-600',
     };
@@ -141,6 +143,9 @@ export default function SecretariatSubmissionsPage() {
       router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
     } 
     else if (submission.status === 'classified') {
+        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+    } 
+    else if (submission.status === 'Resubmit') {
         router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
     } 
     else if (submission.status === 'under_review') {

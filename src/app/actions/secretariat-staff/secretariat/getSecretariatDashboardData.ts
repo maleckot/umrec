@@ -130,6 +130,7 @@ function formatStatus(status: string): string {
     'review_complete': 'Review Complete',
     'approved': 'Approved',
     'rejected': 'Rejected',
+    'resubmit': 'Resubmit',
     'needs_revision': 'Needs Revision',
     'revision_requested': 'Revision Requested',
   };
@@ -143,6 +144,7 @@ function getStatusColor(status: string): string {
     'awaiting_classification': 'bg-amber-50 text-amber-600',
     'under_review': 'bg-purple-50 text-purple-600',
     'classified': 'bg-amber-50 text-amber-600',
+    'resubmit': 'bg-amber-50 text-amber-600',
     'review_complete': 'bg-green-50 text-green-600',
     'approved': 'bg-green-50 text-green-600',
     'rejected': 'bg-red-50 text-red-600',

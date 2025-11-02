@@ -36,6 +36,9 @@ export default function SecretariatDashboard() {
   const handleSubmissionClick = (submission: any) => {
       if (submission.status === 'Under Classification') {
         router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
+      }       
+      else if (submission.status === 'Resubmit') {
+        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
       } 
       else if (submission.status === 'Classified') {
         router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
