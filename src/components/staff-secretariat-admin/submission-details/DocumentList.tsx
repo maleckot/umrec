@@ -8,6 +8,8 @@ import DocumentViewerModal from './DocumentViewerModal';
 interface Document {
   name: string;
   fileUrl?: string;
+  url?: string;        // ✅ ADD THIS (from action)
+
 }
 
 interface DocumentListProps {
@@ -20,13 +22,15 @@ export default function DocumentList({ documents, title = 'Documents', descripti
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; fileUrl: string } | null>(null);
 
-  const handleViewDocument = (doc: string | Document) => {
-    const docName = typeof doc === 'string' ? doc : doc.name;
-    const docUrl = typeof doc === 'string' ? '/sample-document.pdf' : (doc.fileUrl || '/sample-document.pdf');
-    
-    setSelectedDocument({ name: docName, fileUrl: docUrl });
-    setViewerOpen(true);
-  };
+const handleViewDocument = (doc: string | Document) => {
+  const docName = typeof doc === 'string' ? doc : doc.name;
+  const docUrl = typeof doc === 'string' 
+    ? '/sample-document.pdf' 
+    : (doc.url || doc.fileUrl || '/sample-document.pdf'); // ✅ CHECK URL FIRST
+  
+  setSelectedDocument({ name: docName, fileUrl: docUrl });
+  setViewerOpen(true);
+};
 
   return (
     <>

@@ -3,6 +3,9 @@
 
 import { createClient } from '@/utils/supabase/server';
 import { generateApplicationFormPdf } from '@/app/actions/generatePdfFromDatabase';
+import { generateResearchProtocolPdf } from '@/app/actions/generatePdfFromDatabase';
+import { generateConsentFormPdf } from '@/app/actions/generatePdfFromDatabase';
+import { regeneratePdfWithTitle } from './pdfDocumentManager';
 
 export async function handleRevisionSubmit(
   submissionId: string,
@@ -17,22 +20,18 @@ export async function handleRevisionSubmit(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
 
+    console.log('📝 Saving Step 2 - Application Form...');
+
     // ✅ 1. Handle technical review file upload
     const isFileNew = technicalReviewFile instanceof File;
     const hasExistingFile = technicalReviewFile && !isFileNew;
 
     if (!isFileNew && !hasExistingFile) {
-      // Delete old
       await supabase
         .from('uploaded_documents')
         .delete()
         .eq('submission_id', submissionId)
         .eq('document_type', 'technical_review');
-
-      await supabase
-        .from('application_forms')
-        .delete()
-        .eq('submission_id', submissionId);
     } else if (isFileNew) {
       const fileExtension = technicalReviewFile.name.split('.').pop();
       const technicalReviewPath = `submissions/${submissionId}/technical_review.${fileExtension}`;
@@ -98,385 +97,264 @@ export async function handleRevisionSubmit(
       num_participants: parseInt(formData.numParticipants) || 0,
       technical_review: formData.technicalReview,
       submitted_to_other: formData.submittedToOther,
-      document_checklist: formData.hasApplicationForm ? {
-        hasApplicationForm: formData.hasApplicationForm,
-        hasResearchProtocol: formData.hasResearchProtocol,
-        hasInformedConsent: formData.hasInformedConsent,
-        hasInformedConsentOthers: formData.hasInformedConsentOthers,
-        informedConsentOthers: formData.informedConsentOthers,
-        hasAssentForm: formData.hasAssentForm,
-        hasAssentFormOthers: formData.hasAssentFormOthers,
-        assentFormOthers: formData.assentFormOthers,
-        hasEndorsementLetter: formData.hasEndorsementLetter,
-        hasQuestionnaire: formData.hasQuestionnaire,
-        hasTechnicalReview: formData.hasTechnicalReview,
-        hasDataCollectionForms: formData.hasDataCollectionForms,
-        hasProductBrochure: formData.hasProductBrochure,
-        hasFDAAuthorization: formData.hasFDAAuthorization,
-        hasCompanyPermit: formData.hasCompanyPermit,
-        hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
-        specialPopulationPermitDetails: formData.specialPopulationPermitDetails,
-        hasOtherDocs: formData.hasOtherDocs,
-        otherDocsDetails: formData.otherDocsDetails,
-      } : {},
+      document_checklist: formData.hasApplicationForm
+        ? {
+            hasApplicationForm: formData.hasApplicationForm,
+            hasResearchProtocol: formData.hasResearchProtocol,
+            hasInformedConsent: formData.hasInformedConsent,
+            hasInformedConsentOthers: formData.hasInformedConsentOthers,
+            informedConsentOthers: formData.informedConsentOthers,
+            hasAssentForm: formData.hasAssentForm,
+            hasAssentFormOthers: formData.hasAssentFormOthers,
+            assentFormOthers: formData.assentFormOthers,
+            hasEndorsementLetter: formData.hasEndorsementLetter,
+            hasQuestionnaire: formData.hasQuestionnaire,
+            hasTechnicalReview: formData.hasTechnicalReview,
+            hasDataCollectionForms: formData.hasDataCollectionForms,
+            hasProductBrochure: formData.hasProductBrochure,
+            hasFDAAuthorization: formData.hasFDAAuthorization,
+            hasCompanyPermit: formData.hasCompanyPermit,
+            hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
+            specialPopulationPermitDetails: formData.specialPopulationPermitDetails,
+            hasOtherDocs: formData.hasOtherDocs,
+            otherDocsDetails: formData.otherDocsDetails,
+          }
+        : {},
     };
 
-    if (!isFileNew && !hasExistingFile) {
-      const { error } = await supabase
-        .from('application_forms')
-        .insert(applicationFormsData);
-      if (error) throw error;
-    } else {
+    const { data: existingForm } = await supabase
+      .from('application_forms')
+      .select('id')
+      .eq('submission_id', submissionId)
+      .single();
+
+    if (existingForm) {
       const { error } = await supabase
         .from('application_forms')
         .update(applicationFormsData)
         .eq('submission_id', submissionId);
       if (error) throw error;
-    }
-
-    let documentsChanged: string[] = [];
-
-    if (isFileNew) {
-      documentsChanged.push('technical_review');
-    }
-
-    documentsChanged.push('application_form');
-
-    console.log('📝 Documents changed:', documentsChanged);
-
-    // ✅ Get the document_ids for changed documents
-    const { data: documentsToReset } = await supabase
-      .from('uploaded_documents')
-      .select('id, document_type')
-      .eq('submission_id', submissionId)
-      .in('document_type', documentsChanged);
-
-    console.log('📊 Documents to reset:', documentsToReset);
-
-    // ✅ Reset verification for each document_id
-    if (documentsToReset && documentsToReset.length > 0) {
-      const documentIds = documentsToReset.map(doc => doc.id);
-
-      const { data: updated, error: updateError } = await supabase
-        .from('document_verifications')
-        .update({
-          is_approved: null,
-          verified_at: null,
-          feedback_comment: null,
-        })
-        .in('document_id', documentIds)
-        .select();
-
-      console.log('✅ Reset verifications for documents:', { count: updated?.length, error: updateError });
-    }
-
-    // ✅ Check ALL verifications for status
-    const { data: verificationData } = await supabase
-      .from('document_verifications')
-      .select('id, is_approved')
-      .eq('submission_id', submissionId);
-
-    console.log('📊 All verifications after reset:', verificationData);
-
-    let newStatus = 'Resubmit';
-    if (!verificationData || verificationData.length === 0) {
-      newStatus = 'Pending';
     } else {
-      const hasRejected = verificationData.some(v => v.is_approved === false);
-      const hasUnverified = verificationData.some(v => v.is_approved === null);
-
-      if (!hasRejected && !hasUnverified) {
-        newStatus = 'Pending';
-      } else if (hasRejected) {
-        newStatus = 'Resubmit';
-      } else if (hasUnverified) {
-        newStatus = 'Pending';
-      }
+      const { error } = await supabase
+        .from('application_forms')
+        .insert(applicationFormsData);
+      if (error) throw error;
     }
 
-    console.log('📌 New status:', newStatus);
-
-
-
-    // ✅ 5. Update research_submissions
-    const { error: submissionError } = await supabase
+    // ✅ 3. Update submission metadata
+    await supabase
       .from('research_submissions')
       .update({
         title: formData.title,
-        status: newStatus,
         updated_at: new Date().toISOString(),
         co_authors: coResearchers,
       })
       .eq('id', submissionId);
 
-    if (submissionError) throw submissionError;
+    // ✅ 3b. Update research_protocols title
+    const { error: protocolError } = await supabase
+      .from('research_protocols')
+      .update({
+        title: formData.title,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('submission_id', submissionId);
 
-    // ✅ 6. Generate PDF
-    console.log('🔄 Starting PDF generation...');
-
-    try {
-      const pdfFormData = {
-        step1: {
-          title: formData.title,
-          projectLeaderFirstName: formData.researcherFirstName,
-          projectLeaderMiddleName: formData.researcherMiddleName,
-          projectLeaderLastName: formData.researcherLastName,
-          projectLeaderEmail: formData.project_leader_email,
-          projectLeaderContact: formData.project_leader_contact,
-          coAuthors: coResearchers,
-          college: formData.college,
-          organization: formData.institutionAddress,
-          typeOfStudy: formData.typeOfStudy,
-          sourceOfFunding: formData.sourceOfFunding,
-          fundingOthers: formData.fundingOthers,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          numParticipants: parseInt(formData.numParticipants) || 0,
-          technicalReview: formData.technicalReview === 'yes' ? 'Yes' : 'No',
-          submittedToOtherUMREC: formData.submittedToOther === 'yes' ? 'Yes' : 'No',
-        },
-        step2: {
-          studySite: formData.studySite,
-          studySiteType: formData.studySiteType,
-          college: formData.college,
-          institution: formData.institution,
-          institutionAddress: formData.institutionAddress,
-          typeOfStudy: formData.typeOfStudy,
-          typeOfStudyOthers: formData.typeOfStudyOthers,
-          sourceOfFunding: formData.sourceOfFunding,
-          pharmaceuticalSponsor: formData.pharmaceuticalSponsor,
-          fundingOthers: formData.fundingOthers,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          numParticipants: parseInt(formData.numParticipants) || 0,
-          technicalReview: formData.technicalReview === 'yes' ? 'Yes' : 'No',
-          submittedToOther: formData.submittedToOther === 'yes' ? 'Yes' : 'No',
-          documentChecklist: {
-            hasApplicationForm: formData.hasApplicationForm,
-            hasResearchProtocol: formData.hasResearchProtocol,
-            hasInformedConsent: formData.hasInformedConsent,
-            hasInformedConsentEnglish: formData.hasInformedConsent,
-            hasInformedConsentFilipino: false,
-            hasEndorsementLetter: formData.hasEndorsementLetter,
-            hasQuestionnaire: formData.hasQuestionnaire,
-            hasTechnicalReview: formData.hasTechnicalReview,
-            hasDataCollectionForms: formData.hasDataCollectionForms,
-            hasProductBrochure: formData.hasProductBrochure,
-            hasFDAAuthorization: formData.hasFDAAuthorization,
-            hasCompanyPermit: formData.hasCompanyPermit,
-            hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
-          },
-        },
-      };
-
-      console.log('📋 PDF form data prepared');
-
-      const pdfResult = await generateApplicationFormPdf(pdfFormData);
-      console.log('📄 PDF generation result:', { success: pdfResult.success, hasData: !!pdfResult.pdfData, error: pdfResult.error });
-
-      if (pdfResult.success && pdfResult.pdfData) {
-        try {
-          const base64Data = pdfResult.pdfData.includes('base64,')
-            ? pdfResult.pdfData.split(',')[1]
-            : pdfResult.pdfData;
-
-          const pdfBuffer = Buffer.from(base64Data, 'base64');
-          const timestamp = Date.now();
-          const pdfPath = `${user.id}/application_form_revised_${submissionId}_${timestamp}.pdf`;
-
-          console.log('🗑️ Deleting old PDF records...');
-
-          // Delete old document record
-          const { error: deleteError } = await supabase
-            .from('uploaded_documents')
-            .delete()
-            .eq('submission_id', submissionId)
-            .eq('document_type', 'application_form');
-
-          console.log('✅ Delete result:', { error: deleteError });
-
-          console.log('📤 Uploading new PDF to storage:', pdfPath);
-
-          const { error: uploadError, data: uploadData } = await supabase.storage
-            .from('research-documents')
-            .upload(pdfPath, pdfBuffer, {
-              contentType: 'application/pdf',
-              upsert: false
-            });
-
-          if (uploadError) {
-            console.error('❌ Storage upload error:', uploadError);
-          } else {
-            console.log('✅ PDF uploaded successfully');
-
-            console.log('💾 Inserting new document record...');
-
-            const { error: insertError, data: insertData } = await supabase
-              .from('uploaded_documents')
-              .insert({
-                submission_id: submissionId,
-                document_type: 'application_form',
-                file_name: `Application_Form_${submissionId}.pdf`,
-                file_size: pdfBuffer.length,
-                file_url: pdfPath,
-              });
-
-            if (insertError) {
-              console.error('❌ Insert error:', insertError);
-            } else {
-              console.log('✅ Document record inserted:', insertData);
-            }
-          }
-        } catch (processingError) {
-          console.error('❌ PDF processing error:', processingError);
-        }
-      } else {
-        console.error('❌ PDF generation failed:', pdfResult.error);
-      }
-    } catch (pdfError) {
-      console.error('❌ PDF section error (non-critical):', pdfError);
+    if (protocolError) {
+      throw new Error(
+        `Failed to update research protocol title: ${protocolError.message}`
+      );
     }
-    // ✅ 6. Generate PDF
-    console.log('🔄 Starting PDF generation...');
 
-    try {
-      const pdfFormData = {
-        step1: {
-          title: formData.title,
-          projectLeaderFirstName: formData.researcherFirstName,
-          projectLeaderMiddleName: formData.researcherMiddleName,
-          projectLeaderLastName: formData.researcherLastName,
-          projectLeaderEmail: formData.project_leader_email,
-          projectLeaderContact: formData.project_leader_contact,
-          // ✅ REMOVED coAuthors - it's in step2 with technical advisers
-          college: formData.college,
-          organization: formData.institutionAddress,
-          typeOfStudy: Array.isArray(formData.typeOfStudy) ? formData.typeOfStudy.join(', ') : formData.typeOfStudy,
-          sourceOfFunding: Array.isArray(formData.sourceOfFunding) ? formData.sourceOfFunding.join(', ') : formData.sourceOfFunding,
-          fundingOthers: formData.fundingOthers,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          numParticipants: parseInt(formData.numParticipants) || 0,
-          technicalReview: formData.technicalReview === 'yes' ? 'Yes' : 'No',
-          submittedToOtherUMREC: formData.submittedToOther === 'yes' ? 'Yes' : 'No',
+    // ✅ 4. FETCH ALL DATA FOR PDF REGENERATION
+    console.log('📋 Fetching data for all 3 PDF regenerations...');
+
+    const { data: submission } = await supabase
+      .from('research_submissions')
+      .select('*')
+      .eq('id', submissionId)
+      .single();
+
+    const { data: protocol } = await supabase
+      .from('research_protocols')
+      .select('*')
+      .eq('submission_id', submissionId)
+      .single();
+
+    // ✅ 5. BUILD PDF DATA FOR ALL 3
+
+    const step2PdfData = {
+      step1: {
+        title: submission?.title,
+      },
+      step2: {
+        title: submission?.title,
+      },
+    };
+
+    const step3PdfData = {
+      step1: {},
+      step2: {},
+      step3: {
+        formData: {
+          introduction: protocol?.introduction || '',
+          background: protocol?.background || '',
+          problemStatement: protocol?.problem_statement || '',
+          scopeDelimitation: protocol?.scope_delimitation || '',
+          literatureReview: protocol?.literature_review || '',
+          methodology: protocol?.methodology || '',
+          population: protocol?.population || '',
+          samplingTechnique: protocol?.sampling_technique || '',
+          researchInstrument: protocol?.research_instrument || '',
+          ethicalConsideration: protocol?.ethical_consideration || '',
+          statisticalTreatment: protocol?.statistical_treatment || '',
+          references: protocol?.research_references || '',
+          title: submission?.title,
         },
-        step2: {
-          studySite: formData.studySite,
-          studySiteType: formData.studySiteType,
-          college: formData.college,
-          institution: formData.institution,
-          institutionAddress: formData.institutionAddress,
-          typeOfStudy: Array.isArray(formData.typeOfStudy) ? formData.typeOfStudy.join(', ') : formData.typeOfStudy,
-          typeOfStudyOthers: formData.typeOfStudyOthers,
-          sourceOfFunding: Array.isArray(formData.sourceOfFunding) ? formData.sourceOfFunding.join(', ') : formData.sourceOfFunding,
-          pharmaceuticalSponsor: formData.pharmaceuticalSponsor,
-          fundingOthers: formData.fundingOthers,
-          startDate: formData.startDate,
-          endDate: formData.endDate,
-          numParticipants: parseInt(formData.numParticipants) || 0,
-          technicalReview: formData.technicalReview === 'yes' ? 'Yes' : 'No',
-          submittedToOther: formData.submittedToOther === 'yes' ? 'Yes' : 'No',
-          coResearchers: coResearchers, // ✅ Keep as array object
-          technicalAdvisers: technicalAdvisers, // ✅ Keep as array object
-          documentChecklist: {
-            hasApplicationForm: formData.hasApplicationForm,
-            hasResearchProtocol: formData.hasResearchProtocol,
-            hasInformedConsent: formData.hasInformedConsent,
-            hasInformedConsentEnglish: formData.hasInformedConsent,
-            hasInformedConsentFilipino: false,
-            hasEndorsementLetter: formData.hasEndorsementLetter,
-            hasQuestionnaire: formData.hasQuestionnaire,
-            hasTechnicalReview: formData.hasTechnicalReview,
-            hasDataCollectionForms: formData.hasDataCollectionForms,
-            hasProductBrochure: formData.hasProductBrochure,
-            hasFDAAuthorization: formData.hasFDAAuthorization,
-            hasCompanyPermit: formData.hasCompanyPermit,
-            hasSpecialPopulationPermit: formData.hasSpecialPopulationPermit,
-          },
-        },
-      };
+        researchers: protocol?.researchers || [],
+      },
+      step4: {},
+    };
 
+    const { data: consent } = await supabase
+      .from('consent_forms')
+      .select('*')
+      .eq('submission_id', submissionId)
+      .single();
 
-      console.log('📋 PDF form data prepared');
+    const step4PdfData = {
+      step2: submission,
+      step4: {
+        ...(consent?.adult_consent || {}),
+        ...(consent?.minor_assent || {}),
+        consent_type: consent?.consent_type,
+        contact_person: consent?.contact_person,
+        contact_number: consent?.contact_number,
+        informed_consent_for: consent?.informed_consent_for,
+        consentType: consent?.consent_type,
+      },
+    };
 
-      const pdfResult = await generateApplicationFormPdf(pdfFormData);
-      console.log('📄 PDF generation result:', { success: pdfResult.success, hasData: !!pdfResult.pdfData, error: pdfResult.error });
+    // ✅ 6. REGENERATE ALL 3 PDFS IN PARALLEL
+    console.log('🔄 Regenerating all 3 PDFs...');
 
-      if (pdfResult.success && pdfResult.pdfData) {
-        try {
-          const base64Data = pdfResult.pdfData.includes('base64,')
-            ? pdfResult.pdfData.split(',')[1]
-            : pdfResult.pdfData;
+    await Promise.all([
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'application_form',
+        pdfData: step2PdfData,
+        generatePdfFn: generateApplicationFormPdf,
+        filePrefix: 'application_form',
+      }),
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'research_protocol',
+        pdfData: step3PdfData,
+        generatePdfFn: generateResearchProtocolPdf,
+        filePrefix: 'research_protocol',
+      }),
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'consent_form',
+        pdfData: step4PdfData,
+        generatePdfFn: generateConsentFormPdf,
+        filePrefix: 'consent_form',
+      }),
+    ]);
 
-          const pdfBuffer = Buffer.from(base64Data, 'base64');
-          const timestamp = Date.now();
-          const pdfPath = `${user.id}/application_form_revised_${submissionId}_${timestamp}.pdf`;
+    console.log('✅ All 3 PDFs regenerated successfully!');
 
-          console.log('🗑️ Deleting old PDF records...');
+    // ✅ 7. RESET VERIFICATION ONLY FOR APPLICATION_FORM
+    console.log('🔄 Resetting application_form verification...');
 
-          // Delete old document record
-          const { error: deleteError } = await supabase
-            .from('uploaded_documents')
-            .delete()
-            .eq('submission_id', submissionId)
-            .eq('document_type', 'application_form');
+    const { data: appFormDoc } = await supabase
+      .from('uploaded_documents')
+      .select('id')
+      .eq('submission_id', submissionId)
+      .eq('document_type', 'application_form')
+      .single();
 
-          console.log('✅ Delete result:', { error: deleteError });
+    if (appFormDoc) {
+      const { data: existingVerif } = await supabase
+        .from('document_verifications')
+        .select('id')
+        .eq('document_id', appFormDoc.id)
+        .single();
 
-          console.log('📤 Uploading new PDF to storage:', pdfPath);
+      if (existingVerif) {
+        await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
+          })
+          .eq('id', existingVerif.id);
 
-          const { error: uploadError, data: uploadData } = await supabase.storage
-            .from('research-documents')
-            .upload(pdfPath, pdfBuffer, {
-              contentType: 'application/pdf',
-              upsert: false
-            });
-
-          if (uploadError) {
-            console.error('❌ Storage upload error:', uploadError);
-          } else {
-            console.log('✅ PDF uploaded successfully');
-
-            console.log('💾 Inserting new document record...');
-
-            const { error: insertError, data: insertData } = await supabase
-              .from('uploaded_documents')
-              .insert({
-                submission_id: submissionId,
-                document_type: 'application_form',
-                file_name: `Application_Form_${submissionId}.pdf`,
-                file_size: pdfBuffer.length,
-                file_url: pdfPath,
-              });
-
-            if (insertError) {
-              console.error('❌ Insert error:', insertError);
-            } else {
-              console.log('✅ Document record inserted:', insertData);
-            }
-          }
-        } catch (processingError) {
-          console.error('❌ PDF processing error:', processingError);
-        }
+        console.log('✅ Application form verification cleared');
       } else {
-        console.error('❌ PDF generation failed:', pdfResult.error);
+        await supabase
+          .from('document_verifications')
+          .insert({
+            document_id: appFormDoc.id,
+            submission_id: submissionId,
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
+          });
+
+        console.log('✅ New application form verification created');
       }
-    } catch (pdfError) {
-      console.error('❌ PDF section error (non-critical):', pdfError);
+    }
+
+    // ✅ 8. CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+    console.log('🔍 Checking document verification status...');
+
+    const { data: allDocs } = await supabase
+      .from('uploaded_documents')
+      .select('id')
+      .eq('submission_id', submissionId);
+
+    if (allDocs && allDocs.length > 0) {
+      // Get all verification records for this submission
+      const { data: allVerifications } = await supabase
+        .from('document_verifications')
+        .select('is_approved')
+        .eq('submission_id', submissionId);
+
+      // Check if ALL verifications are null/approved is null
+      const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+
+      const newStatus = allAreNull ? 'pending' : 'needs_revision';
+
+      console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+
+      // Update submission status
+      const { error: statusError } = await supabase
+        .from('research_submissions')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', submissionId);
+
+      if (statusError) {
+        throw new Error(`Failed to update submission status: ${statusError.message}`);
+      }
+
+      console.log(`✅ Submission status updated to: ${newStatus}`);
     }
 
     return {
       success: true,
-      message: newStatus === 'Pending'
-        ? '✅ Changes saved and resubmitted successfully!'
-        : '✅ Changes saved! Please address the verification issues before resubmitting.',
-      status: newStatus,
+      message: '✅ Changes saved and all PDFs updated!',
     };
   } catch (error) {
-    console.error('Revision submission error:', error);
+    console.error('❌ Revision submission error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to save changes',
+      error:
+        error instanceof Error ? error.message : 'Failed to save changes',
     };
   }
 }

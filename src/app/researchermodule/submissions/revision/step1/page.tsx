@@ -115,6 +115,7 @@ function RevisionStep1Content() {
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
   
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     projectLeaderFirstName: '',
@@ -130,6 +131,9 @@ function RevisionStep1Content() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorList, setErrorList] = useState<string[]>([]);
   const [revisionComments, setRevisionComments] = useState('');
+
+  // ✅ Check if this is quick revision mode (has docId and docType)
+  const isQuickRevision = !!searchParams.get('docId') && searchParams.get('docType') === 'consolidated_application';
 
   // ✅ Fetch submission data from Supabase
   useEffect(() => {
@@ -152,7 +156,6 @@ function RevisionStep1Content() {
         if (error) throw error;
 
         if (data) {
-          // Pre-populate form with existing data
           setFormData({
             title: data.title || '',
             projectLeaderFirstName: data.project_leader_first_name || '',
@@ -164,7 +167,7 @@ function RevisionStep1Content() {
             organization: data.organization || 'internal',
           });
 
-          // Load revision comments if available
+          // Load revision comments
           const commentsResult = await supabase
             .from('submission_comments')
             .select('comment_text')
@@ -190,9 +193,9 @@ function RevisionStep1Content() {
     fetchSubmissionData();
   }, [submissionId, router]);
 
-  // Auto-save to localStorage
+  // Auto-save to localStorage (only in multi-step mode)
   useEffect(() => {
-    if (isInitialMount.current || loading) return;
+    if (isInitialMount.current || loading || isQuickRevision) return;
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -208,7 +211,7 @@ function RevisionStep1Content() {
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [formData, loading]);
+  }, [formData, loading, isQuickRevision]);
 
   // Validation function
   const validateInput = (value: string, fieldName: string): string | null => {
@@ -240,7 +243,7 @@ function RevisionStep1Content() {
     return null;
   };
 
-  // ✅ INSTANT SUBMISSION
+  // ✅ HANDLE SUBMIT - TWO MODES
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -279,42 +282,91 @@ function RevisionStep1Content() {
       return;
     }
 
-    // ✅ Save to database & mark as resubmitted
-    const supabase = createClient();
-    try {
-      const { error } = await supabase
-        .from('research_submissions')
-        .update({
-          title: formData.title,
-          project_leader_first_name: formData.projectLeaderFirstName,
-          project_leader_middle_name: formData.projectLeaderMiddleName,
-          project_leader_last_name: formData.projectLeaderLastName,
-          project_leader_email: formData.projectLeaderEmail,
-          project_leader_contact: formData.projectLeaderContact,
-          co_authors: formData.coAuthors,
-          organization: formData.organization,
-          status: 'Resubmit', // ✅ Mark as resubmitted
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', submissionId);
+    // ✅ QUICK REVISION: Save directly to database
+    if (isQuickRevision && submissionId) {
+      setUploading(true);
+      const supabase = createClient();
+      
+      try {
+        // Update submission data
+        const { error } = await supabase
+          .from('research_submissions')
+          .update({
+            title: formData.title,
+            project_leader_first_name: formData.projectLeaderFirstName,
+            project_leader_middle_name: formData.projectLeaderMiddleName,
+            project_leader_last_name: formData.projectLeaderLastName,
+            project_leader_email: formData.projectLeaderEmail,
+            project_leader_contact: formData.projectLeaderContact,
+            co_authors: formData.coAuthors,
+            organization: formData.organization,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', submissionId);
 
-      if (error) throw error;
+        if (error) throw error;
 
+        // ✅ Check status: If all document verifications are null → "pending", else → "needs_revision"
+        console.log('🔍 Checking document verification status...');
+
+        const { data: allDocs } = await supabase
+          .from('uploaded_documents')
+          .select('id')
+          .eq('submission_id', submissionId);
+
+        if (allDocs && allDocs.length > 0) {
+          const { data: allVerifications } = await supabase
+            .from('document_verifications')
+            .select('is_approved')
+            .eq('submission_id', submissionId);
+
+          const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+          const newStatus = allAreNull ? 'pending' : 'needs_revision';
+
+          console.log(`📊 Status update: ${newStatus}`);
+
+          const { error: statusError } = await supabase
+            .from('research_submissions')
+            .update({
+              status: newStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', submissionId);
+
+          if (statusError) {
+            console.error('Failed to update status:', statusError);
+          } else {
+            console.log(`✅ Submission status updated to: ${newStatus}`);
+          }
+        }
+
+        alert('✅ Changes saved successfully! Redirecting to activity details...');
+        router.push(`/researchermodule/activity-details?id=${submissionId}`);
+      } catch (error) {
+        console.error('Error saving changes:', error);
+        alert('Failed to save changes. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    }
+    // ✅ MULTI-STEP MODE: Save to localStorage and go to next step
+    else {
+      localStorage.setItem('revisionStep1Data', JSON.stringify(formData));
+      console.log('💾 Step 1 saved to localStorage');
+      
       setErrors({});
-      localStorage.removeItem('revisionStep1Data');
+      alert('✅ Step 1 saved! Moving to Step 2...');
       
-      alert('✅ Changes saved and resubmitted successfully!');
-      
-      // ✅ Instant submit - redirect to activity details
-      router.push(`/researchermodule/activity-details?id=${submissionId}`);
-    } catch (error) {
-      console.error('Error saving changes:', error);
-      alert('Failed to save changes. Please try again.');
+      router.push(`/researchermodule/submissions/revision/step2?mode=revision&id=${submissionId}`);
     }
   };
 
   const handleBack = () => {
-    router.push('/researchermodule/submissions');
+    if (isQuickRevision && submissionId) {
+      router.push(`/researchermodule/activity-details?id=${submissionId}`);
+    } else {
+      router.push('/researchermodule/submissions');
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -360,29 +412,36 @@ function RevisionStep1Content() {
                 
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Researcher Details - Revision
+                    Researcher Details - {isQuickRevision ? 'Quick Revision' : 'Revision'}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Review and update the requested details based on feedback
+                    {isQuickRevision 
+                      ? 'Update the researcher details and submit immediately'
+                      : 'Review and update the requested details based on feedback'}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
-                className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
-                style={{ width: '12.5%' }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Step 1 of 8
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                12% Complete
-              </span>
-            </div>
+            {/* Progress Bar - Only show in multi-step mode */}
+            {!isQuickRevision && (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                  <div 
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                    style={{ width: '12.5%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Step 1 of 8
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    12% Complete
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
@@ -421,7 +480,6 @@ function RevisionStep1Content() {
                   </p>
                 )}
               </div>
-
               {/* Project Leader Full Name */}
               <div>
                 <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -612,19 +670,32 @@ function RevisionStep1Content() {
                 </select>
               </div>
 
-              {/* Submit Button */}
+ {/* Submit Button */}
               <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
                 <button
                   type="submit"
-                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
+                  disabled={uploading}
+                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Save & Submit
+                    {uploading ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {isQuickRevision ? 'Submit Revision' : 'Save & Continue'}
+                      </>
+                    )}
                   </span>
                 </button>
               </div>

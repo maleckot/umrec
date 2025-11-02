@@ -84,6 +84,7 @@ export async function getResearcherSubmissions() {
         // ✅ Show only consolidated document for these statuses:
         if (submission.status === 'under_review' ||
           submission.status === 'review_complete' ||
+          submission.status === 'under_revision' ||
           submission.status === 'approved') {
           filteredDocuments = (documents || []).filter(
             doc => doc.document_type === 'consolidated_application'
@@ -162,14 +163,13 @@ export async function getResearcherSubmissions() {
 
     const stats = {
       active: submissionList.filter(s =>
-        ['new_submission', 'awaiting_classification', 'under_review', 'pending', 'classified'].includes(s.status)
+        ['new_submission', 'awaiting_classification', 'under_review', 'pending', 'classified', 'under_revision'].includes(s.status)
       ).length,
       pending: submissionList.filter(s =>
         ['under_review', 'pending', 'classified'].includes(s.status)
       ).length,
       needsRevision: submissionList.filter(s =>
-        s.status === 'needs_revision'
-      ).length,
+         ['needs_revision', 'under_revision'].includes(s.status)).length,
     };
 
     const currentSubmission = submissionList[0] || null;

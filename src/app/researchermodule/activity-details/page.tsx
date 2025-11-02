@@ -11,7 +11,7 @@ import ResubmitButton from '@/components/researcher/ResubmitButton';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getSubmissionActivity } from '@/app/actions/researcher/getSubmissionActivity';
-import{ Suspense } from 'react';
+import { Suspense } from 'react';
 
 interface Document {
   id: number;
@@ -20,9 +20,9 @@ interface Document {
   fileUrl: string;
   fileSize: number;
   uploadedAt: string;
-  isApproved?: boolean | null;      
-  needsRevision?: boolean;           
-  revisionComment?: string | null;   
+  isApproved?: boolean | null;
+  needsRevision?: boolean;
+  revisionComment?: string | null;
 }
 
 interface Comment {
@@ -44,6 +44,7 @@ function ActivityDetailsContent() {
   const [submissionData, setSubmissionData] = useState({
     dateSubmitted: '',
     status: '',
+    rawStatus: '',
     submissionId: '',
     title: '',
     revisionCount: 0,
@@ -63,24 +64,25 @@ function ActivityDetailsContent() {
     setLoading(true);
     try {
       const result = await getSubmissionActivity(activityId);
-      
+
       if (result.success && result.submission && result.revisionInfo) {
         let filteredDocs = result.documents;
-        
+
         if (docId) {
           filteredDocs = result.documents.filter(doc => doc.id.toString() === docId);
         }
-        
+
         setDocuments(filteredDocs);
         const selected = filteredDocs[0] || null;
         setSelectedDocument(selected);
         setComments(result.comments || []);
-        
+
         setSubmissionData({
           title: result.submission.title,
           submissionId: result.submission.submissionId,
           dateSubmitted: formatDate(result.submission.submittedAt),
           status: getStatusLabel(result.submission.status),
+          rawStatus: result.submission.status,
           revisionCount: result.revisionInfo.revisionCount,
           needsRevision: selected?.needsRevision || false,
           revisionMessage: selected?.revisionComment || result.revisionInfo.message,
@@ -101,7 +103,7 @@ function ActivityDetailsContent() {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
-      year: 'numeric'
+      year: 'numeric',
     });
   };
 
@@ -109,7 +111,7 @@ function ActivityDetailsContent() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 1) {
       return 'Just now';
     } else if (diffInHours < 24) {
@@ -129,25 +131,26 @@ function ActivityDetailsContent() {
 
   const getStatusLabel = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'new_submission': 'Under Review',
-      'awaiting_classification': 'Under Initial Review',
-      'needs_revision': 'Requires Revision',
-      'under_review': 'Under Ethics Review',
-      'approved': 'Approved',
-      'rejected': 'Rejected',
+      new_submission: 'Under Review',
+      awaiting_classification: 'Under Initial Review',
+      needs_revision: 'Requires Revision',
+      under_revision: 'Requires Revision',
+      under_review: 'Under Ethics Review',
+      approved: 'Approved',
+      rejected: 'Rejected',
     };
     return statusMap[status] || status;
   };
 
   const getDocumentTypeLabel = (type: string) => {
     const typeMap: { [key: string]: string } = {
-      'consolidated_application': 'Consolidated Application',
-      'research_instrument': 'Research Instrument',
-      'endorsement_letter': 'Endorsement Letter',
-      'proposal_defense': 'Proposal Defense',
-      'application_form': 'Application Form',
-      'research_protocol': 'Research Protocol',
-      'consent_form': 'Consent Form',
+      consolidated_application: 'Consolidated Application',
+      research_instrument: 'Research Instrument',
+      endorsement_letter: 'Endorsement Letter',
+      proposal_defense: 'Proposal Defense',
+      application_form: 'Application Form',
+      research_protocol: 'Research Protocol',
+      consent_form: 'Consent Form',
     };
     return typeMap[type] || type;
   };
@@ -158,47 +161,40 @@ function ActivityDetailsContent() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
-  // ✅ SMART REVISION ROUTING
   const handleResubmit = () => {
     const documentTypeToStep: { [key: string]: string } = {
-      'consolidated_application': 'step1',  // Multi-step flow
-      'application_form': 'step2',
-      'research_protocol': 'step3',
-      'consent_form': 'step4',
-      'research_instrument': 'step5',
-      'proposal_defense': 'step6',
-      'endorsement_letter': 'step7',
+      consolidated_application: 'step1',
+      application_form: 'step2',
+      research_protocol: 'step3',
+      consent_form: 'step4',
+      research_instrument: 'step5',
+      proposal_defense: 'step6',
+      endorsement_letter: 'step7',
     };
 
-    // ✅ If viewing a specific document that needs revision
     if (selectedDocument && selectedDocument.needsRevision) {
       const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
-      
-      // ✅ CHECK: Is it consolidated_application?
+
       if (selectedDocument.fileType === 'consolidated_application') {
-        // Go through full 1-8 flow (NO docId = multi-step mode)
         router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
       } else {
-        // Single document revision (WITH docId = quick submit mode)
-        router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${selectedDocument.id}&docType=${selectedDocument.fileType}`);
+        router.push(
+          `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${selectedDocument.id}&docType=${selectedDocument.fileType}`
+        );
       }
-    } 
-    // Otherwise, go to the first document that needs revision
-    else {
+    } else {
       const firstRejectedDoc = documents.find(doc => doc.needsRevision);
       if (firstRejectedDoc) {
         const step = documentTypeToStep[firstRejectedDoc.fileType] || 'step1';
-        
-        // ✅ CHECK: Is it consolidated_application?
+
         if (firstRejectedDoc.fileType === 'consolidated_application') {
-          // Go through full 1-8 flow
           router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
         } else {
-          // Single document revision
-          router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${firstRejectedDoc.id}&docType=${firstRejectedDoc.fileType}`);
+          router.push(
+            `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${firstRejectedDoc.id}&docType=${firstRejectedDoc.fileType}`
+          );
         }
       } else {
-        // If no specific doc rejected (general comment), start from beginning
         router.push(`/researchermodule/submissions/revision/step1?mode=revision&id=${activityId}`);
       }
     }
@@ -233,18 +229,18 @@ function ActivityDetailsContent() {
       <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
         <div className="max-w-7xl mx-auto">
           <Breadcrumbs items={breadcrumbItems} />
-          
+
           <BackButton label="Activity Details" href="/researchermodule" />
 
           <div className="mb-6">
-            <h1 
-              className="text-3xl font-bold" 
+            <h1
+              className="text-3xl font-bold"
               style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}
             >
               {submissionData.title}
             </h1>
-            <p 
-              className="text-gray-600 mt-2" 
+            <p
+              className="text-gray-600 mt-2"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               Submission ID: {submissionData.submissionId}
@@ -268,19 +264,29 @@ function ActivityDetailsContent() {
                 <div className="bg-white rounded-xl p-6 border border-gray-200">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-[#101C50] rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <svg
+                        className="w-6 h-6 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
                       </svg>
                     </div>
                     <div className="flex-1">
-                      <h3 
-                        className="font-bold text-lg text-[#101C50] mb-1" 
+                      <h3
+                        className="font-bold text-lg text-[#101C50] mb-1"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
                         {getDocumentTypeLabel(selectedDocument.fileType)}
                       </h3>
-                      <p 
-                        className="text-sm text-gray-500" 
+                      <p
+                        className="text-sm text-gray-500"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
                         {selectedDocument.fileName} • {formatFileSize(selectedDocument.fileSize)}
@@ -292,10 +298,7 @@ function ActivityDetailsContent() {
 
               {/* Document Preview */}
               {selectedDocument ? (
-                <PreviewCard 
-                  fileUrl={selectedDocument.fileUrl} 
-                  filename={selectedDocument.fileName} 
-                />
+                <PreviewCard fileUrl={selectedDocument.fileUrl} filename={selectedDocument.fileName} />
               ) : (
                 <div className="bg-white rounded-xl p-6 border border-gray-200">
                   <p className="text-gray-500 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -304,71 +307,145 @@ function ActivityDetailsContent() {
                 </div>
               )}
 
-              {/* UNIFIED Revision Card - Shows ONLY for specific document that needs revision */}
-              {selectedDocument?.isApproved === false && (
-                <div className="bg-white rounded-xl p-6 border-2 border-red-200">
-                  <div className="flex items-center gap-2 mb-4">
-                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                    <h3 
-                      className="text-lg font-bold text-red-600" 
-                      style={{ fontFamily: 'Metropolis, sans-serif' }}
-                    >
-                      Revision Required - Comments from UMREC
-                    </h3>
-                  </div>
-
-                  <p 
-                    className="text-sm text-gray-600 mb-4" 
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    Please review the feedback below and update the documents mentioned
-                  </p>
-
-                  {/* Show ONLY THIS DOCUMENT'S comment */}
-                  {selectedDocument?.revisionComment && (
-                    <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              {/* UNIFIED Revision Card */}
+              {selectedDocument &&
+                (selectedDocument.fileType === 'consolidated_application'
+                  ? submissionData.rawStatus === 'under_revision' && (
+                      <div className="bg-white rounded-xl p-6 border-2 border-red-200">
+                        <div className="flex items-center gap-2 mb-4">
+                          <svg
+                            className="w-6 h-6 text-red-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
                           </svg>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex justify-between items-start mb-2">
-                            <p 
-                              className="text-sm font-semibold text-red-800" 
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              UMREC Review Committee
-                            </p>
-                          </div>
-                          <p 
-                            className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium" 
+                          <h3
+                            className="text-lg font-bold text-red-600"
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
-                            {selectedDocument.revisionComment}
+                            Revision Required - Comments from UMREC
+                          </h3>
+                        </div>
+
+                        <p
+                          className="text-sm text-gray-600 mb-4"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          Please review the feedback below and update the documents mentioned
+                        </p>
+
+                        <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          <p
+                            className="text-sm text-blue-800 font-medium"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            📝 Please address all feedback above and resubmit the required documents
+                            using the button below.
                           </p>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )
+                  : selectedDocument.isApproved === false && (
+                      <div className="bg-white rounded-xl p-6 border-2 border-red-200">
+                        <div className="flex items-center gap-2 mb-4">
+                          <svg
+                            className="w-6 h-6 text-red-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                          <h3
+                            className="text-lg font-bold text-red-600"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            Revision Required - Comments from UMREC
+                          </h3>
+                        </div>
 
-                  {/* Action notice */}
-                  <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <p className="text-sm text-blue-800 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      📝 Please address all feedback above and resubmit the required documents using the button below.
-                    </p>
-                  </div>
-                </div>
-              )}
+                        <p
+                          className="text-sm text-gray-600 mb-4"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          Please review the feedback below and update the documents mentioned
+                        </p>
 
-              {/* Show resubmit button ONLY if this specific document needs revision */}
-              {selectedDocument?.needsRevision && (
-                <ResubmitButton onClick={handleResubmit} />
-              )}
+                        {selectedDocument?.revisionComment && (
+                          <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                                <svg
+                                  className="w-5 h-5 text-white"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                  />
+                                </svg>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start mb-2">
+                                  <p
+                                    className="text-sm font-semibold text-red-800"
+                                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                                  >
+                                    UMREC Review Committee
+                                  </p>
+                                </div>
+                                <p
+                                  className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
+                                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                                >
+                                  {selectedDocument.revisionComment}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
+                        <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          <p
+                            className="text-sm text-blue-800 font-medium"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            📝 Please address all feedback above and resubmit the required documents
+                            using the button below.
+                          </p>
+                        </div>
+                      </div>
+                    )
+                )
+              }
+
+              {/* Show resubmit button */}
+              {selectedDocument &&
+                (selectedDocument.fileType === 'consolidated_application'
+                  ? submissionData.rawStatus === 'under_revision' && (
+                      <ResubmitButton onClick={handleResubmit} />
+                    )
+                  : selectedDocument.needsRevision && (
+                      <ResubmitButton onClick={handleResubmit} />
+                    )
+                )
+              }
             </div>
           </div>
         </div>
@@ -381,15 +458,17 @@ function ActivityDetailsContent() {
 
 export default function ActivityDetailsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
-        <NavbarRoles role="researcher" />
-        <div className="flex-grow flex items-center justify-center mt-24">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
+          <NavbarRoles role="researcher" />
+          <div className="flex-grow flex items-center justify-center mt-24">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+          </div>
+          <Footer />
         </div>
-        <Footer />
-      </div>
-    }>
+      }
+    >
       <ActivityDetailsContent />
     </Suspense>
   );

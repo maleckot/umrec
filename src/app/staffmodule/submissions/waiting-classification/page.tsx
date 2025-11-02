@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react'; // Add useRef
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
@@ -14,11 +14,11 @@ import { generatePdfFromDatabase } from '@/app/actions/generatePdfFromDatabase';
 import { createClient } from '@/utils/supabase/client';
 import { Suspense } from 'react';
 
-
 function WaitingClassificationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
+  const shouldRegenerate = searchParams.get('regenerate') === 'true'; // ✅ ADD THIS
   
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
@@ -28,13 +28,11 @@ function WaitingClassificationContent() {
   
   const pdfGenerationAttempted = useRef(false);
 
-
   useEffect(() => {
     if (submissionId) {
       loadData();
     }
   }, [submissionId]);
-
 
   const loadData = async () => {
     if (!submissionId) return;
@@ -46,9 +44,9 @@ function WaitingClassificationContent() {
       if (result.success) {
         setData(result);
         
-        if (!result.consolidatedDocument && !pdfGenerationAttempted.current) {
-          // PDF doesn't exist, generate it in background
-          pdfGenerationAttempted.current = true; // Mark as attempted
+        // ✅ Check regenerate flag OR if doesn't exist
+        if ((shouldRegenerate || !result.consolidatedDocument) && !pdfGenerationAttempted.current) {
+          pdfGenerationAttempted.current = true;
           generateConsolidatedPdf();
         }
       } else {
@@ -62,7 +60,6 @@ function WaitingClassificationContent() {
       setLoading(false);
     }
   };
-
 
   const generateConsolidatedPdf = async () => {
     if (!submissionId) return;
@@ -92,7 +89,22 @@ function WaitingClassificationContent() {
 
       const supabase = createClient();
       
-      // Convert base64 to Blob for client-side upload
+      // ✅ 1. DELETE OLD FILES FIRST
+      const { data: oldFiles } = await supabase.storage
+        .from('research-documents')
+        .list('consolidated', {
+          search: `consolidated_${submissionId}`
+        });
+
+      if (oldFiles && oldFiles.length > 0) {
+        const filesToDelete = oldFiles.map(f => `consolidated/${f.name}`);
+        await supabase.storage
+          .from('research-documents')
+          .remove(filesToDelete);
+        console.log(`✅ Deleted ${filesToDelete.length} old files`);
+      }
+
+      // Convert base64 to Blob
       const base64Data = pdfResult.pdfData.split(',')[1] || pdfResult.pdfData;
       const byteCharacters = atob(base64Data);
       const byteNumbers = new Array(byteCharacters.length);
@@ -102,10 +114,10 @@ function WaitingClassificationContent() {
       const byteArray = new Uint8Array(byteNumbers);
       const pdfBlob = new Blob([byteArray], { type: 'application/pdf' });
 
-      // Upload to storage
-      const fileName = `consolidated_${submissionId}_${Date.now()}.pdf`;
+      // ✅ 2. UPLOAD NEW FILE
+      const fileName = `consolidated_${submissionId}.pdf`;
       const filePath = `consolidated/${fileName}`;
-      
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('research-documents')
         .upload(filePath, pdfBlob, {
@@ -117,25 +129,43 @@ function WaitingClassificationContent() {
         throw new Error(`Upload failed: ${uploadError.message}`);
       }
 
-      // Save to database
-      const { error: docError } = await supabase
+      // ✅ 3. UPDATE OR INSERT database reference
+      const { data: existingDoc } = await supabase
         .from('uploaded_documents')
-        .insert({
-          submission_id: submissionId,
-          file_name: fileName,
-          file_url: uploadData.path,
-          document_type: 'consolidated_application',
-          file_size: pdfBlob.size,
-          uploaded_at: new Date().toISOString()
-        });
+        .select('id')
+        .eq('submission_id', submissionId)
+        .eq('document_type', 'consolidated_application')
+        .single();
 
-      if (docError) {
-        throw new Error(`Database save failed: ${docError.message}`);
+      if (existingDoc) {
+        const { error: updateError } = await supabase
+          .from('uploaded_documents')
+          .update({
+            file_name: fileName,
+            file_url: uploadData.path,
+            file_size: pdfBlob.size,
+          })
+          .eq('submission_id', submissionId)
+          .eq('document_type', 'consolidated_application');
+
+        if (updateError) throw new Error(`Update failed: ${updateError.message}`);
+      } else {
+        const { error: docError } = await supabase
+          .from('uploaded_documents')
+          .insert({
+            submission_id: submissionId,
+            file_name: fileName,
+            file_url: uploadData.path,
+            document_type: 'consolidated_application',
+            file_size: pdfBlob.size,
+            uploaded_at: new Date().toISOString()
+          });
+
+        if (docError) throw new Error(`Insert failed: ${docError.message}`);
       }
 
       console.log('✅ Consolidated PDF saved successfully');
       
-      // Reload data to show the new PDF
       const result = await getClassificationDetails(submissionId);
       if (result.success) {
         setData(result);
@@ -148,7 +178,6 @@ function WaitingClassificationContent() {
       setGeneratingPdf(false);
     }
   };
-
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -190,7 +219,6 @@ function WaitingClassificationContent() {
     },
   ] : [];
 
-  // Only show full-page loading on initial load
   if (loading) {
     return (
       <DashboardLayout role="staff" roleTitle="Staff" pageTitle="Submission Details" activeNav="submissions">
@@ -245,7 +273,6 @@ function WaitingClassificationContent() {
         <div className={activeTab === 'overview' ? 'lg:col-span-2' : 'w-full'}>
           {activeTab === 'overview' && (
             <>
-              {/* Show loading only in the document area */}
               {generatingPdf ? (
                 <div className="bg-white rounded-xl p-8 text-center border border-gray-200">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -327,6 +354,7 @@ function WaitingClassificationContent() {
     </DashboardLayout>
   );
 }
+
 export default function WaitingClassificationPage() {
   return (
     <Suspense fallback={

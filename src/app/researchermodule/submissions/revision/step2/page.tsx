@@ -10,7 +10,6 @@ import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, User, Mail, Phone, Users, Building, AlertCircle, X, Info, Plus, Trash2, Calendar, FileText, CheckSquare, MessageSquare } from 'lucide-react';
 import { handleRevisionSubmit } from '@/app/actions/lib/saveStep2';
 
-
 const typeOfStudyMap: Record<string, string> = {
   'genetic': 'genetic',
   'stem_cell': 'stem_cell',
@@ -32,7 +31,6 @@ const sourceOfFundingMap: Record<string, string> = {
   'others': 'others',
 };
 
-// ✅ Helper function
 const mapStoredValuesToOptions = (storedValue: any, mapObject: Record<string, string>) => {
   if (!storedValue) return [];
   if (Array.isArray(storedValue)) {
@@ -44,111 +42,96 @@ const mapStoredValuesToOptions = (storedValue: any, mapObject: Record<string, st
   return [];
 };
 
-
-
-// Custom Error Modal Component
+// ✅ Error Modal Component (keep your existing one)
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: string[] }> = ({ isOpen, onClose, errors }) => {
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header with gradient */}
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+      <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 relative">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Validation Errors
-              </h3>
-              <p className="text-red-100 text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Please fix the following issues
-              </p>
+              <h3 className="text-xl font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>Validation Errors</h3>
+              <p className="text-red-100 text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>Please fix the following issues</p>
             </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors"
-              aria-label="Close error dialog"
-            >
+            <button onClick={onClose} className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-lg flex items-center justify-center transition-colors" aria-label="Close error dialog">
               <X className="w-5 h-5 text-white" />
             </button>
           </div>
         </div>
 
-        {/* Error List */}
         <div className="p-6 max-h-96 overflow-y-auto">
           <ul className="space-y-3">
             {errors.map((error, index) => (
-              <li
-                key={index}
-                className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg"
-              >
+              <li key={index} className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs font-bold">{index + 1}</span>
                 </div>
-                <p className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {error}
-                </p>
+                <p className="text-sm text-gray-700 flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>{error}</p>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Footer */}
         <div className="p-6 border-t border-gray-200 bg-gray-50">
-          <button
-            onClick={onClose}
-            className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
+          <button onClick={onClose} className="w-full px-6 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold shadow-lg hover:shadow-xl hover:scale-105" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Got it, I'll fix these
           </button>
         </div>
-      </div>
 
-      <style jsx>{`
-        @keyframes fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
+        <style jsx>{`
+          @keyframes fade-in {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          .animate-fade-in {
+            animation: fade-in 0.3s ease-out;
+          }
+        `}</style>
+      </div>
     </div>
   );
 };
 
-// Revision Comment Box Component
+// ✅ Revision Comment Box Component
 const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
+  const reviewers = comments.split('---').filter(r => r.trim());
+
   return (
-    <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-          <MessageSquare className="w-6 h-6 text-white" />
+    <div className="mb-6 sm:mb-8 space-y-4">
+      {reviewers.map((review, idx) => (
+        <div key={idx} className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+              <span className="text-white font-bold text-sm">{idx + 1}</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-amber-900 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Reviewer {idx + 1} Comments
+              </h3>
+              <div className="space-y-2 text-sm text-amber-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {review
+                  .split('\n')
+                  .filter(line => line.trim())
+                  .map((line, lineIdx) => (
+                    <p key={lineIdx} className="leading-relaxed">
+                      {line.replace(/\*\*/g, '').trim()}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-amber-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Reviewer Comments
-          </h3>
-          <p className="text-amber-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {comments}
-          </p>
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
 
-// Tooltip Component
+// ✅ Tooltip Component (keep your existing one)
 const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
   const [show, setShow] = useState(false);
 
@@ -169,13 +152,7 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
           <div className="fixed inset-0 z-40 md:hidden" onClick={() => setShow(false)} />
           <div className="absolute z-50 right-0 top-full mt-2 md:right-auto md:top-auto md:bottom-full md:left-1/2 md:-translate-x-1/2 md:mb-2 w-56 sm:w-64 p-2.5 bg-[#071139] text-white text-xs rounded-lg shadow-2xl" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {text}
-            <button
-              onClick={() => setShow(false)}
-              className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold"
-              aria-label="Close tooltip"
-            >
-              ×
-            </button>
+            <button onClick={() => setShow(false)} className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full font-bold" aria-label="Close tooltip">×</button>
             <div className="hidden md:block absolute w-2 h-2 bg-[#071139] rotate-45 left-1/2 -translate-x-1/2 -bottom-1"></div>
             <div className="md:hidden absolute w-2 h-2 bg-[#071139] rotate-45 right-4 -top-1"></div>
           </div>
@@ -184,6 +161,7 @@ const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, 
     </div>
   );
 };
+
 interface FormDataType {
   title: string;
   studySiteType: string;
@@ -227,8 +205,9 @@ interface FormDataType {
   specialPopulationPermitDetails: string;
   hasOtherDocs: boolean;
   otherDocsDetails: string;
-  technicalReviewFile: File | { name: string; url: string; size?: number } | null; // ✅ Add this
+  technicalReviewFile: File | { name: string; url: string; size?: number } | null;
 }
+
 interface DocumentChecklist {
   hasApplicationForm?: boolean;
   hasResearchProtocol?: boolean;
@@ -250,23 +229,28 @@ interface DocumentChecklist {
   hasOtherDocs?: boolean;
   otherDocsDetails?: string;
 }
+
 function RevisionStep2Content() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  const isInitialMount = useRef(true);
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isClient, setIsClient] = useState(false);
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
+  const mode = searchParams.get('mode'); // ✅ NEW: Get mode
+
+  const isInitialMount = useRef(true);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const [loading, setLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loadingComments, setLoadingComments] = useState(true); // ✅ START true
-  const [revisionComments, setRevisionComments] = useState('Please update the study site information and ensure all co-researcher details are complete with contact information. Also review the document checklist and confirm all required items.');
+  const [loadingComments, setLoadingComments] = useState(true);
+  const [revisionComments, setRevisionComments] = useState('');
+
+  // ✅ Detect quick revision mode
+  const isQuickRevision = !!docId && docType === 'application_form';
 
   const [formData, setFormData] = useState<FormDataType>({
-
-    // Research Information
     title: '',
     studySiteType: '',
     studySite: '',
@@ -292,7 +276,6 @@ function RevisionStep2Content() {
     technicalReviewFile: null as File | null,
     submittedToOther: '',
 
-    // ✅ Basic Requirements Checkboxes
     hasApplicationForm: true,
     hasResearchProtocol: false,
     hasInformedConsent: false,
@@ -304,7 +287,6 @@ function RevisionStep2Content() {
     hasEndorsementLetter: false,
     hasQuestionnaire: false,
 
-    // ✅ Supplementary Documents Checkboxes
     hasTechnicalReview: false,
     hasDataCollectionForms: false,
     hasProductBrochure: false,
@@ -316,13 +298,13 @@ function RevisionStep2Content() {
     otherDocsDetails: '',
   });
 
-  const [coResearchers, setCoResearchers] = useState<Array<{ name: string; contact: string; email: string }>>([
-    { name: '', contact: '', email: '' }
-  ]);
+  const [coResearchers, setCoResearchers] = useState<Array<{ name: string; contact: string; email: string }>>(
+    [{ name: '', contact: '', email: '' }]
+  );
 
-  const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string; contact: string; email: string }>>([
-    { name: '', contact: '', email: '' }
-  ]);
+  const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string; contact: string; email: string }>>(
+    [{ name: '', contact: '', email: '' }]
+  );
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -371,7 +353,6 @@ function RevisionStep2Content() {
       'wip', 'tbd', 'to be determined', 'later', 'soon', 'testing', 'test',
       'asdf', 'qwerty', '123', 'abc', 'unknown', 'temp', 'temporary'
     ];
-
     if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
       return `${fieldName} contains invalid text`;
     }
@@ -383,173 +364,218 @@ function RevisionStep2Content() {
     return null;
   };
 
- useEffect(() => {
-  if (!submissionId) {
-    alert('No submission ID found');
-    router.push('/researchermodule/submissions');
-    return;
-  }
+  // ✅ FETCH DATA - with reviewer comments for both modes
+  useEffect(() => {
+    if (!submissionId) {
+      alert('No submission ID found');
+      router.push('/researchermodule/submissions');
+      return;
+    }
 
-  const fetchSubmissionData = async () => {
-    const supabase = createClient();
-    setLoadingComments(true); // ✅ START LOADING
+    const fetchSubmissionData = async () => {
+      const supabase = createClient();
+      setLoadingComments(true);
 
-    try {
-      const { data, error } = await supabase
-        .from('research_submissions')
-        .select('*')
-        .eq('id', submissionId)
-        .single();
-
-      if (error) throw error;
-
-      // ✅ FETCH REVIEWER COMMENTS - CHOOSE ONE BASED ON YOUR NEEDS:
-      
-      // Option A: If you have docId (quick revision from activity-details)
-      if (docId) {
-        const { data: verification } = await supabase
-          .from('document_verifications')
-          .select('feedback_comment')
-          .eq('document_id', docId)
-          .single();
-
-        if (verification?.feedback_comment) {
-          setRevisionComments(verification.feedback_comment);
-        } else {
-          setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
-        }
-      } 
-      // Option B: If you DON'T have docId (regular revision from step1)
-      else {
-        if (data?.feedback_comments) {
-          setRevisionComments(data.feedback_comments);
-        } else {
-          setRevisionComments('No specific feedback provided. Please review the form for any general improvements.');
-        }
-      }
-
-      // ✅ Rest of your existing code...
-      const { data: technicalReviewDoc } = await supabase
-        .from('uploaded_documents')
-        .select('file_url, file_name, file_size')
-        .eq('submission_id', submissionId)
-        .eq('document_type', 'technical_review')
-        .single();
-
-      let institutionAddressFromForm = '';
-      let studySiteTypeFromForm = '';
-      let collegeFromForm = '';
-      let numParticipantsFromForm = '';
-      let technicalReviewFromForm = '';
-      let documentChecklist: DocumentChecklist = {};
-
-      // ✅ FETCH FROM application_forms for typeOfStudy and sourceOfFunding
-      if (data) {
-        const { data: appFormData, error: appFormError } = await supabase
-          .from('application_forms')
+      try {
+        const { data, error } = await supabase
+          .from('research_submissions')
           .select('*')
-          .eq('submission_id', submissionId)
+          .eq('id', submissionId)
           .single();
 
-        if (!appFormError && appFormData) {
-          institutionAddressFromForm = appFormData.institution_address || '';
-          studySiteTypeFromForm = appFormData.study_site_type || '';
-          collegeFromForm = appFormData.college || '';
-          numParticipantsFromForm = String(appFormData.num_participants || '');
-          technicalReviewFromForm = (appFormData.technical_review || 'no').toLowerCase();
-          documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
+        if (error) throw error;
 
-          if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
-            setCoResearchers(
-              appFormData.co_researcher.map((co: any) => ({
-                name: co.fullName || co.name || '',
-                contact: co.contactNumber || co.contact || '',
-                email: co.emailAddress || co.email || '',
-              }))
-            );
+        // ✅ FETCH REVIEWER COMMENTS
+        if (docId) {
+          // Quick revision - get from document_verifications
+          const { data: verification } = await supabase
+            .from('document_verifications')
+            .select('feedback_comment')
+            .eq('document_id', docId)
+            .single();
+
+          if (verification?.feedback_comment) {
+            setRevisionComments(verification.feedback_comment);
+          } else {
+            setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
           }
+        } else {
+          // Regular revision - get from reviews table
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select(
+              `
+              protocol_recommendation,
+              protocol_disapproval_reasons,
+              protocol_ethics_recommendation,
+              protocol_technical_suggestions,
+              icf_recommendation,
+              icf_disapproval_reasons,
+              icf_ethics_recommendation,
+              icf_technical_suggestions
+              `
+            )
+            .eq('submission_id', submissionId)
+            .eq('status', 'submitted');
 
-          if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
-            setTechnicalAdvisers(
-              appFormData.technical_advisers.map((ad: any) => ({
-                name: ad.fullName || ad.name || '',
-                contact: ad.contactNumber || ad.contact || '',
-                email: ad.emailAddress || ad.email || '',
-              }))
-            );
+          if (reviews && reviews.length > 0) {
+            const allComments = reviews
+              .map((review, index) => {
+                let text = `**Reviewer ${index + 1}:**\n`;
+
+                if (review.protocol_recommendation) {
+                  text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
+                }
+                if (review.protocol_disapproval_reasons) {
+                  text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
+                }
+                if (review.protocol_ethics_recommendation) {
+                  text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
+                }
+                if (review.protocol_technical_suggestions) {
+                  text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
+                }
+
+                if (review.icf_recommendation) {
+                  text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
+                }
+                if (review.icf_disapproval_reasons) {
+                  text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
+                }
+                if (review.icf_ethics_recommendation) {
+                  text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
+                }
+                if (review.icf_technical_suggestions) {
+                  text += `💡 **ICF Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
+                }
+
+                return text;
+              })
+              .join('\n---\n');
+
+            setRevisionComments(allComments);
+          } else {
+            setRevisionComments('No reviewer comments available. Please check back later or contact the review board.');
           }
+        }
 
-          console.log('📊 From application_forms - type_of_study:', appFormData.type_of_study);
-          console.log('📊 From application_forms - source_of_funding:', appFormData.source_of_funding);
+        // ✅ REST OF EXISTING FETCH CODE
+        const { data: technicalReviewDoc } = await supabase
+          .from('uploaded_documents')
+          .select('file_url, file_name, file_size')
+          .eq('submission_id', submissionId)
+          .eq('document_type', 'technical_review')
+          .single();
 
-          setFormData((prev) => ({
-            ...prev,
-            title: data.title || '',
-            studySiteType: studySiteTypeFromForm,
-            studySite: appFormData.study_site || '',
-            researcherFirstName: appFormData.researcher_first_name || '',
-            researcherMiddleName: appFormData.researcher_middle_name || '',
-            researcherLastName: appFormData.researcher_last_name || '',
-            project_leader_email: appFormData.contact_info?.email || '',
-            faxNo: appFormData.contact_info?.fax_no || 'N/A',
-            telNo: appFormData.contact_info?.tel_no || '',
-            project_leader_contact: appFormData.contact_info?.mobile_no || '',
-            college: collegeFromForm,
-            institution: appFormData.institution || 'University of Makati',
-            institutionAddress: institutionAddressFromForm,
-            typeOfStudy: mapStoredValuesToOptions(appFormData.type_of_study, typeOfStudyMap) || [],
-            typeOfStudyOthers: appFormData.type_of_study_others || '',
-            sourceOfFunding: mapStoredValuesToOptions(appFormData.source_of_funding, sourceOfFundingMap) || [],
-            pharmaceuticalSponsor: appFormData.pharmaceutical_sponsor || '',
-            fundingOthers: appFormData.funding_others || '',
-            startDate: appFormData.study_duration?.start_date || '',
-            endDate: appFormData.study_duration?.end_date || '',
-            numParticipants: numParticipantsFromForm,
-            technicalReview: technicalReviewFromForm,
-            submittedToOther: appFormData.submitted_to_other || '',
-            hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
-            hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
-            hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
-            hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
-            informedConsentOthers: documentChecklist.informedConsentOthers || '',
-            hasAssentForm: documentChecklist.hasAssentForm ?? false,
-            hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
-            assentFormOthers: documentChecklist.assentFormOthers || '',
-            hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
-            hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
-            hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
-            hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
-            hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
-            hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
-            hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
-            hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
-            specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
-            hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
-            otherDocsDetails: documentChecklist.otherDocsDetails || '',
-            technicalReviewFile: technicalReviewDoc
-              ? {
+        let institutionAddressFromForm = '';
+        let studySiteTypeFromForm = '';
+        let collegeFromForm = '';
+        let numParticipantsFromForm = '';
+        let technicalReviewFromForm = '';
+        let documentChecklist: DocumentChecklist = {};
+
+        if (data) {
+          const { data: appFormData, error: appFormError } = await supabase
+            .from('application_forms')
+            .select('*')
+            .eq('submission_id', submissionId)
+            .single();
+
+          if (!appFormError && appFormData) {
+            institutionAddressFromForm = appFormData.institution_address || '';
+            studySiteTypeFromForm = appFormData.study_site_type || '';
+            collegeFromForm = appFormData.college || '';
+            numParticipantsFromForm = String(appFormData.num_participants || '');
+            technicalReviewFromForm = (appFormData.technical_review || 'no').toLowerCase();
+            documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
+
+            if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
+              setCoResearchers(
+                appFormData.co_researcher.map((co: any) => ({
+                  name: co.fullName || co.name || '',
+                  contact: co.contactNumber || co.contact || '',
+                  email: co.emailAddress || co.email || '',
+                }))
+              );
+            }
+
+            if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
+              setTechnicalAdvisers(
+                appFormData.technical_advisers.map((ad: any) => ({
+                  name: ad.fullName || ad.name || '',
+                  contact: ad.contactNumber || ad.contact || '',
+                  email: ad.emailAddress || ad.email || '',
+                }))
+              );
+            }
+
+            setFormData((prev) => ({
+              ...prev,
+              title: data.title || '',
+              studySiteType: studySiteTypeFromForm,
+              studySite: appFormData.study_site || '',
+              researcherFirstName: appFormData.researcher_first_name || '',
+              researcherMiddleName: appFormData.researcher_middle_name || '',
+              researcherLastName: appFormData.researcher_last_name || '',
+              project_leader_email: data.project_leader_email || '', // ✅ FIXED            
+              faxNo: appFormData.contact_info?.fax_no || 'N/A',
+              telNo: appFormData.contact_info?.tel_no || '',
+              project_leader_contact: data.project_leader_contact || '', // ✅ FIXED            
+              college: collegeFromForm,
+              institution: appFormData.institution || 'University of Makati',
+              institutionAddress: institutionAddressFromForm,
+              typeOfStudy: mapStoredValuesToOptions(appFormData.type_of_study, typeOfStudyMap) || [],
+              typeOfStudyOthers: appFormData.type_of_study_others || '',
+              sourceOfFunding: mapStoredValuesToOptions(appFormData.source_of_funding, sourceOfFundingMap) || [],
+              pharmaceuticalSponsor: appFormData.pharmaceutical_sponsor || '',
+              fundingOthers: appFormData.funding_others || '',
+              startDate: appFormData.study_duration?.start_date || '',
+              endDate: appFormData.study_duration?.end_date || '',
+              numParticipants: numParticipantsFromForm,
+              technicalReview: technicalReviewFromForm,
+              submittedToOther: appFormData.submitted_to_other || '',
+              hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
+              hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
+              hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
+              hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
+              informedConsentOthers: documentChecklist.informedConsentOthers || '',
+              hasAssentForm: documentChecklist.hasAssentForm ?? false,
+              hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
+              assentFormOthers: documentChecklist.assentFormOthers || '',
+              hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
+              hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
+              hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
+              hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
+              hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
+              hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
+              hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
+              hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
+              specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
+              hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
+              otherDocsDetails: documentChecklist.otherDocsDetails || '',
+              technicalReviewFile: technicalReviewDoc
+                ? {
                   name: technicalReviewDoc.file_name,
                   url: technicalReviewDoc.file_url,
                   size: technicalReviewDoc.file_size,
                 }
-              : null,
-          }));
+                : null,
+            }));
+          }
         }
+      } catch (error) {
+        console.error('Error fetching submission data:', error);
+        alert('Failed to load submission data');
+      } finally {
+        setLoading(false);
+        setIsClient(true);
+        isInitialMount.current = false;
+        setLoadingComments(false);
       }
-    } catch (error) {
-      console.error('Error fetching submission data:', error);
-      alert('Failed to load submission data');
-    } finally {
-      setLoading(false);
-      setIsClient(true);
-      isInitialMount.current = false;
-      setLoadingComments(false); // ✅ END LOADING
-    }
-  };
+    };
 
-  fetchSubmissionData();
-}, [submissionId, docId, router]); // ✅ ADDED docId to dependency array
-
+    fetchSubmissionData();
+  }, [submissionId, docId, router]);
 
   useEffect(() => {
     if (isInitialMount.current || !isClient) return;
@@ -574,15 +600,14 @@ function RevisionStep2Content() {
     };
   }, [formData, coResearchers, technicalAdvisers, isClient]);
 
-
-  // ✅ SIMPLIFIED handleSubmit - calls the server action
+  // ✅ HANDLE SUBMIT - with quick revision & multi-step modes
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // Validation
     const newErrors: Record<string, string> = {};
 
-    // Validation
     const titleError = validateInput(formData.title, 'Title');
     if (titleError) newErrors.title = titleError;
 
@@ -612,23 +637,30 @@ function RevisionStep2Content() {
     }
 
     try {
-      // ✅ Call server action
-      const result = await handleRevisionSubmit(
-        submissionId!,
-        formData,
-        coResearchers,
-        technicalAdvisers,
-        formData.technicalReviewFile instanceof File ? formData.technicalReviewFile : undefined
-      );
+      // ✅ QUICK REVISION MODE - Call server action and redirect to activity-details
+      if (isQuickRevision && submissionId) {
+        const result = await handleRevisionSubmit(
+          submissionId,
+          formData,
+          coResearchers,
+          technicalAdvisers,
+          formData.technicalReviewFile instanceof File ? formData.technicalReviewFile : undefined
+        );
 
-      if (!result.success) throw new Error(result.error);
+        if (!result.success) throw new Error(result.error);
 
-      localStorage.removeItem('revisionStep2Data');
-      localStorage.removeItem('revisionStep2CoResearchers');
-      localStorage.removeItem('revisionStep2TechnicalAdvisers');
+        alert(result.message);
+        router.push(`/researchermodule/activity-details?id=${submissionId}`);
+      }
+      // ✅ MULTI-STEP MODE - Save to localStorage and go to next step
+      else {
+        localStorage.setItem('revisionStep2Data', JSON.stringify({ ...formData, technicalReviewFile: null }));
+        localStorage.setItem('revisionStep2CoResearchers', JSON.stringify(coResearchers));
+        localStorage.setItem('revisionStep2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
 
-      alert(result.message);
-      router.push(`/researchermodule`);
+        alert('✅ Step 2 saved! Moving to Step 3...');
+        router.push(`/researchermodule/submissions/revision/step3?mode=revision&id=${submissionId}`);
+      }
     } catch (error: any) {
       console.error('Error:', error);
       alert(`Failed: ${error.message}`);
@@ -637,9 +669,13 @@ function RevisionStep2Content() {
     }
   };
 
-
+  // ✅ HANDLE BACK - different for each mode
   const handleBack = () => {
-    router.push('/researchermodule/submissions');
+    if (isQuickRevision && submissionId) {
+      router.push(`/researchermodule/activity-details?id=${submissionId}`);
+    } else {
+      router.push(`/researchermodule/submissions/revision/step1?mode=revision&id=${submissionId}`);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -716,42 +752,47 @@ function RevisionStep2Content() {
               </button>
 
               <div className="flex items-center gap-4 flex-1">
-                {/* ORANGE STEP NUMBER CIRCLE */}
                 <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>2</span>
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Application for Ethics Review - Revision
+                    Application for Ethics Review - {isQuickRevision ? 'Quick Revision' : 'Revision'}
                   </h1>
                   <p className="text-sm sm:text-base text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Review and update the requested details based on feedback
+                    {isQuickRevision 
+                      ? 'Update the application form and submit immediately' 
+                      : 'Review and update the requested details based on feedback'}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* ORANGE PROGRESS BAR */}
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div
-                className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
-                style={{ width: '25%' }}
-              />
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Step 2 of 8
-              </span>
-              <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                25% Complete
-              </span>
-            </div>
+            {/* Show progress bar only in multi-step mode */}
+            {!isQuickRevision && (
+              <>
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                  <div
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
+                    style={{ width: '25%' }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Step 2 of 8
+                  </span>
+                  <span className="text-xs sm:text-sm font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    25% Complete
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-            {/* Revision Comment Box - PLACED HERE */}
+            {/* Revision Comment Box */}
             {loadingComments ? (
               <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center gap-4">
@@ -938,7 +979,7 @@ function RevisionStep2Content() {
                     id="email"
                     type="email"
                     value={formData.project_leader_email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
+                    onChange={(e) => handleInputChange('project_leader_email', e.target.value)}
                     className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
                       }`}
                     style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -1956,20 +1997,33 @@ function RevisionStep2Content() {
                 </div>
               </div>
 
-              {/* SINGLE ORANGE SAVE BUTTON */}
+            {/* ONLY CHANGE THE BUTTON */}
               <div className="flex justify-end pt-8 mt-8 border-t-2 border-gray-200">
                 <button
                   type="submit"
-                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden"
+                  disabled={isSubmitting}
+                  className="group relative px-10 sm:px-12 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 transition-all duration-300 font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  aria-label="Save changes"
+                  aria-label={isQuickRevision ? "Submit revision" : "Save and continue"}
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/10 to-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 opacity-50"></span>
                   <span className="relative z-10 flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Save Changes
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                        {isQuickRevision ? 'Submit Revision' : 'Save & Continue'}
+                      </>
+                    )}
                   </span>
                 </button>
               </div>
@@ -1980,7 +2034,7 @@ function RevisionStep2Content() {
 
       <Footer />
 
-      {/* Custom Error Modal */}
+      {/* Error Modal */}
       <ErrorModal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
@@ -1988,8 +2042,8 @@ function RevisionStep2Content() {
       />
     </div>
   );
-
 }
+
 export default function RevisionStep2() {
   return (
     <Suspense fallback={

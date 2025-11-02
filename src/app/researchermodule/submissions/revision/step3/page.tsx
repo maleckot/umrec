@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import Step3Content from './step3-content';
+import RevisionStep3Content from './step3-content';
 
 export default function Step3Page() {
   return (
@@ -13,7 +13,7 @@ export default function Step3Page() {
         </div>
       }
     >
-      <Step3Content />
+<RevisionStep3Content />
     </Suspense>
   );
 }

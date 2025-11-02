@@ -41,6 +41,7 @@ const getTimelineStage = (status: string) => {
     case 'pending':
       return 1;
     case 'under_classification':
+    case 'needs_revision':
       return 2;
     case 'classified':
     case 'reviewer_assignment':
@@ -49,7 +50,6 @@ const getTimelineStage = (status: string) => {
     case 'in_review':
       return 4;
     case 'under_revision':
-    case 'needs_revision':
       return 5;
     case 'completed':
     case 'approved':
@@ -622,7 +622,8 @@ export default function ResearcherDashboard() {
                     // ✅ Determine which docs to show based on status
                     const docsToDisplay = (submission.status === 'approved' ||
                       submission.status === 'under_review' ||
-                      submission.status === 'review_complete')
+                      submission.status === 'review_complete' ||
+                      submission.status == 'under_revision')
                       ? submission.documents || [] // ✅ Show all (consolidated only from backend)
                       : submission.documents?.filter(doc => doc.fileType !== 'consolidated_application') || []; // ✅ Hide consolidated for other statuses
 
@@ -635,22 +636,25 @@ export default function ResearcherDashboard() {
 
                     if (docsToShow.length === 0) return null;
 
-                    return docsToShow.map((doc) => {
-                      const docNeedsRevision = doc.needsRevision === true;
+                   return docsToShow.map((doc) => {
+                        // ✅ For consolidated file, use submission.status instead of verification
+                        const docNeedsRevision = doc.fileType === 'consolidated_application' 
+                          ? submission.status === 'under_revision'  // ← USE STATUS HERE
+                          : doc.needsRevision === true;              // ← USE VERIFICATION FOR OTHER DOCS
 
-                      const docStatusInfo = docNeedsRevision
-                        ? {
-                          buttonText: 'Revise',
-                          buttonColor: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800',
-                          description: 'Revisions requested by UMREC.'
-                        }
-                        : {
-                          buttonText: 'View',
-                          buttonColor: 'bg-gradient-to-r from-[#101C50] to-[#1a2d6e] hover:from-[#1a2d6e] hover:to-[#101C50]',
-                          description: 'Document verified'
-                        };
+                        const docStatusInfo = docNeedsRevision
+                          ? {
+                            buttonText: 'Revise',
+                            buttonColor: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800',
+                            description: 'Revisions requested by UMREC.'
+                          }
+                          : {
+                            buttonText: 'View',
+                            buttonColor: 'bg-gradient-to-r from-[#101C50] to-[#1a2d6e] hover:from-[#1a2d6e] hover:to-[#101C50]',
+                            description: 'Document verified'
+                          };
 
-                      return (
+                        return (
                         <div
                           key={`${submission.id}-${doc.id}`}
                           className="bg-gradient-to-br from-white to-gray-50 rounded-xl p-3 sm:p-4 md:p-5 border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300"

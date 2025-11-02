@@ -1,9 +1,18 @@
+// src/app/actions/lib/saveStep3.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+import { generateApplicationFormPdf } from '@/app/actions/generatePdfFromDatabase';
 import { generateResearchProtocolPdf } from '@/app/actions/generatePdfFromDatabase';
+import { generateConsentFormPdf } from '@/app/actions/generatePdfFromDatabase';
+import { regeneratePdfWithTitle } from './pdfDocumentManager';
 
-async function extractAndUploadImages(htmlContent: string, userId: string, supabase: any, sectionName: string) {
+async function extractAndUploadImages(
+  htmlContent: string,
+  userId: string,
+  supabase: any,
+  sectionName: string
+) {
   if (!htmlContent || typeof htmlContent !== 'string') {
     return { htmlContent: htmlContent || '', uploadedImages: [] };
   }
@@ -33,7 +42,7 @@ async function extractAndUploadImages(htmlContent: string, userId: string, supab
         .from('research-documents')
         .upload(filePath, buffer, {
           contentType: mimeType,
-          upsert: false
+          upsert: false,
         });
 
       if (!uploadError) {
@@ -49,7 +58,7 @@ async function extractAndUploadImages(htmlContent: string, userId: string, supab
           imageNumber: i + 1,
           filePath: filePath,
           publicUrl: urlData.publicUrl,
-          fileSize: buffer.length
+          fileSize: buffer.length,
         });
 
         console.log(`✅ Uploaded ${sectionName} image ${i + 1}: ${filePath}`);
@@ -65,7 +74,7 @@ async function extractAndUploadImages(htmlContent: string, userId: string, supab
 export async function saveStep3Data({
   submissionId,
   formData,
-  researchers
+  researchers,
 }: {
   submissionId: string;
   formData: any;
@@ -182,7 +191,7 @@ export async function saveStep3Data({
 
     console.log(`✅ Images processed: ${totalImages} images uploaded`);
 
-    // ✅ PROCESS SIGNATURES FIRST - Create researchersWithPaths for DB storage
+    // ✅ PROCESS SIGNATURES
     console.log('📝 Processing researcher signatures...');
 
     const researchersWithPaths = await Promise.all(
@@ -190,7 +199,6 @@ export async function saveStep3Data({
         let signaturePath = null;
         let signatureBase64 = researcher.signatureBase64 || null;
 
-        // ✅ Handle new uploads (File objects or base64)
         if (researcher.signature instanceof File) {
           try {
             const buffer = await researcher.signature.arrayBuffer();
@@ -200,15 +208,17 @@ export async function saveStep3Data({
               .from('research-documents')
               .upload(signaturePath, buffer, {
                 contentType: 'image/png',
-                upsert: false
+                upsert: false,
               });
 
             console.log(`✅ Uploaded signature for ${researcher.name}`);
           } catch (error) {
             console.error('Error uploading signature:', error);
           }
-        } else if (researcher.signatureBase64 && typeof researcher.signatureBase64 === 'string') {
-          // ✅ Handle base64 signatures
+        } else if (
+          researcher.signatureBase64 &&
+          typeof researcher.signatureBase64 === 'string'
+        ) {
           try {
             const base64Data = researcher.signatureBase64.split(',')[1];
             const buffer = Buffer.from(base64Data, 'base64');
@@ -218,18 +228,24 @@ export async function saveStep3Data({
               .from('research-documents')
               .upload(signaturePath, buffer, {
                 contentType: 'image/png',
-                upsert: false
+                upsert: false,
               });
 
             console.log(`✅ Uploaded base64 signature for ${researcher.name}`);
           } catch (error) {
             console.error('Error processing base64 signature:', error);
           }
-        } else if (researcher.signature && typeof researcher.signature === 'string' && !researcher.signature.startsWith('http')) {
-          // ✅ Keep existing path (not a signed URL)
+        } else if (
+          researcher.signature &&
+          typeof researcher.signature === 'string' &&
+          !researcher.signature.startsWith('http')
+        ) {
           signaturePath = researcher.signature;
-        } else if (researcher.signature && typeof researcher.signature === 'string' && researcher.signature.startsWith('http')) {
-          // ✅ It's already a signed URL - extract the path if possible, otherwise keep base64
+        } else if (
+          researcher.signature &&
+          typeof researcher.signature === 'string' &&
+          researcher.signature.startsWith('http')
+        ) {
           signatureBase64 = researcher.signatureBase64 || null;
         }
 
@@ -237,13 +253,12 @@ export async function saveStep3Data({
           id: researcher.id,
           name: researcher.name,
           signaturePath: signaturePath,
-          signatureBase64: signatureBase64
-          // ❌ DO NOT include signature field here
+          signatureBase64: signatureBase64,
         };
       })
     );
 
-    // ✅ UPDATE research_protocols with PATHS (permanent data)
+    // ✅ UPDATE research_protocols
     const { error: updateError } = await supabase
       .from('research_protocols')
       .update({
@@ -260,8 +275,8 @@ export async function saveStep3Data({
         ethical_consideration: ethicalConsiderationResult.htmlContent,
         statistical_treatment: statisticalTreatmentResult.htmlContent,
         research_references: referencesResult.htmlContent,
-        researchers: researchersWithPaths,  // ✅ PATHS - permanent!
-        updated_at: new Date().toISOString()
+        researchers: researchersWithPaths,
+        updated_at: new Date().toISOString(),
       })
       .eq('submission_id', submissionId);
 
@@ -272,7 +287,7 @@ export async function saveStep3Data({
 
     console.log('✅ Step 3 data saved successfully');
 
-    // ✅ Track uploaded images in uploaded_documents table
+    // ✅ Track uploaded images
     const allUploadedImages = [
       ...introductionResult.uploadedImages,
       ...backgroundResult.uploadedImages,
@@ -285,14 +300,16 @@ export async function saveStep3Data({
       ...researchInstrumentResult.uploadedImages,
       ...statisticalTreatmentResult.uploadedImages,
       ...ethicalConsiderationResult.uploadedImages,
-      ...referencesResult.uploadedImages
+      ...referencesResult.uploadedImages,
     ];
 
     if (allUploadedImages.length > 0) {
       const imageDocuments = allUploadedImages.map((img) => ({
         submission_id: submissionId,
         document_type: `protocol_image_${img.section}`,
-        file_name: `${img.section}-image-${img.imageNumber}.${img.filePath.split('.').pop()}`,
+        file_name: `${img.section}-image-${img.imageNumber}.${img.filePath
+          .split('.')
+          .pop()}`,
         file_size: img.fileSize,
         file_url: img.filePath,
       }));
@@ -302,88 +319,22 @@ export async function saveStep3Data({
         .insert(imageDocuments);
 
       if (!imageDocsError) {
-        console.log(`✅ Tracked ${allUploadedImages.length} images in uploaded_documents table`);
+        console.log(
+          `✅ Tracked ${allUploadedImages.length} images in uploaded_documents table`
+        );
       }
     }
 
-    // ✅ Get submission info
-    const { data: submission } = await supabase
-      .from('research_submissions')
-      .select('id, user_id, title')
-      .eq('id', submissionId)
-      .single();
-
-    if (submission) {
-      const { data: existingDoc } = await supabase
-        .from('uploaded_documents')
-        .select('id')
-        .eq('submission_id', submissionId)
-        .eq('document_type', 'research_protocol')
-        .single();
-
-      let documentId: string;
-
-      if (!existingDoc) {
-        const { data: newDoc, error: docError } = await supabase
-          .from('uploaded_documents')
-          .insert({
-            submission_id: submissionId,
-            document_type: 'research_protocol',
-            file_name: `Research_Protocol_${submission.title}.pdf`,
-            file_url: `research-protocols/${submissionId}/protocol.pdf`,
-            file_size: 0,
-            uploaded_at: new Date().toISOString()
-          })
-          .select('id')
-          .single();
-
-        if (docError) throw docError;
-        documentId = newDoc.id;
-        console.log('✅ Research protocol document entry created');
-      } else {
-        documentId = existingDoc.id;
-      }
-
-      const { data: existingVerification } = await supabase
-        .from('document_verifications')
-        .select('id')
-        .eq('document_id', documentId)
-        .single();
-
-      if (existingVerification) {
-        await supabase
-          .from('document_verifications')
-          .update({
-            is_approved: null,
-            feedback_comment: null,
-            verified_at: null
-          })
-          .eq('id', existingVerification.id);
-
-        console.log('✅ Document verification reset for re-review');
-      } else {
-        await supabase
-          .from('document_verifications')
-          .insert({
-            document_id: documentId,
-            submission_id: submissionId,
-            is_approved: null,
-            feedback_comment: null,
-            verified_at: null
-          });
-      }
-    }
-
-    // ✅ Update submission status
+    // ✅ Update submission title
     await supabase
       .from('research_submissions')
       .update({
-        status: 'Resubmit',
-        updated_at: new Date().toISOString()
+        title: formData.title,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', submissionId);
 
-    console.log('✅ Submission status updated to Resubmit');
+    console.log('✅ Submission title updated');
 
     // ✅ CREATE SIGNED URLs FOR PDF
     console.log('🔄 Creating signed URLs for PDF...');
@@ -409,98 +360,196 @@ export async function saveStep3Data({
           name: r.name,
           signaturePath: r.signaturePath,
           signatureBase64: r.signatureBase64,
-          signature: signatureUrl  // ✅ For PDF only
+          signature: signatureUrl,
         };
       })
     );
 
-    // ✅ GENERATE PDF WITH SIGNED URLs
-    console.log('🔄 Starting PDF generation...');
+    // ✅ FETCH SUBMISSION AND PROTOCOL FOR ALL 3 PDFs
+    console.log('📋 Fetching data for all 3 PDF regenerations...');
 
-    try {
-      const pdfFormData = {
-        step1: {},
-        step2: {},
-        step3: {
-          formData: {
-            introduction: introductionResult.htmlContent,
-            background: backgroundResult.htmlContent,
-            problemStatement: problemStatementResult.htmlContent,
-            scopeDelimitation: scopeDelimitationResult.htmlContent,
-            literatureReview: literatureReviewResult.htmlContent,
-            methodology: methodologyResult.htmlContent,
-            population: populationResult.htmlContent,
-            samplingTechnique: samplingTechniqueResult.htmlContent,
-            researchInstrument: researchInstrumentResult.htmlContent,
-            ethicalConsideration: ethicalConsiderationResult.htmlContent,
-            statisticalTreatment: statisticalTreatmentResult.htmlContent,
-            references: referencesResult.htmlContent,
-            title: formData.title
-          },
-          researchers: researchersWithSignedUrls  // ✅ WITH SIGNED URLS!
+    const { data: submission } = await supabase
+      .from('research_submissions')
+      .select('*')
+      .eq('id', submissionId)
+      .single();
+
+    const { data: protocol } = await supabase
+      .from('research_protocols')
+      .select('*')
+      .eq('submission_id', submissionId)
+      .single();
+
+    // ✅ BUILD PDF DATA FOR ALL 3
+
+    const step2PdfData = {
+      step1: {
+        title: submission?.title,
+      },
+      step2: {
+        title: submission?.title,
+      },
+    };
+
+    const step3PdfData = {
+      step1: {},
+      step2: {},
+      step3: {
+        formData: {
+          introduction: introductionResult.htmlContent,
+          background: backgroundResult.htmlContent,
+          problemStatement: problemStatementResult.htmlContent,
+          scopeDelimitation: scopeDelimitationResult.htmlContent,
+          literatureReview: literatureReviewResult.htmlContent,
+          methodology: methodologyResult.htmlContent,
+          population: populationResult.htmlContent,
+          samplingTechnique: samplingTechniqueResult.htmlContent,
+          researchInstrument: researchInstrumentResult.htmlContent,
+          ethicalConsideration: ethicalConsiderationResult.htmlContent,
+          statisticalTreatment: statisticalTreatmentResult.htmlContent,
+          references: referencesResult.htmlContent,
+          title: submission?.title,
         },
-        step4: {}
-      };
+        researchers: researchersWithSignedUrls,
+      },
+      step4: {},
+    };
 
-      console.log('📸 Image check BEFORE PDF call:');
-      console.log('Has intro URLs?', introductionResult.htmlContent.includes('http'));
-      console.log('Sample intro:', introductionResult.htmlContent.substring(0, 500));
+    const { data: consent } = await supabase
+      .from('consent_forms')
+      .select('*')
+      .eq('submission_id', submissionId)
+      .single();
 
-      console.log('📋 Calling generateResearchProtocolPdf...');
-      const pdfResult = await generateResearchProtocolPdf(pdfFormData);
+    const step4PdfData = {
+      step2: submission,
+      step4: {
+        ...(consent?.adult_consent || {}),
+        ...(consent?.minor_assent || {}),
+        consent_type: consent?.consent_type,
+        contact_person: consent?.contact_person,
+        contact_number: consent?.contact_number,
+        informed_consent_for: consent?.informed_consent_for,
+        consentType: consent?.consent_type,
+      },
+    };
 
-      console.log('📄 PDF result:', { success: pdfResult.success, hasData: !!pdfResult.pdfData });
+    // ✅ REGENERATE ALL 3 PDFS IN PARALLEL
+    console.log('🔄 Regenerating all 3 PDFs...');
 
-      if (pdfResult.success && pdfResult.pdfData) {
-        const base64Data = pdfResult.pdfData.includes('base64,')
-          ? pdfResult.pdfData.split(',')[1]
-          : pdfResult.pdfData;
+    await Promise.all([
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'application_form',
+        pdfData: step2PdfData,
+        generatePdfFn: generateApplicationFormPdf,
+        filePrefix: 'application_form',
+      }),
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'research_protocol',
+        pdfData: step3PdfData,
+        generatePdfFn: generateResearchProtocolPdf,
+        filePrefix: 'research_protocol',
+      }),
+      regeneratePdfWithTitle({
+        submissionId,
+        documentType: 'consent_form',
+        pdfData: step4PdfData,
+        generatePdfFn: generateConsentFormPdf,
+        filePrefix: 'consent_form',
+      }),
+    ]);
 
-        const pdfBuffer = Buffer.from(base64Data, 'base64');
-        const timestamp = Date.now();
-        const pdfPath = `${user.id}/research_protocol_${submissionId}_${timestamp}.pdf`;
+    console.log('✅ All 3 PDFs regenerated successfully!');
 
-        const { error: uploadError } = await supabase.storage
-          .from('research-documents')
-          .upload(pdfPath, pdfBuffer, {
-            contentType: 'application/pdf',
-            upsert: false
+    // ✅ RESET VERIFICATION ONLY FOR RESEARCH_PROTOCOL
+    console.log('🔄 Resetting research_protocol verification...');
+
+    const { data: protocolDoc } = await supabase
+      .from('uploaded_documents')
+      .select('id')
+      .eq('submission_id', submissionId)
+      .eq('document_type', 'research_protocol')
+      .single();
+
+    if (protocolDoc) {
+      const { data: existingVerif } = await supabase
+        .from('document_verifications')
+        .select('id')
+        .eq('document_id', protocolDoc.id)
+        .single();
+
+      if (existingVerif) {
+        await supabase
+          .from('document_verifications')
+          .update({
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
+          })
+          .eq('id', existingVerif.id);
+
+        console.log('✅ Research protocol verification cleared');
+      } else {
+        await supabase
+          .from('document_verifications')
+          .insert({
+            document_id: protocolDoc.id,
+            submission_id: submissionId,
+            is_approved: null,
+            feedback_comment: null,
+            verified_at: null,
           });
 
-        if (!uploadError) {
-          console.log('✅ PDF uploaded successfully');
-
-          const { data: existingDoc } = await supabase
-            .from('uploaded_documents')
-            .select('id')
-            .eq('submission_id', submissionId)
-            .eq('document_type', 'research_protocol')
-            .single();
-
-          if (existingDoc) {
-            await supabase
-              .from('uploaded_documents')
-              .update({
-                file_name: `Research_Protocol_${submissionId}.pdf`,
-                file_size: pdfBuffer.length,
-                file_url: pdfPath,
-                uploaded_at: new Date().toISOString()
-              })
-              .eq('id', existingDoc.id);
-
-            console.log('✅ Document record updated with PDF');
-          }
-        }
+        console.log('✅ New research protocol verification created');
       }
-    } catch (pdfError) {
-      console.error('❌ PDF generation error:', pdfError);
     }
 
-    return { success: true };
+    // ✅ CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+    console.log('🔍 Checking document verification status...');
 
+    const { data: allDocs } = await supabase
+      .from('uploaded_documents')
+      .select('id')
+      .eq('submission_id', submissionId);
+
+    if (allDocs && allDocs.length > 0) {
+      // Get all verification records for this submission
+      const { data: allVerifications } = await supabase
+        .from('document_verifications')
+        .select('is_approved')
+        .eq('submission_id', submissionId);
+
+      // Check if ALL verifications are null/approved is null
+      const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+
+      const newStatus = allAreNull ? 'pending' : 'needs_revision';
+
+      console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+
+      // Update submission status
+      const { error: statusError } = await supabase
+        .from('research_submissions')
+        .update({
+          status: newStatus,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', submissionId);
+
+      if (statusError) {
+        throw new Error(`Failed to update submission status: ${statusError.message}`);
+      }
+
+      console.log(`✅ Submission status updated to: ${newStatus}`);
+    }
+
+    console.log('✅ Step 3 saved successfully!');
+    return { success: true };
   } catch (error) {
     console.error('❌ Save error:', error);
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage =
+      error instanceof Error ? error.message : String(error);
     return { success: false, error: errorMessage };
   }
 }

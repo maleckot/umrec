@@ -77,180 +77,64 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
       return { success: false, error: 'Submission not found' };
     }
 
-    const { data: applicationForm } = await supabase
-      .from('application_forms')
-      .select('*')
-      .eq('submission_id', submissionId)
-      .single();
-
-    const { data: protocol } = await supabase
-      .from('research_protocols')
-      .select('*')
-      .eq('submission_id', submissionId)
-      .single();
-
-    const { data: consentForm } = await supabase
-      .from('consent_forms')
-      .select('*')
-      .eq('submission_id', submissionId)
-      .single();
-
+    // ✅ Get all uploaded documents
     const { data: documents } = await supabase
       .from('uploaded_documents')
       .select('*')
       .eq('submission_id', submissionId);
 
-    const uploadedFiles: { [key: string]: string } = {};
-    if (documents && documents.length > 0) {
-      for (const doc of documents) {
-        try {
-          const { data: fileData } = await supabase.storage
-            .from('research-documents')
-            .download(doc.file_url);
+    if (!documents || documents.length === 0) {
+      return { success: false, error: 'No PDF documents found' };
+    }
 
-          if (fileData) {
-            const arrayBuffer = await fileData.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString('base64');
-            uploadedFiles[doc.document_type] = `data:application/pdf;base64,${base64}`;
+    // ✅ Helper function to download PDF from storage
+    const downloadPdf = async (fileUrl: string) => {
+      const { data: fileData } = await supabase.storage
+        .from('research-documents')
+        .download(fileUrl);
+
+      if (fileData) {
+        const arrayBuffer = await fileData.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+      }
+      return null;
+    };
+
+    // ✅ Create consolidated document
+    const consolidatedDoc = await PDFDocument.create();
+
+    // ✅ Add the 3 main PDFs in order
+    const mainDocTypes = ['application_form', 'research_protocol', 'consent_form'];
+
+    for (const docType of mainDocTypes) {
+      const doc = documents.find(d => d.document_type === docType);
+      if (doc) {
+        try {
+          const pdfBytes = await downloadPdf(doc.file_url);
+          if (pdfBytes) {
+            const pdf = await PDFDocument.load(pdfBytes);
+            const pages = await consolidatedDoc.copyPages(pdf, pdf.getPageIndices());
+            pages.forEach(page => consolidatedDoc.addPage(page));
           }
         } catch (err) {
-          console.error(`Error downloading ${doc.document_type}:`, err);
+          console.error(`Error adding ${docType}:`, err);
         }
       }
     }
 
-    const formattedData = {
-      step1: {
-        title: submission.title,
-        studySiteType: submission.study_site,
-        projectLeaderFirstName: submission.project_leader_first_name,
-        projectLeaderMiddleName: submission.project_leader_middle_name,
-        projectLeaderLastName: submission.project_leader_last_name,
-        projectLeaderEmail: submission.project_leader_email,
-        projectLeaderContact: submission.project_leader_contact,
-        coAuthors: submission.co_authors,
-        organization: submission.organization,
-        college: submission.college,
-        typeOfStudy: submission.type_of_study,
-        sourceOfFunding: submission.source_of_funding,
-        fundingOthers: submission.funding_others,
-        startDate: submission.start_date,
-        endDate: submission.end_date,
-        numParticipants: submission.num_participants,
-        technicalReview: submission.technical_review,
-        submittedToOtherUMREC: submission.submitted_to_other_umrec,
-      },
-      step2: {
-        researchType: applicationForm?.research_type,
-        studySite: applicationForm?.study_site,
-        studySiteType: applicationForm?.study_site_type,
-        researcherFirstName: applicationForm?.researcher_first_name,
-        researcherMiddleName: applicationForm?.researcher_middle_name,
-        researcherLastName: applicationForm?.researcher_last_name,
-        contactInfo: applicationForm?.contact_info,
-        coResearcher: applicationForm?.co_researcher,
-        technicalAdvisers: applicationForm?.technical_advisers, // ✅ NEW
-        college: applicationForm?.college,
-        institution: applicationForm?.institution,
-        institutionAddress: applicationForm?.institution_address,
-        typeOfStudy: applicationForm?.type_of_study,
-        sourceOfFunding: applicationForm?.source_of_funding,
-        documentChecklist: applicationForm?.document_checklist,
-        telNo: applicationForm?.contact_info?.telNo,
-        mobileNo: applicationForm?.contact_info?.mobileNo,
-        email: applicationForm?.contact_info?.email,
-        faxNo: applicationForm?.contact_info?.faxNo,
-        startDate: applicationForm?.study_duration?.startDate,
-        endDate: applicationForm?.study_duration?.endDate,
-        title: applicationForm?.title,
-      },
-      step3: {
-        formData: {
-          title: protocol?.title,
-          introduction: protocol?.introduction,
-          background: protocol?.background,
-          problemStatement: protocol?.problem_statement,
-          scopeDelimitation: protocol?.scope_delimitation,
-          literatureReview: protocol?.literature_review,
-          methodology: protocol?.methodology,
-          population: protocol?.population,
-          samplingTechnique: protocol?.sampling_technique,
-          researchInstrument: protocol?.research_instrument,
-          ethicalConsideration: protocol?.ethical_consideration, // ✅ NEW
-          statisticalTreatment: protocol?.statistical_treatment, // ✅ NEW
-          references: protocol?.research_references,
-        },
-        researchers: protocol?.researchers || [],
-      },
-      step4: {
-        consentType: consentForm?.consent_type,
-        informedConsentFor: consentForm?.informed_consent_for, // ✅ NEW
-        formData: {
-          participantGroupIdentity: consentForm?.informed_consent_for, // ✅ NEW
-          purposeEnglish: consentForm?.adult_consent?.purposeEnglish,
-          purposeTagalog: consentForm?.adult_consent?.purposeTagalog,
-          risksEnglish: consentForm?.adult_consent?.risksEnglish,
-          risksTagalog: consentForm?.adult_consent?.risksTagalog,
-          benefitsEnglish: consentForm?.adult_consent?.benefitsEnglish,
-          benefitsTagalog: consentForm?.adult_consent?.benefitsTagalog,
-          proceduresEnglish: consentForm?.adult_consent?.proceduresEnglish,
-          proceduresTagalog: consentForm?.adult_consent?.proceduresTagalog,
-          voluntarinessEnglish: consentForm?.adult_consent?.voluntarinessEnglish,
-          voluntarinessTagalog: consentForm?.adult_consent?.voluntarinessTagalog,
-          confidentialityEnglish: consentForm?.adult_consent?.confidentialityEnglish,
-          confidentialityTagalog: consentForm?.adult_consent?.confidentialityTagalog,
-          introduction: consentForm?.minor_assent?.introduction,
-          purpose: consentForm?.minor_assent?.purpose,
-          choiceOfParticipants: consentForm?.minor_assent?.choiceOfParticipants,
-          voluntariness: consentForm?.minor_assent?.voluntariness,
-          procedures: consentForm?.minor_assent?.procedures,
-          risks: consentForm?.minor_assent?.risks,
-          benefits: consentForm?.minor_assent?.benefits,
-          confidentiality: consentForm?.minor_assent?.confidentiality,
-          sharingFindings: consentForm?.minor_assent?.sharingFindings,
-          certificateAssent: consentForm?.minor_assent?.certificateAssent,
-          contactPerson: consentForm?.contact_person,
-          contactNumber: consentForm?.contact_number,
-        },
-      },
-    };
+    // ✅ Helper function to merge attachments with separator page
+    const mergeAttachment = async (docType: string, title: string) => {
+      const doc = documents.find(d => d.document_type === docType);
+      if (!doc) return;
 
-    const appFormPdf = await generateApplicationFormPdf(formattedData);
-    const protocolPdf = await generateResearchProtocolPdf(formattedData);
-    const consentPdf = await generateConsentFormPdf(formattedData);
-
-    const consolidatedDoc = await PDFDocument.create();
-
-    if (appFormPdf.success && appFormPdf.pdfData) {
-      const appPdfBytes = Buffer.from(appFormPdf.pdfData.split(',')[1], 'base64');
-      const appPdf = await PDFDocument.load(appPdfBytes);
-      const appPages = await consolidatedDoc.copyPages(appPdf, appPdf.getPageIndices());
-      appPages.forEach(page => consolidatedDoc.addPage(page));
-    }
-
-    if (protocolPdf.success && protocolPdf.pdfData) {
-      const protoPdfBytes = Buffer.from(protocolPdf.pdfData.split(',')[1], 'base64');
-      const protoPdf = await PDFDocument.load(protoPdfBytes);
-      const protoPages = await consolidatedDoc.copyPages(protoPdf, protoPdf.getPageIndices());
-      protoPages.forEach(page => consolidatedDoc.addPage(page));
-    }
-
-    if (consentPdf.success && consentPdf.pdfData) {
-      const consentPdfBytes = Buffer.from(consentPdf.pdfData.split(',')[1], 'base64');
-      const consPdf = await PDFDocument.load(consentPdfBytes);
-      const consPages = await consolidatedDoc.copyPages(consPdf, consPdf.getPageIndices());
-      consPages.forEach(page => consolidatedDoc.addPage(page));
-    }
-
-    const mergePdf = async (base64Data: string, title: string) => {
       try {
-        if (!base64Data) return;
-        const pdfData = base64Data.includes(',') ? base64Data.split(',')[1] : base64Data;
-        const pdfBytes = Buffer.from(pdfData, 'base64');
-        const uploadedPdf = await PDFDocument.load(pdfBytes);
+        const pdfBytes = await downloadPdf(doc.file_url);
+        if (!pdfBytes) return;
 
+        const attachmentPdf = await PDFDocument.load(pdfBytes);
         const helveticaBold = await consolidatedDoc.embedFont(StandardFonts.HelveticaBold);
 
+        // ✅ Add separator page
         const separatorPage = consolidatedDoc.addPage([612, 792]);
         separatorPage.drawRectangle({
           x: 30,
@@ -267,23 +151,23 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
           color: rgb(0.027, 0.067, 0.224),
         });
 
-        const copiedPages = await consolidatedDoc.copyPages(uploadedPdf, uploadedPdf.getPageIndices());
-        copiedPages.forEach(copiedPage => consolidatedDoc.addPage(copiedPage));
+        // ✅ Add attachment pages
+        const pages = await consolidatedDoc.copyPages(
+          attachmentPdf,
+          attachmentPdf.getPageIndices()
+        );
+        pages.forEach(page => consolidatedDoc.addPage(page));
       } catch (error) {
-        console.error(`Error merging ${title}:`, error);
+        console.error(`Error merging ${docType}:`, error);
       }
     };
 
-    if (uploadedFiles.research_instrument) {
-      await mergePdf(uploadedFiles.research_instrument, 'ATTACHMENT A: RESEARCH INSTRUMENT');
-    }
-    if (uploadedFiles.proposal_defense) {
-      await mergePdf(uploadedFiles.proposal_defense, 'ATTACHMENT B: PROPOSAL DEFENSE CERTIFICATION');
-    }
-    if (uploadedFiles.endorsement_letter) {
-      await mergePdf(uploadedFiles.endorsement_letter, 'ATTACHMENT C: ENDORSEMENT LETTER');
-    }
+    // ✅ Add attachments with separator pages
+    await mergeAttachment('research_instrument', 'ATTACHMENT A: RESEARCH INSTRUMENT');
+    await mergeAttachment('proposal_defense', 'ATTACHMENT B: PROPOSAL DEFENSE CERTIFICATION');
+    await mergeAttachment('endorsement_letter', 'ATTACHMENT C: ENDORSEMENT LETTER');
 
+    // ✅ Save and return
     const pdfBytes = await consolidatedDoc.save();
     const pdfBase64 = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
 
@@ -301,7 +185,6 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
     };
   }
 }
-
 // ========== 1. APPLICATION FORM ==========
 export async function generateApplicationFormPdf(
   submissionData: any
@@ -1080,7 +963,7 @@ export async function generateConsentFormPdf(
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
 
-    const step4 = submissionData.step4?.formData;
+    const step4 = submissionData.step4?.formData || submissionData.step4;
     const consentType = submissionData.step4?.consentType;
 
     // ===== UMREC HEADER =====
@@ -1110,7 +993,7 @@ export async function generateConsentFormPdf(
     yPos -= 70;
 
     // PARTICIPANT GROUP
-    const informedConsentFor = step4?.participantGroupIdentity;
+    const informedConsentFor = step4?.informed_consent_for;
     if (informedConsentFor) {
       page.drawText('Informed Consent Form for:', {
         x: margin,
@@ -1414,7 +1297,7 @@ export async function generateConsentFormPdf(
     }
 
     // CONTACT INFORMATION
-    if (step4?.contactPerson || step4?.contactNumber) {
+    if (step4?.contact_person || step4?.contact_number) {
       if (yPos < 80) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
@@ -1423,13 +1306,13 @@ export async function generateConsentFormPdf(
       page.drawText('CONTACT INFORMATION', { x: margin, y: yPos, size: 10, font: helveticaBold });
       yPos -= 15;
 
-      if (step4.contactPerson) {
-        page.drawText(`Contact Person: ${step4.contactPerson}`, { x: margin, y: yPos, size: 9, font: helvetica });
+      if (step4.contact_person) {
+        page.drawText(`Contact Person: ${step4.contact_person}`, { x: margin, y: yPos, size: 9, font: helvetica });
         yPos -= 12;
       }
 
-      if (step4.contactNumber) {
-        page.drawText(`Contact Number: ${step4.contactNumber}`, { x: margin, y: yPos, size: 9, font: helvetica });
+      if (step4.contact_number) {
+        page.drawText(`Contact Number: ${step4.contact_number}`, { x: margin, y: yPos, size: 9, font: helvetica });
       }
     }
 

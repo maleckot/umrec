@@ -1,7 +1,7 @@
 // components/reviewer/ReviewQuestionsCard.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 interface OptionType {
@@ -47,6 +47,8 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
   progressPercentage = 0,
 }) => {
   const [answers, setAnswers] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitRef = useRef(false);
 
   const handleRadioChange = (questionId: string | number, value: string) => {
     const newAnswers = { ...answers, [questionId]: value };
@@ -82,6 +84,40 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
     return true;
   };
 
+  // ✅ Handle next with debounce
+  const handleNext = async () => {
+    if (submitRef.current || isSubmitting) return;
+
+    submitRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      if (onNext) {
+        await onNext();
+      }
+    } finally {
+      setIsSubmitting(false);
+      submitRef.current = false;
+    }
+  };
+
+  // ✅ Handle back with debounce
+  const handleBack = async () => {
+    if (submitRef.current || isSubmitting) return;
+
+    submitRef.current = true;
+    setIsSubmitting(true);
+
+    try {
+      if (onBack) {
+        await onBack();
+      }
+    } finally {
+      setIsSubmitting(false);
+      submitRef.current = false;
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl p-6 border-2 border-gray-200">
       {/* Header */}
@@ -98,7 +134,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
 
       {/* Questions - No scrolling, expands naturally */}
       <div className="space-y-6 mb-6">
-        {questions.map((question, index) => {
+        {questions.map((question) => {
           if (!shouldShowQuestion(question)) {
             return null;
           }
@@ -128,6 +164,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                             checked={answers[question.id] === label}
                             onChange={() => handleRadioChange(question.id, label)}
                             className="w-5 h-5 text-[#101C50] cursor-pointer mt-0.5 flex-shrink-0"
+                            disabled={isSubmitting}
                           />
                           <div className="ml-3 flex-1">
                             <span className="text-sm md:text-base text-gray-800 block" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -159,6 +196,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                     className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                     style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
                     required={question.required}
+                    disabled={isSubmitting}
                   />
                 </div>
               )}
@@ -185,6 +223,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                         onChange={() => handleRadioChange('protocol_recommendation', option)}
                         className="w-5 h-5 text-[#101C50] cursor-pointer mt-0.5 flex-shrink-0"
                         required
+                        disabled={isSubmitting}
                       />
                       <span className="ml-3 text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {option}
@@ -209,6 +248,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                   className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                   style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -225,6 +265,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -239,6 +280,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 placeholder="Provide any technical suggestions (optional)..."
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -263,6 +305,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                         onChange={() => handleRadioChange('icf_recommendation', option)}
                         className="w-5 h-5 text-[#101C50] cursor-pointer mt-0.5 flex-shrink-0"
                         required
+                        disabled={isSubmitting}
                       />
                       <span className="ml-3 text-sm md:text-base text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {option}
@@ -287,6 +330,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                   className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                   style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
                   required
+                  disabled={isSubmitting}
                 />
               </div>
             )}
@@ -303,6 +347,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
                 required
+                disabled={isSubmitting}
               />
             </div>
 
@@ -317,6 +362,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 placeholder="Provide any technical suggestions (optional)..."
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -327,19 +373,26 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
       <div className="border-t-2 border-gray-200 pt-6">
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
           <button
-            onClick={onBack}
-            className="flex-1 sm:flex-none px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2"
+            onClick={handleBack}
+            disabled={isSubmitting}
+            className="flex-1 sm:flex-none px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-gray-600 to-gray-700 text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
             <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            Back
+            {isSubmitting ? 'Processing...' : 'Back'}
           </button>
           <button
-            onClick={onNext}
-            className="flex-1 px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2"
+            onClick={handleNext}
+            disabled={isSubmitting}
+            className="flex-1 px-6 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-sm sm:text-base rounded-2xl hover:shadow-xl transform hover:scale-105 transition-all font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
-            {currentStep < totalSteps - 1 ? (
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Submitting...
+              </>
+            ) : currentStep < totalSteps - 1 ? (
               <>
                 Next
                 <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -378,7 +431,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 Review Tip
               </p>
               <p className="text-xs sm:text-sm text-blue-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {currentStep === totalSteps - 1 
+                {currentStep === totalSteps - 1
                   ? 'This is the final section. Review your answers before submitting.'
                   : 'Answer all questions in this section to proceed to the next step.'}
               </p>
@@ -391,3 +444,4 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
 };
 
 export default ReviewQuestionsCard;
+  

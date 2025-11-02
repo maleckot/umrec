@@ -1,27 +1,65 @@
 // app/researchermodule/submissions/revision/step8/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
-import { ArrowLeft, CheckCircle, FileText, Building, Shield, Edit, AlertCircle } from 'lucide-react';
-import { submitResearchApplication } from '@/app/actions/researcher/submitResearchApplication';
+import { ArrowLeft, CheckCircle, FileText, Building, Shield, Edit, AlertCircle, MessageSquare } from 'lucide-react';
+import { createClient } from '@/utils/supabase/client';
+import { submitRevisionApplication } from '@/app/actions/researcher/submitRevisionApplication';
 
-export default function RevisionStep8() {
+
+// ✅ Wrap component in Suspense
+export default function RevisionStep8Page() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
+      </div>
+    }>
+      <RevisionStep8Content />
+    </Suspense>
+  );
+}
+
+function RevisionStep8Content() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const submissionId = searchParams.get('id'); // ✅ GET THE ID TO UPDATE
+
   const [isClient, setIsClient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [allData, setAllData] = useState<any>({});
   const [revisedSteps, setRevisedSteps] = useState<number[]>([]);
   const isInitialMount = useRef(true);
 
+  // ✅ ADDED COMMENT STATE
+  const [revisionComments, setRevisionComments] = useState<string>('');
+  const [loadingComments, setLoadingComments] = useState(true);
+
   useEffect(() => {
     setIsClient(true);
-    
-    // Load all revision data
+
+    if (!submissionId) {
+      if (!isInitialMount.current) {
+        alert('No submission ID found. Redirecting...');
+        router.push('/researchermodule/submissions');
+      }
+      return;
+    }
+
+    // Load all revision data from REVISION keys
     const step1 = JSON.parse(localStorage.getItem('revisionStep1Data') || '{}');
     const step2 = JSON.parse(localStorage.getItem('revisionStep2Data') || '{}');
+
+    // ✅ Get co-researchers/advisers (these keys can be shared)
+    const coResearchers = JSON.parse(localStorage.getItem('revisionStep2CoResearchers') || '[]');
+    const technicalAdvisers = JSON.parse(localStorage.getItem('revisionStep2TechnicalAdvisers') || '[]');
+    step2.coResearchers = coResearchers;
+    step2.technicalAdvisers = technicalAdvisers;
+
+
     const step3 = JSON.parse(localStorage.getItem('revisionStep3Data') || '{}');
     const step4 = JSON.parse(localStorage.getItem('revisionStep4Data') || '{}');
     const step5 = JSON.parse(localStorage.getItem('revisionStep5Data') || '{}');
@@ -33,65 +71,159 @@ export default function RevisionStep8() {
     // Determine which steps have been revised (have data)
     const revised: number[] = [];
     if (Object.keys(step1).length > 0) revised.push(1);
-    if (Object.keys(step2).length > 0) revised.push(2);
+    if (Object.keys(step2).length > 0 && Object.keys(step2).length > 2) revised.push(2); // Check > 2 to ignore empty coResearcher arrays
     if (Object.keys(step3).length > 0) revised.push(3);
     if (Object.keys(step4).length > 0) revised.push(4);
     if (Object.keys(step5).length > 0) revised.push(5);
     if (Object.keys(step6).length > 0) revised.push(6);
     if (Object.keys(step7).length > 0) revised.push(7);
-
     setRevisedSteps(revised);
 
     console.log('All collected revision data:', { step1, step2, step3, step4, step5, step6, step7 });
     console.log('Revised steps:', revised);
+
+    // --- ✅ ADDED: Fetch all reviewer comments for final review ---
+    const fetchComments = async () => {
+      setLoadingComments(true);
+      const supabase = createClient();
+      try {
+        console.log(`Full Revision: Fetching ALL comments for submissionId ${submissionId}`);
+        const { data: reviews } = await supabase
+          .from('reviews')
+          .select(
+            `
+            protocol_recommendation, protocol_disapproval_reasons, protocol_ethics_recommendation, protocol_technical_suggestions,
+            icf_recommendation, icf_disapproval_reasons, icf_ethics_recommendation, icf_technical_suggestions
+            `
+          )
+          .eq('submission_id', submissionId)
+          .eq('status', 'submitted');
+
+        if (reviews && reviews.length > 0) {
+          const allComments = reviews
+            .map((review, index) => {
+              let text = `**Reviewer ${index + 1} Comments:**\n`;
+              if (review.protocol_recommendation) text += `\n📋 **Protocol:** ${review.protocol_recommendation}\n`;
+              if (review.protocol_technical_suggestions) text += `💡 **Protocol Suggestions:** ${review.protocol_technical_suggestions}\n`;
+              if (review.icf_recommendation) text += `\n📋 **ICF:** ${review.icf_recommendation}\n`;
+              if (review.icf_technical_suggestions) text += `💡 **ICF Suggestions:** ${review.icf_technical_suggestions}\n`;
+              return text;
+            })
+            .join('\n---\n');
+          setRevisionComments(allComments);
+        } else {
+          setRevisionComments('No reviewer comments available.');
+        }
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        setRevisionComments('Unable to load feedback comments.');
+      } finally {
+        setLoadingComments(false);
+      }
+    };
+
+    fetchComments();
+
     isInitialMount.current = false;
-  }, []);
+  }, [submissionId, router]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
 
+    if (!submissionId) {
+      alert('Error: Submission ID is missing. Cannot submit.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       console.log('Starting revision submission...');
-      console.log('Revision data to submit:', allData);
 
+      // ✅ Process researcher signatures (from new/step8 logic)
+      // ✅ Process researcher signatures (get from sessionStorage with correct key)
+      let processedStep3 = allData.step3;
+      if (allData.step3?.researchers && Array.isArray(allData.step3.researchers)) {
+        console.log('📝 Processing researcher signatures...');
+
+        const researchersWithBase64 = allData.step3.researchers.map((r: any) => {
+          // ✅ Get signature directly from sessionStorage (it's just the base64 string)
+          const signatureBase64 = typeof window !== 'undefined'
+            ? (sessionStorage.getItem(`signature_${r.id}`) || null)
+            : null;
+
+          console.log(`Signature for ${r.name}: ${signatureBase64 ? '✅ Found' : '❌ Missing'}`);
+
+          return {
+            id: r.id,
+            name: r.name,
+            signatureBase64: signatureBase64
+          };
+        });
+
+        processedStep3 = {
+          ...allData.step3,
+          researchers: researchersWithBase64
+        };
+
+        console.log('Processed researchers:', researchersWithBase64);
+      }
+
+      const revisionData = {
+        ...allData,
+        step3: processedStep3, // Use the processed step 3
+        revisedSteps: revisedSteps,
+        revisionSubmittedAt: new Date().toISOString(),
+      };
+
+      console.log('Revision data to submit:', revisionData);
+
+      // ✅ Get ALL files (using REVISION keys)
       const files = {
+        step2TechnicalReview: sessionStorage.getItem('revisionStep2File') || undefined,
         step5: sessionStorage.getItem('revisionStep5File') || undefined,
         step6: sessionStorage.getItem('revisionStep6File') || undefined,
         step7: sessionStorage.getItem('revisionStep7File') || undefined,
       };
 
       console.log('Files to upload:', {
+        step2: files.step2TechnicalReview ? 'Present' : 'Missing',
         step5: files.step5 ? 'Present' : 'Missing',
         step6: files.step6 ? 'Present' : 'Missing',
         step7: files.step7 ? 'Present' : 'Missing',
       });
 
-      // Add revision metadata to the data
-      const revisionData = {
-        ...allData,
-        isRevision: true,
-        revisedSteps: revisedSteps,
-        revisionSubmittedAt: new Date().toISOString(),
-      };
+      // ❗️❗️❗️ CALL THE NEW ACTION ❗️❗️❗️
+      const result = await submitRevisionApplication(submissionId, revisionData, files);
 
-      // Call the existing function
-      const result = await submitResearchApplication(revisionData, files);
+      // // ❗️ For simulation. Replace this block with the real action.
+      // console.log('--- SIMULATING REVISION SUBMISSION ---');
+      // console.log('Would be calling submitRevisionApplication with:', submissionId, revisionData, files);
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      // const result = { success: true, submissionId: submissionId };
+      // // ❗️ End of simulation
 
       console.log('Server action result:', result);
 
       if (!result.success) {
+        // @ts-ignore
         throw new Error(result.error || 'Revision submission failed');
       }
 
       // Clear sessionStorage files
+      sessionStorage.removeItem('revisionStep2File');
       sessionStorage.removeItem('revisionStep5File');
       sessionStorage.removeItem('revisionStep6File');
       sessionStorage.removeItem('revisionStep7File');
+      // Clear signatures
+      allData.step3?.researchers?.forEach((r: any) => sessionStorage.removeItem(`signature_${r.id}`));
+
 
       // Clear localStorage revision data
       for (let i = 1; i <= 7; i++) {
         localStorage.removeItem(`revisionStep${i}Data`);
       }
+      localStorage.removeItem('step2CoResearchers');
+      localStorage.removeItem('step2TechnicalAdvisers');
 
       // Store submission data for success page
       const submissionData = {
@@ -99,7 +231,7 @@ export default function RevisionStep8() {
         revisedSteps,
         ...allData,
         submittedAt: new Date().toISOString(),
-        status: 'Under Re-Review',
+        status: 'pending_revision',
       };
 
       localStorage.setItem('lastRevisionSubmission', JSON.stringify(submissionData));
@@ -115,20 +247,18 @@ export default function RevisionStep8() {
   };
 
   const handleBack = () => {
-    // Navigate back to the highest revised step
-    if (revisedSteps.length === 0) {
-      router.push('/researchermodule/submissions/revision/step1');
-      return;
-    }
-    const maxStep = Math.max(...revisedSteps);
-    router.push(`/researchermodule/submissions/revision/step${maxStep}`);
+    if (!submissionId) return;
+    router.push(`/researchermodule/submissions/revision/step7?id=${submissionId}`);
   };
 
   const handleEdit = (step: number) => {
-    router.push(`/researchermodule/submissions/revision/step${step}`);
+    if (!submissionId) return;
+    router.push(`/researchermodule/submissions/revision/step${step}?id=${submissionId}`);
   };
 
+  // Helper functions (copied from your new/step8)
   const stripHtmlTags = (html: string) => {
+    if (!isClient) return '...';
     return html?.replace(/<[^>]*>/g, '').substring(0, 200) || 'N/A';
   };
 
@@ -141,14 +271,13 @@ export default function RevisionStep8() {
 
   const formatTypeOfStudy = (typeOfStudy: string[], typeOfStudyOthers?: string) => {
     if (!typeOfStudy || typeOfStudy.length === 0) return 'N/A';
-
     const formattedTypes = typeOfStudy.map(type => {
       if (type.toLowerCase() === 'others' && typeOfStudyOthers) {
         return `Others: ${typeOfStudyOthers}`;
       }
-      return type;
+      // Simple capitalization for display
+      return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ');
     });
-
     return formattedTypes.join(', ');
   };
 
@@ -156,9 +285,10 @@ export default function RevisionStep8() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
         <NavbarRoles role="researcher" />
-        <div className="flex items-center justify-center py-12">
-          <div className="text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Loading...
+        <div className="flex items-center justify-center min-h-[calc(100vh-200px)]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-[#071139] mx-auto mb-4"></div>
+            <p className="text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>Loading...</p>
           </div>
         </div>
         <Footer />
@@ -182,12 +312,12 @@ export default function RevisionStep8() {
               >
                 <ArrowLeft size={20} className="text-[#071139] group-hover:text-[#F7D117] transition-colors duration-300" />
               </button>
-              
+
               <div className="flex items-center gap-4 flex-1">
                 <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-full flex items-center justify-center font-bold text-2xl shadow-lg flex-shrink-0">
                   <span style={{ fontFamily: 'Metropolis, sans-serif' }}>8</span>
                 </div>
-                
+
                 <div className="flex-1 min-w-0">
                   <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#071139] mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Review & Submit Revisions
@@ -201,7 +331,7 @@ export default function RevisionStep8() {
 
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-              <div 
+              <div
                 className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 transition-all duration-500 rounded-full shadow-lg"
                 style={{ width: '100%' }}
               />
@@ -218,6 +348,9 @@ export default function RevisionStep8() {
 
           {/* Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
+
+
+
             {/* Alert Banner */}
             <div className="bg-orange-50 border-l-4 border-orange-500 rounded-r-lg p-4 sm:p-6 mb-6 sm:mb-8">
               <div className="flex items-start gap-3">
@@ -280,25 +413,25 @@ export default function RevisionStep8() {
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Project Title</p>
                       <p className="text-sm sm:text-base text-[#071139] font-medium break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {allData.step1?.protocolTitle || allData.step1?.title || 'N/A'}
+                        {allData.step1?.title || 'N/A'}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Project Leader</p>
                       <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {allData.step1?.principalInvestigator || `${allData.step1?.projectLeaderFirstName || ''} ${allData.step1?.projectLeaderLastName || ''}`.trim() || 'N/A'}
+                        {`${allData.step1?.projectLeaderFirstName || ''} ${allData.step1?.projectLeaderLastName || ''}`.trim() || 'N/A'}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Email</p>
                       <p className="text-sm sm:text-base text-[#071139] font-medium break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {allData.step1?.emailAddress || allData.step1?.projectLeaderEmail || 'N/A'}
+                        {allData.step1?.projectLeaderEmail || 'N/A'}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs sm:text-sm text-gray-500 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>Organization</p>
                       <p className="text-sm sm:text-base text-[#071139] font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {allData.step1?.organization || allData.step1?.position || 'N/A'}
+                        {allData.step1?.organization || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -478,16 +611,15 @@ export default function RevisionStep8() {
                     Previous Step
                   </span>
                 </button>
-                
+
                 <button
                   type="button"
                   onClick={handleSubmit}
                   disabled={isSubmitting || revisedSteps.length === 0}
-                  className={`w-full sm:w-auto group relative px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl transition-all duration-300 overflow-hidden order-1 sm:order-2 ${
-                    isSubmitting || revisedSteps.length === 0
+                  className={`w-full sm:w-auto group relative px-8 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl transition-all duration-300 overflow-hidden order-1 sm:order-2 ${isSubmitting || revisedSteps.length === 0
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700 hover:shadow-2xl hover:scale-105'
-                  }`}
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   aria-label="Submit revision"
                 >

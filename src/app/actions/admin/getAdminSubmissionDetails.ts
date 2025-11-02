@@ -1,4 +1,4 @@
-// app/actions/admin/getSubmissionDetails.ts
+// app/actions/admin/getAdminSubmissionDetails.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -69,30 +69,37 @@ export async function getSubmissionDetails(submissionId: string) {
 
     console.log('📦 Total documents found:', documents?.length || 0);
 
-    // Separate consolidated from individual documents
-    const consolidatedDoc = documents?.find(d => d.document_type === 'consolidated_application');
-    const individualDocs = documents?.filter(d => d.document_type !== 'consolidated_application') || [];
-
-    console.log('✅ Consolidated Found:', !!consolidatedDoc);
+    // 6. Build documents with signed URLs (WORKING FORMAT)
+    const documentsWithUrls = [];
     
-    // Get signed URL for consolidated document (SAME AS STAFF MODULE)
-    let consolidatedUrl = null;
-    if (consolidatedDoc?.file_url) {
-      const { data: urlData } = await supabase.storage
-        .from('research-documents')
-        .createSignedUrl(consolidatedDoc.file_url, 3600); // 1 hour expiry
-      
-      consolidatedUrl = urlData?.signedUrl || null;
-      console.log('🔗 Signed URL created for admin:', consolidatedUrl);
+    if (documents && documents.length > 0) {
+      for (const doc of documents) {
+        const { data: urlData } = await supabase.storage
+          .from('research-documents')
+          .createSignedUrl(doc.file_url, 3600);
+
+        if (urlData?.signedUrl) {
+          documentsWithUrls.push({
+            id: doc.id,
+            name: doc.file_name, // ✅ Use "name" not "file_name"
+            documentType: doc.document_type,  
+            size: doc.file_size,
+            url: urlData.signedUrl, // ✅ Use "url" not "file_url"
+            createdAt: doc.uploaded_at,
+          });
+        }
+      }
     }
 
-    // 6. Fetch reviewer assignments
+    console.log('✅ Documents with URLs:', documentsWithUrls.length);
+
+    // 7. Fetch reviewer assignments
     const { data: assignments } = await supabase
       .from('reviewer_assignments')
       .select('*')
       .eq('submission_id', submissionId);
 
-    // 7. Get reviewer profiles
+    // 8. Get reviewer profiles
     const reviewerIds = assignments?.map(a => a.reviewer_id).filter(Boolean) || [];
     const { data: reviewerProfiles } = reviewerIds.length > 0
       ? await supabase
@@ -101,13 +108,13 @@ export async function getSubmissionDetails(submissionId: string) {
           .in('id', reviewerIds)
       : { data: [] };
 
-    // 8. Fetch reviews
+    // 9. Fetch reviews
     const { data: reviews } = await supabase
       .from('reviews')
       .select('*')
       .eq('submission_id', submissionId);
 
-    // 9. Get reviewer names for reviews
+    // 10. Get reviewer names for reviews
     const reviewReviewerIds = reviews?.map(r => r.reviewer_id).filter(Boolean) || [];
     const { data: reviewReviewers } = reviewReviewerIds.length > 0
       ? await supabase
@@ -116,7 +123,7 @@ export async function getSubmissionDetails(submissionId: string) {
           .in('id', reviewReviewerIds)
       : { data: [] };
 
-    // 10. Build history
+    // 11. Build history
     const historyEvents = [];
 
     historyEvents.push({
@@ -238,7 +245,7 @@ export async function getSubmissionDetails(submissionId: string) {
       });
     }
 
-    // 11. Format assignments
+    // 12. Format assignments
     const assignmentsWithNames = assignments?.map(a => {
       const reviewerInfo = reviewerProfiles?.find(r => r.id === a.reviewer_id);
       return {
@@ -252,7 +259,7 @@ export async function getSubmissionDetails(submissionId: string) {
       };
     }) || [];
 
-    // 12. Format reviews
+    // 13. Format reviews
     const reviewsWithData = reviews?.map(r => {
       const reviewerInfo = reviewReviewers?.find(rr => rr.id === r.reviewer_id);
       const assignment = assignments?.find(a => a.id === r.assignment_id);
@@ -276,12 +283,12 @@ export async function getSubmissionDetails(submissionId: string) {
       };
     }) || [];
 
-    // 13. Calculate completion status
+    // 14. Calculate completion status
     const completedReviews = reviews?.filter(r => r.status === 'submitted').length || 0;
     const totalReviewers = assignments?.length || 0;
     const completionStatus = `${completedReviews}/${totalReviewers} Reviews Complete`;
 
-    // 14. Map status
+    // 15. Map status
     const statusMapping: Record<string, string> = {
       'pending': 'Under Verification',
       'verified': 'Under Classification',
@@ -316,24 +323,11 @@ export async function getSubmissionDetails(submissionId: string) {
           school: applicationForm?.institution || 'N/A',
           college: submission.college || applicationForm?.college || 'N/A',
         },
-        documents: individualDocs?.map(d => d.file_name) || [],
-        consolidatedDocumentUrl: consolidatedUrl, // ✅ Using signed URL
-        consolidatedDocumentName: consolidatedDoc?.file_name || null,
-        consolidatedDate: consolidatedDoc?.uploaded_at ? new Date(consolidatedDoc.uploaded_at).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }) : submission.verified_at ? new Date(submission.verified_at).toLocaleString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }) : null,
+        // ✅ RETURN FULL DOCUMENTS ARRAY (NOT JUST STRINGS!)
+        documents: documentsWithUrls,
+        consolidatedDocumentUrl: null, // You can add consolidated logic later
+        consolidatedDocumentName: null,
+        consolidatedDate: null,
         timeline: {
           submitted: new Date(submission.created_at).toLocaleDateString('en-US', {
             month: 'long',

@@ -241,42 +241,45 @@ function SubmissionVerificationContent() {
   const hasRejected = documents.some(doc => doc.isVerified === false);
   const allDocumentsVerified = documents.length > 0 && documents.every(doc => doc.isVerified !== null);
 
-  const handleMarkComplete = async () => {
-    console.log('handleMarkComplete called');
+const handleMarkComplete = async () => {
+  console.log('handleMarkComplete called');
 
-    if (!allVerified || !submissionId) {
-      console.log('Conditions not met - returning early');
-      return;
+  if (!allVerified || !submissionId) {
+    console.log('Conditions not met - returning early');
+    return;
+  }
+
+  setIsSaving(true);
+  try {
+    const verifications = documents.map(doc => ({
+      documentId: doc.id,
+      isApproved: doc.isVerified === true,
+      comment: doc.comment,
+    }));
+
+    const result = await completeVerification(submissionId, verifications);
+
+    if (result.success) {
+      setSuccessMessage('Documents verified and consolidated PDF generated successfully!');
+      setShowSuccessModal(true);
+    } else {
+      alert(`Error: ${result.error}`);
     }
+  } catch (error) {
+    console.error('Error:', error);
+    alert('Failed to complete verification');
+  } finally {
+    setIsSaving(false);
+  }
+};
 
-    setIsSaving(true);
-    try {
-      const verifications = documents.map(doc => ({
-        documentId: doc.id,
-        isApproved: doc.isVerified === true,
-        comment: doc.comment,
-      }));
+// ✅ UPDATE THIS FUNCTION:
+const handleSuccessModalClose = () => {
+  setShowSuccessModal(false);
+  // ✅ Add regenerate=true flag here!
+  router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}&regenerate=true`);
+};
 
-      const result = await completeVerification(submissionId, verifications);
-
-      if (result.success) {
-        setSuccessMessage('Documents verified and consolidated PDF generated successfully!');
-        setShowSuccessModal(true);
-      } else {
-        alert(`Error: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to complete verification');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false);
-    router.push(`/staffmodule/submissions/waiting-classification?id=${submissionId}`);
-  };
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';

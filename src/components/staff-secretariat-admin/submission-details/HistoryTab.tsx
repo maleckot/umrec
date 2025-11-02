@@ -55,7 +55,7 @@ export default function HistoryTab({ events }: HistoryTabProps) {
           {/* Events */}
           <div className="space-y-6">
             {events.map((event, index) => (
-              <div key={event.id} className="relative flex items-start gap-4">
+              <div key={event.id || index} className="relative flex items-start gap-4">
                 {/* Icon Circle */}
                 <div className={`relative z-10 flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
                   event.isCurrent 

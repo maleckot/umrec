@@ -11,21 +11,34 @@ import { createClient } from '@/utils/supabase/client';
 
 // Revision Comment Box Component
 const RevisionCommentBox: React.FC<{ comments: string }> = ({ comments }) => {
+  const reviewers = comments.split('---').filter(r => r.trim());
+
   return (
-    <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
-          <MessageSquare className="w-6 h-6 text-white" />
+    <div className="mb-6 sm:mb-8 space-y-4">
+      {reviewers.map((review, idx) => (
+        <div key={idx} className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center flex-shrink-0 shadow-md">
+              <span className="text-white font-bold text-sm">{idx + 1}</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-amber-900 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Reviewer {idx + 1} Comments
+              </h3>
+              <div className="space-y-2 text-sm text-amber-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                {review
+                  .split('\n')
+                  .filter(line => line.trim())
+                  .map((line, lineIdx) => (
+                    <p key={lineIdx} className="leading-relaxed">
+                      {line.replace(/\*\*/g, '').trim()}
+                    </p>
+                  ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-amber-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Reviewer Comments
-          </h3>
-          <p className="text-amber-800 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            {comments}
-          </p>
-        </div>
-      </div>
+      ))}
     </div>
   );
 };
@@ -36,34 +49,90 @@ function RevisionStep5Content() {
   const submissionId = searchParams.get('id');
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
-  
+  const [isClient, setIsClient] = useState(false); // ✅ ADD THIS
   const isQuickRevision = !!docId && docType === 'research_instrument';
-  
+
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [revisionComments, setRevisionComments] = useState<string>('');
   const [loadingComments, setLoadingComments] = useState(true);
   const supabase = createClient();
 
-  // ✅ FETCH REVIEWER COMMENTS FROM DATABASE
+// ✅ REVISED useEffect
   useEffect(() => {
+    setIsClient(true); // Set client-side flag
+
+    // 1. Guard against missing submissionId
+    if (!submissionId) {
+      alert('No submission ID found. Redirecting to dashboard.');
+      router.push('/researchermodule/submissions');
+      return;
+    }
+  
     const fetchComments = async () => {
+      setLoadingComments(true);
       try {
-        if (!docId) {
-          setLoadingComments(false);
-          return;
-        }
-
-        const { data: verification } = await supabase
-          .from('document_verifications')
-          .select('feedback_comment')
-          .eq('document_id', docId)
-          .single();
-
-        if (verification?.feedback_comment) {
-          setRevisionComments(verification.feedback_comment);
+        if (isQuickRevision) {
+          // 2a. QUICK REVISION flow
+          console.log(`Quick Revision: Fetching comments for docId ${docId}`);
+          const { data: verification } = await supabase
+            .from('document_verifications')
+            .select('feedback_comment')
+            .eq('document_id', docId) // docId is guaranteed to exist here
+            .single();
+  
+          if (verification?.feedback_comment) {
+            setRevisionComments(verification.feedback_comment);
+          } else {
+            setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+          }
         } else {
-          setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+          // 2b. FULL REVISION flow
+          console.log(`Full Revision: Fetching ALL comments for submissionId ${submissionId}`);
+          
+          // ✅ --- START OF CHANGES ---
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select(
+              `
+              protocol_recommendation,
+              protocol_disapproval_reasons,
+              protocol_ethics_recommendation,
+              protocol_technical_suggestions,
+              icf_recommendation,
+              icf_disapproval_reasons,
+              icf_ethics_recommendation,
+              icf_technical_suggestions
+              `
+            )
+            .eq('submission_id', submissionId)
+            .eq('status', 'submitted');
+  
+          if (reviews && reviews.length > 0) {
+            const allComments = reviews
+              .map((review, index) => {
+                let text = `**Reviewer ${index + 1} Comments:**\n`;
+                
+                // Protocol Comments
+                if (review.protocol_recommendation) text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
+                if (review.protocol_disapproval_reasons) text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
+                if (review.protocol_ethics_recommendation) text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
+                if (review.protocol_technical_suggestions) text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
+                
+                // ICF Comments
+                if (review.icf_recommendation) text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
+                if (review.icf_disapproval_reasons) text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
+                if (review.icf_ethics_recommendation) text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
+                if (review.icf_technical_suggestions) text += `💡 **ICF Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
+
+                return text;
+              })
+              .join('\n---\n');
+            setRevisionComments(allComments);
+            // ✅ --- END OF CHANGES ---
+          } else {
+            setRevisionComments('No reviewer comments available.');
+          }
         }
       } catch (error) {
         console.error('Error fetching comments:', error);
@@ -72,9 +141,10 @@ function RevisionStep5Content() {
         setLoadingComments(false);
       }
     };
-
+  
     fetchComments();
-  }, [docId, supabase]);
+  
+  }, [submissionId, docId, isQuickRevision, router, supabase]);
 
   useEffect(() => {
     const saved = localStorage.getItem('revisionStep5Data');
@@ -84,7 +154,7 @@ function RevisionStep5Content() {
         console.log('Previous file:', parsedData.fileName);
       }
     }
-  }, []); 
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,22 +233,46 @@ function RevisionStep5Content() {
           console.error('Failed to reset verification:', verifyError);
         }
 
-        // ✅ UPDATE SUBMISSION STATUS
-        const { error: statusError } = await supabase
-          .from('research_submissions')
-          .update({
-            status: 'Resubmit',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', submissionId);
+        // ✅ CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+        console.log('🔍 Checking document verification status...');
 
-        if (statusError) {
-          console.error('Failed to update status:', statusError);
+        const { data: allDocs } = await supabase
+          .from('uploaded_documents')
+          .select('id')
+          .eq('submission_id', submissionId);
+
+        if (allDocs && allDocs.length > 0) {
+          // Get all verification records for this submission
+          const { data: allVerifications } = await supabase
+            .from('document_verifications')
+            .select('is_approved')
+            .eq('submission_id', submissionId);
+
+          // Check if ALL verifications are null/approved is null
+          const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+
+          const newStatus = allAreNull ? 'pending' : 'needs_revision';
+
+          console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+
+          // Update submission status
+          const { error: statusError } = await supabase
+            .from('research_submissions')
+            .update({
+              status: newStatus,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', submissionId);
+
+          if (statusError) {
+            console.error('Failed to update status:', statusError);
+          } else {
+            console.log(`✅ Submission status updated to: ${newStatus}`);
+          }
         }
 
         alert('✅ Research Instrument updated successfully! Your submission has been resubmitted for review.');
         router.push(`/researchermodule`);
-
       } catch (error) {
         console.error('Error uploading:', error);
         alert('Failed to upload document. Please try again.');
@@ -273,7 +367,7 @@ function RevisionStep5Content() {
 
           {/* Enhanced Content Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
-          {/* Reviewer Comments Box */}
+            {/* Reviewer Comments Box */}
             {loadingComments ? (
               <div className="mb-6 sm:mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center gap-4">
