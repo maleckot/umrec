@@ -511,12 +511,12 @@ useEffect(() => {
 
   // --- Validation functions (all correct) ---
   const validateInput = (value: string, fieldName: string, allowNA: boolean = false): string | null => {
-    const trimmedValue = value.trim().toLowerCase();
-    if (!trimmedValue) return `${fieldName} is required`;
-    const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
-    if (!allowNA && naVariations.includes(trimmedValue)) {
-      return `${fieldName} cannot be "N/A". Please provide actual content.`;
-    }
+    // const trimmedValue = value.trim().toLowerCase();
+    // if (!trimmedValue) return `${fieldName} is required`;
+    // const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
+    // if (!allowNA && naVariations.includes(trimmedValue)) {
+    //   return `${fieldName} cannot be "N/A". Please provide actual content.`;
+    // }
     // const irrelevantPhrases = [
     //   'i dont know', "i don't know", 'idk', 'working in progress',
     //   'work in progress', 'wip', 'tbd', 'to be determined',
@@ -526,9 +526,9 @@ useEffect(() => {
     // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
     //   return `${fieldName} contains invalid text.`;
     // }
-    if (trimmedValue.length < 10) {
-      return `${fieldName} must be at least 10 characters`;
-    }
+    // if (trimmedValue.length < 10) {
+    //   return `${fieldName} must be at least 10 characters`;
+    // }
     return null;
   };
   const stripHtmlTags = (html: string): string => {

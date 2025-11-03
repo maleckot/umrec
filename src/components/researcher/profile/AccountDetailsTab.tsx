@@ -1,8 +1,9 @@
-// components/researcher/profile/AccountDetailsTab.tsx
 'use client';
 
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
+import { updateResearcherProfile } from '@/app/actions/researcher/updateResearcherProfile';
+import { verifyCurrentPassword, updateUserPassword } from '@/app/actions/researcher/updatePassword';
 
 interface AccountDetailsTabProps {
   userData: any;
@@ -27,6 +28,8 @@ export default function AccountDetailsTab({
     newPassword: '',
     confirmPassword: ''
   });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (field: string, value: string) => {
     setUserData({ ...userData, [field]: value });
@@ -36,62 +39,98 @@ export default function AccountDetailsTab({
     setPasswords({ ...passwords, [field]: value });
   };
 
- // Update the handleSaveAll function in AccountDetailsTab.tsx
+  const handleSaveAll = async () => {
+    setError('');
+    setLoading(true);
 
-const handleSaveAll = async () => {
-  // Validate password change if fields are filled
-  if (passwords.newPassword || passwords.confirmPassword) {
-    if (passwords.newPassword !== passwords.confirmPassword) {
-      alert('New passwords do not match!');
-      return;
-    }
-    if (passwords.newPassword.length < 8) {
-      alert('Password must be at least 8 characters!');
-      return;
-    }
-    
-    // Update password
-    const { updateUserPassword } = await import('@/app/actions/researcher/updatePassword');
-    const passwordResult = await updateUserPassword(passwords.newPassword);
-    
-    if (!passwordResult.success) {
-      alert('Failed to update password: ' + passwordResult.error);
-      return;
-    }
-  }
-  
-  // Save all changes
-  onSaveChanges();
-  
-  // Reset password fields
-  setPasswords({ newPassword: '', confirmPassword: '' });
-};
+    try {
+      let passwordUpdated = false;
 
+      if (passwords.newPassword && passwords.confirmPassword) {
+        if (passwords.newPassword !== passwords.confirmPassword) {
+          setError('New passwords do not match!');
+          setLoading(false);
+          return;
+        }
+
+        if (passwords.newPassword.length < 8) {
+          setError('Password must be at least 8 characters!');
+          setLoading(false);
+          return;
+        }
+
+        const passwordResult = await updateUserPassword(passwords.newPassword);
+        if (!passwordResult.success) {
+          setError('Failed to update password: ' + (passwordResult.error || 'Unknown error'));
+          setLoading(false);
+          return;
+        }
+
+        passwordUpdated = true;
+      } else if (passwords.newPassword || passwords.confirmPassword) {
+        setError('Please fill in both password fields or leave both empty');
+        setLoading(false);
+        return;
+      }
+
+      const profileResult = await updateResearcherProfile(userData);
+
+      if (!profileResult.success) {
+        setError(profileResult.error || 'Failed to update profile');
+        setLoading(false);
+        return;
+      }
+
+      setLoading(false);
+      onSaveChanges();
+      setPasswords({ newPassword: '', confirmPassword: '' });
+      setError('');
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred');
+      setLoading(false);
+    }
+  };
 
   const handleCancel = () => {
     onCancelEdit();
-    // Reset password fields
     setPasswords({ newPassword: '', confirmPassword: '' });
+    setError('');
   };
 
   return (
     <div className="space-y-6">
+      {/* Error Message Display */}
+      {error && (
+        <div className="p-3 bg-red-50 border-l-4 border-red-600 rounded-lg">
+          <p className="text-sm text-red-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            {error}
+          </p>
+        </div>
+      )}
+
       {/* Account Information Section */}
       <div>
-        <h3 className="text-base font-bold text-[#003366] mb-4 pb-2 border-b-2 border-gray-200" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h3
+          className="text-base font-bold text-[#003366] mb-4 pb-2 border-b-2 border-gray-200"
+          style={{ fontFamily: 'Metropolis, sans-serif' }}
+        >
           Account Information
         </h3>
-        
+
         <div className="space-y-4">
           {/* Username and Email */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <label
+                className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
                 Username
               </label>
               <input
                 type="text"
-                value={userData.username}
+                value={userData?.username ?? ''}  
                 onChange={(e) => handleChange('username', e.target.value)}
                 disabled={!isEditing}
                 className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -100,12 +139,15 @@ const handleSaveAll = async () => {
             </div>
 
             <div>
-              <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <label
+                className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
                 Email Address
               </label>
               <input
                 type="email"
-                value={userData.email}
+                value={userData?.email ?? ''}  
                 onChange={(e) => handleChange('email', e.target.value)}
                 disabled={!isEditing}
                 className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -116,16 +158,22 @@ const handleSaveAll = async () => {
         </div>
       </div>
 
-      {/* Change Password Section - Always visible but disabled when not editing */}
+      {/* Change Password Section */}
       <div className="pt-6 border-t-2 border-gray-200">
-        <h3 className="text-base font-bold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+        <h3
+          className="text-base font-bold text-[#003366] mb-2"
+          style={{ fontFamily: 'Metropolis, sans-serif' }}
+        >
           Change Password
         </h3>
         <div className="space-y-4">
           {/* New Password and Confirm Password */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="relative">
-              <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <label
+                className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
                 New Password
               </label>
               <input
@@ -133,7 +181,7 @@ const handleSaveAll = async () => {
                 value={passwords.newPassword}
                 onChange={(e) => handlePasswordChange('newPassword', e.target.value)}
                 disabled={!isEditing}
-                placeholder="Enter new password"
+                placeholder="Enter new password (optional)"
                 className="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
@@ -149,7 +197,10 @@ const handleSaveAll = async () => {
             </div>
 
             <div className="relative">
-              <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <label
+                className="block text-xs sm:text-sm font-semibold text-[#003366] mb-1.5"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
                 Confirm New Password
               </label>
               <input
@@ -157,7 +208,7 @@ const handleSaveAll = async () => {
                 value={passwords.confirmPassword}
                 onChange={(e) => handlePasswordChange('confirmPassword', e.target.value)}
                 disabled={!isEditing}
-                placeholder="Confirm new password"
+                placeholder="Confirm new password (optional)"
                 className="w-full px-3 py-2 pr-10 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               />
@@ -180,7 +231,8 @@ const handleSaveAll = async () => {
         {!isEditing ? (
           <button
             onClick={onEditClick}
-            className="px-8 py-2.5 bg-[#003366] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="px-8 py-2.5 bg-[#003366] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+            disabled={loading}
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
             Edit Account
@@ -189,17 +241,19 @@ const handleSaveAll = async () => {
           <div className="flex gap-3">
             <button
               onClick={handleCancel}
-              className="px-6 py-2.5 bg-gray-500 text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+              className="px-6 py-2.5 bg-gray-500 text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+              disabled={loading}
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
               Cancel
             </button>
             <button
               onClick={handleSaveAll}
-              className="px-6 py-2.5 bg-[#003366] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+              className="px-6 py-2.5 bg-[#003366] text-white rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+              disabled={loading}
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
-              Save Changes
+              {loading ? '⏳ Saving...' : 'Save Changes'}
             </button>
           </div>
         )}

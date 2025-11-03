@@ -1,7 +1,7 @@
 // components/reviewer/ReviewQuestionsCard.tsx
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle } from 'lucide-react';
 
 interface OptionType {
@@ -31,6 +31,7 @@ interface ReviewQuestionsCardProps {
   onBack?: () => void;
   onNext?: () => void;
   progressPercentage?: number;
+  initialAnswers?: any;  // ✅ ADD THIS
 }
 
 const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
@@ -45,10 +46,19 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
   onBack,
   onNext,
   progressPercentage = 0,
+  initialAnswers = {},  // ✅ ADD THIS
 }) => {
-  const [answers, setAnswers] = useState<any>({});
+  // ✅ Initialize with existing answers
+  const [answers, setAnswers] = useState<any>(initialAnswers || {});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitRef = useRef(false);
+
+  // ✅ ADD THIS: Update when initialAnswers change
+  useEffect(() => {
+    if (initialAnswers && Object.keys(initialAnswers).length > 0) {
+      setAnswers(initialAnswers);
+    }
+  }, [initialAnswers]);
 
   const handleRadioChange = (questionId: string | number, value: string) => {
     const newAnswers = { ...answers, [questionId]: value };

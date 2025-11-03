@@ -1,3 +1,4 @@
+// app/actions/autoClassify.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -14,6 +15,11 @@ export async function autoClassifyFromDatabase(submissionId: string) {
       console.error('❌ Failed to gather submission data');
       return { success: false, error: 'Failed to gather submission data' };
     }
+
+    // 🔍 DIAGNOSTIC: Log individual data sizes
+    console.log('🔍 Submission JSON length:', textData.submission ? JSON.stringify(textData.submission).length : 0);
+    console.log('🔍 Protocol JSON length:', textData.protocol ? JSON.stringify(textData.protocol).length : 0);
+    console.log('🔍 Consent JSON length:', textData.consent ? JSON.stringify(textData.consent).length : 0);
 
     const combinedText = combineTextForClassification(textData);
     
@@ -75,24 +81,54 @@ export async function autoClassifyFromDatabase(submissionId: string) {
   }
 }
 
-// ✅ Utility function to clean text
-function cleanText(text: string): string {
+function stripHtmlAndSanitize(text: string): string {
   if (!text) return '';
-  
-  // Remove HTML tags
-  text = text.replace(/<[^>]*>/g, ' ');
-  
-  // Remove "N/A" and "<br>" placeholder strings
-  text = text.replace(/N\/A/g, '');
-  text = text.replace(/<br>/g, ' ');
-  
-  // Remove extra whitespace
-  text = text.replace(/\s+/g, ' ').trim();
-  
-  return text;
+
+  let cleaned = text
+    // Convert common HTML tags to text equivalents
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n\n')
+    .replace(/<li>/gi, '\n• ')
+    .replace(/<\/li>/gi, '')
+
+    // Remove all HTML tags
+    .replace(/<[^>]+>/g, '')
+
+    // Decode HTML entities
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
+
+    // Replace special characters
+    .replace(/[●○■□]/g, '•')
+    .replace(/[—–]/g, '-')
+    .replace(/[""]/g, '"')
+    .replace(/['']/g, "'")
+    .replace(/…/g, '...')
+
+    // Clean whitespace
+    .replace(/  +/g, ' ')
+    .replace(/^ +| +$/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+
+    // Remove non-WinAnsi characters
+    .replace(/[^\x20-\x7E\xA0-\xFF\n\r\t]/g, '');
+
+  return cleaned;
 }
 
-// ✅ Utility to extract text from JSON objects
+function cleanText(text: string): string {
+  if (!text) return '';
+  return stripHtmlAndSanitize(text);
+}
+
 function extractTextFromObject(obj: any): string {
   if (!obj) return '';
   
@@ -101,20 +137,17 @@ function extractTextFromObject(obj: any): string {
   for (const key in obj) {
     const value = obj[key];
     
-    // Skip metadata fields
     if (key.includes('id') || key.includes('Id') || key.includes('ID') || 
         key.includes('created') || key.includes('updated')) {
       continue;
     }
     
-    // Extract from string values
     if (typeof value === 'string') {
       const cleaned = cleanText(value);
       if (cleaned && cleaned.length > 5) {
         texts.push(cleaned);
       }
     }
-    // Recursively extract from objects
     else if (typeof value === 'object' && value !== null) {
       const extracted = extractTextFromObject(value);
       if (extracted) texts.push(extracted);
@@ -150,8 +183,7 @@ async function gatherSubmissionText(supabase: any, submissionId: string) {
         population,
         sampling_technique,
         research_instrument,
-        statistical_treatment,
-        researchers
+        statistical_treatment
       `)
       .eq('submission_id', submissionId)
       .maybeSingle();
@@ -162,7 +194,7 @@ async function gatherSubmissionText(supabase: any, submissionId: string) {
     console.log('📥 Fetching consent form data...');
     const { data: consent, error: conError } = await supabase
       .from('consent_forms')
-      .select('*')  // ✅ Get ALL fields (includes all those English/Tagalog variants)
+      .select('*')
       .eq('submission_id', submissionId)
       .maybeSingle();
 
@@ -170,6 +202,7 @@ async function gatherSubmissionText(supabase: any, submissionId: string) {
     if (consent) {
       console.log('✅ CONSENT FORM FOUND!');
       console.log('   Type:', consent.consent_type);
+      console.log('🔍 Consent keys:', Object.keys(consent).length, 'fields');
     } else {
       console.warn('⚠️ NO CONSENT FORM FOUND for submission:', submissionId);
     }
@@ -189,7 +222,10 @@ function combineTextForClassification(data: any): string {
   const sections: string[] = [];
 
   if (data.submission) {
-    sections.push(`TITLE: ${cleanText(data.submission.title || '')}`);
+    const cleanTitle = cleanText(data.submission.title || '');
+    console.log('🧹 Submission BEFORE:', data.submission.title?.substring(0, 100));
+    console.log('🧹 Submission AFTER:', cleanTitle.substring(0, 100));
+    sections.push(`TITLE: ${cleanTitle}`);
     sections.push(`DESCRIPTION: ${cleanText(data.submission.research_description || '')}`);
   }
 
@@ -205,18 +241,14 @@ function combineTextForClassification(data: any): string {
     sections.push(`SAMPLING: ${cleanText(data.protocol.sampling_technique || '')}`);
     sections.push(`INSTRUMENT: ${cleanText(data.protocol.research_instrument || '')}`);
     sections.push(`STATISTICAL: ${cleanText(data.protocol.statistical_treatment || '')}`);
-    
-    if (data.protocol.researchers) {
-      sections.push(`RESEARCHERS: ${cleanText(JSON.stringify(data.protocol.researchers))}`);
-    }
   }
 
-  // ✅ Extract all text from consent form (handles all those English/Tagalog fields)
   if (data.consent) {
     console.log('✨ Including consent form in classification text');
     
-    // Extract ALL meaningful text from the consent object
     const consentText = extractTextFromObject(data.consent);
+    console.log('🔍 Extracted consent text length:', consentText.length, 'characters');
+    
     if (consentText) {
       sections.push(`CONSENT FORM: ${consentText}`);
     }
@@ -224,8 +256,7 @@ function combineTextForClassification(data: any): string {
     console.warn('⚠️ No consent form to include in classification text');
   }
 
-  // Final cleanup: filter empty sections and join
   return sections
-    .filter(s => cleanText(s).length > 10)  // Only keep sections with real content
+    .filter(s => cleanText(s).length > 10)
     .join('\n\n');
 }

@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import {
   generateApplicationFormPdf,
   generateResearchProtocolPdf,
-  generateConsentFormPdf
+  generateConsentFormPdf,
 } from '@/app/actions/generatePdfFromDatabase';
 import { autoClassifyFromDatabase } from '@/app/actions/autoClassifyFromDatabase';
 
@@ -693,6 +693,7 @@ export async function submitResearchApplication(
     } catch (pdfError) {
       console.error('PDF generation error (non-critical):', pdfError);
     }
+
 
     autoClassifyFromDatabase(submission.id)
       .then(result => {

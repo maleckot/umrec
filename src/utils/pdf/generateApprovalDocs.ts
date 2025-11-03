@@ -37,12 +37,17 @@ if (submissionError) {
 // Line 34-41: Just get reviews WITHOUT profiles join
 const { data: reviews, error: reviewsError } = await supabase
   .from('reviews')
-  .select('*') // ✅ Remove profiles join - no FK exists
+  .select(`
+    *,
+    protocol_answers,
+    consent_answers
+  `)
   .eq('submission_id', submissionId);
 
 if (reviewsError) {
   console.error('❌ Reviews query error:', reviewsError);
 }
+
 
 
 if (reviewsError) {
@@ -52,26 +57,26 @@ if (reviewsError) {
 
     // 3. Generate the 3 PDFs
     const certificatePdf = await generateCertificatePDF(submission);
-    const form0011Pdf = await generateForm0011PDF(submission, reviews || []); // ✅ Add || []
-    const form0012Pdf = await generateForm0012PDF(submission, reviews || []); // ✅ Add || []
+    const form0011Pdf = await generateForm0011PDF(submission, reviews || []); 
+    const form0012Pdf = await generateForm0012PDF(submission, reviews || []); 
 
     // 4. Upload to Supabase Storage
     const uploadPromises = [
       {
         pdf: certificatePdf,
-        path: `${submissionId}/certificate-of-approval.pdf`, // ✅ .pdf
+        path: `${submissionId}/certificate-of-approval.pdf`, 
         type: 'certificate_of_approval',
         fileName: 'Certificate of Approval.pdf'
       },
       {
         pdf: form0011Pdf,
-        path: `${submissionId}/form-0011-protocol-reviewer.pdf`, // ✅ .pdf
+        path: `${submissionId}/form-0011-protocol-reviewer.pdf`, 
         type: 'form_0011',
         fileName: 'Form 0011 - Protocol Reviewer Worksheet.pdf'
       },
       {
         pdf: form0012Pdf,
-        path: `${submissionId}/form-0012-icf-checklist.pdf`, // ✅ .pdf
+        path: `${submissionId}/form-0012-icf-checklist.pdf`, 
         type: 'form_0012',
         fileName: 'Form 0012 - Informed Consent Checklist.pdf'
       }

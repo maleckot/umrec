@@ -211,8 +211,8 @@ export default function Step1ResearcherDetails() {
     const contactError = validateInput(formData.projectLeaderContact, 'Contact Number');
     if (contactError) newErrors.projectLeaderContact = contactError;
 
-    const coAuthorsError = validateInput(formData.coAuthors, 'Co-Authors');
-    if (coAuthorsError) newErrors.coAuthors = coAuthorsError;
+    // const coAuthorsError = validateInput(formData.coAuthors, 'Co-Authors');
+    // if (coAuthorsError) newErrors.coAuthors = coAuthorsError;
 
     // If there are errors, don't proceed
     if (Object.keys(newErrors).length > 0) {

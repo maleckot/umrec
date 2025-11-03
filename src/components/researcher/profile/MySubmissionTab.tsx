@@ -1,4 +1,3 @@
-// components/researcher/profile/MySubmissionTab.tsx
 'use client';
 
 import { Eye, Download } from 'lucide-react';
@@ -20,6 +19,7 @@ export default function MySubmissionTab({ submissions }: MySubmissionTabProps) {
     ).map((doc: any) => ({
       id: doc.id,
       fileName: doc.file_name,
+      displayName: doc.displayName,  // ✅ Use display name from backend
       date: submission.date,
       status: submission.status,
       fileUrl: doc.signedUrl
@@ -104,7 +104,7 @@ export default function MySubmissionTab({ submissions }: MySubmissionTabProps) {
               {documents.map((document, index) => (
                 <tr key={document.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-4 py-3 text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {document.fileName}
+                    {document.displayName}  {/* ✅ Shows nice display name */}
                   </td>
                   <td className="px-4 py-3 text-center text-sm text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {document.date}
@@ -143,7 +143,7 @@ export default function MySubmissionTab({ submissions }: MySubmissionTabProps) {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-[#003366] text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {document.fileName}
+                    {document.displayName}  {/* ✅ Shows nice display name */}
                   </p>
                   <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {document.date}

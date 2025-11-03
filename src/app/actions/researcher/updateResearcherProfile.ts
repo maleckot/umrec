@@ -10,48 +10,59 @@ export async function updateResearcherProfile(profileData: any) {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
+      console.error('Auth error:', userError);
       return { success: false, error: 'Not authenticated' };
     }
 
-    // Update profile
+    // ✅ Parse first, middle, last names from full_name if needed
+    let firstName = profileData.firstName;
+    let middleName = profileData.middleName;
+    let lastName = profileData.lastName;
+
+    const fullName = [firstName, middleName, lastName]
+      .filter(Boolean)
+      .join(' ');
+
+    // ✅ ONLY update columns that ACTUALLY exist in profiles table
     const { error: updateError } = await supabase
       .from('profiles')
       .update({
-        first_name: profileData.firstName,
-        middle_name: profileData.middleName,
-        last_name: profileData.lastName,
-        full_name: `${profileData.firstName} ${profileData.middleName} ${profileData.lastName}`.trim(),
-        date_of_birth: profileData.dateOfBirth,
-        contact_number: profileData.contactNumber,
-        gender: profileData.gender,
-        school: profileData.school,
-        college: profileData.college,
-        program: profileData.program,
-        year_level: profileData.yearLevel,
-        section: profileData.section,
-        student_no: profileData.studentNo,
+        full_name: fullName,
+        email: profileData.email || null,
+        username: profileData.username || null,
+        phone: profileData.phone || null,  // ✅ Use phone, not contact_number
+        organization: profileData.organization || null,
+        school: profileData.school || null,
+        college: profileData.college || null,
+        date_of_birth: profileData.dateOfBirth || null,
+        gender: profileData.gender || null,
+        program: profileData.program || null,
+        year_level: profileData.yearLevel || null,
+        section: profileData.section || null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', user.id);
 
     if (updateError) {
-      return { success: false, error: 'Failed to update profile' };
+      console.error('Profile update error:', updateError);
+      return { success: false, error: updateError.message || 'Failed to update profile' };
     }
 
-    // Update email if changed
-    if (profileData.email !== user.email) {
+    // Update auth email if changed
+    if (profileData.email && profileData.email !== user.email) {
       const { error: emailError } = await supabase.auth.updateUser({
         email: profileData.email,
       });
 
       if (emailError) {
-        return { success: false, error: 'Failed to update email' };
+        console.error('Email update error:', emailError);
+        return { success: true, warning: 'Profile updated but email change failed' };
       }
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Error updating profile:', error);
-    return { success: false, error: 'Failed to update profile' };
+    console.error('Unexpected error updating profile:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
 }

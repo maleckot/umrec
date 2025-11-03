@@ -1,4 +1,3 @@
-// components/profile/PersonalInformationTab.tsx
 'use client';
 
 import { Calendar, ChevronDown } from 'lucide-react';
@@ -34,7 +33,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.lastName}
+            value={userData.lastName ?? ''}
             onChange={(e) => handleChange('lastName', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -48,7 +47,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.firstName}
+            value={userData.firstName ?? ''}
             onChange={(e) => handleChange('firstName', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -62,7 +61,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.middleName}
+            value={userData.middleName ?? ''}
             onChange={(e) => handleChange('middleName', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -79,7 +78,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="date"
-            value={userData.dateOfBirth}
+            value={userData.dateOfBirth ?? ''}
             onChange={(e) => handleChange('dateOfBirth', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -94,8 +93,8 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="tel"
-            value={userData.contactNumber}
-            onChange={(e) => handleChange('contactNumber', e.target.value)}
+            value={userData.phone ?? ''}
+            onChange={(e) => handleChange('phone', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -107,15 +106,16 @@ export default function PersonalInformationTab({
             Gender
           </label>
           <select
-            value={userData.gender}
+            value={userData.gender ?? ''}
             onChange={(e) => handleChange('gender', e.target.value)}
             disabled={!isEditing}
             className="w-full appearance-none px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
-            <option>Male</option>
-            <option>Female</option>
-            <option>Prefer not to say</option>
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Prefer not to say">Prefer not to say</option>
           </select>
           <ChevronDown className="absolute right-3 top-[34px] w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
@@ -129,7 +129,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.school}
+            value={userData.school ?? ''}
             onChange={(e) => handleChange('school', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -143,7 +143,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.college}
+            value={userData.college ?? ''}
             onChange={(e) => handleChange('college', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -159,7 +159,7 @@ export default function PersonalInformationTab({
         </label>
         <input
           type="text"
-          value={userData.program}
+          value={userData.program ?? ''}
           onChange={(e) => handleChange('program', e.target.value)}
           disabled={!isEditing}
           className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -174,17 +174,18 @@ export default function PersonalInformationTab({
             Year Level
           </label>
           <select
-            value={userData.yearLevel}
+            value={userData.yearLevel ?? ''}
             onChange={(e) => handleChange('yearLevel', e.target.value)}
             disabled={!isEditing}
             className="w-full appearance-none px-3 py-2 pr-8 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
-            <option>1st Year</option>
-            <option>2nd Year</option>
-            <option>3rd Year</option>
-            <option>4th Year</option>
-            <option>5th Year</option>
+            <option value="">Select Year Level</option>
+            <option value="1st Year">1st Year</option>
+            <option value="2nd Year">2nd Year</option>
+            <option value="3rd Year">3rd Year</option>
+            <option value="4th Year">4th Year</option>
+            <option value="5th Year">5th Year</option>
           </select>
           <ChevronDown className="absolute right-3 top-[34px] w-4 h-4 text-gray-400 pointer-events-none" />
         </div>
@@ -195,7 +196,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.section}
+            value={userData.section ?? ''}
             onChange={(e) => handleChange('section', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"
@@ -209,7 +210,7 @@ export default function PersonalInformationTab({
           </label>
           <input
             type="text"
-            value={userData.studentNo}
+            value={userData.studentNo ?? ''}
             onChange={(e) => handleChange('studentNo', e.target.value)}
             disabled={!isEditing}
             className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#003366]"

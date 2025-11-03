@@ -26,10 +26,11 @@ export async function getReviewerDetails(reviewerId: string) {
     // Fetch reviewer profile
     const { data: reviewer, error: reviewerError } = await supabase
       .from('profiles')
-      .select('id, full_name, email, phone, college, reviewer_code, availability_status')
+      .select('id, full_name, email, phone, college, reviewer_code, availability_status, expertise_areas')  // ✅ Added expertise_areas
       .eq('id', reviewerId)
       .eq('role', 'reviewer')
       .single();
+
 
     if (reviewerError) {
       console.error('Error fetching reviewer:', reviewerError);
@@ -67,7 +68,7 @@ export async function getReviewerDetails(reviewerId: string) {
     );
 
     const reviewHistory = assignmentsWithSubmissions.filter(a => 
-      a.status === 'completed'
+      a.status === 'review_complete'
     );
 
     // Calculate stats
@@ -97,6 +98,7 @@ export async function getReviewerDetails(reviewerId: string) {
         college: reviewer.college || 'N/A',
         code: reviewer.reviewer_code || 'N/A',
         availability: reviewer.availability_status || 'Available',
+        expertiseAreas: reviewer.expertise_areas || '',  // ✅ Add this
         reviewStatus,
         activeReviews,
         overdueReviews,
@@ -111,16 +113,16 @@ export async function getReviewerDetails(reviewerId: string) {
         }) : 'N/A',
         status: a.due_date && new Date(a.due_date) < now ? 'Overdue' : 'Under Review',
       })),
-      reviewHistory: reviewHistory.map(a => ({
-        id: a.research_submission?.id || 'N/A', // ✅ Direct access
-        title: a.research_submission?.title || 'Untitled', // ✅ Direct access
-        completedDate: a.due_date ? new Date(a.due_date).toLocaleDateString('en-US', {
-          month: '2-digit',
-          day: '2-digit',
-          year: 'numeric'
-        }) : 'N/A',
-        status: 'Review Complete',
-      })),
+        reviewHistory: reviewHistory.map(a => ({
+          id: a.research_submission?.id || 'N/A',
+          title: a.research_submission?.title || 'Untitled',
+          completedDate: a.assigned_at ? new Date(a.assigned_at).toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+          }) : 'N/A',
+          status: 'Review Complete',
+        })),
     };
 
   } catch (error) {

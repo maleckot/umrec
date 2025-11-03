@@ -37,9 +37,9 @@ interface Evaluation {
 }
 
 // Edit Review Confirmation Modal Component - FULLY RESPONSIVE
-function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
+  isOpen: boolean;
+  onClose: () => void;
   onConfirm: () => void;
   submissionTitle: string;
 }) {
@@ -48,7 +48,7 @@ function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fadeIn">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-      
+
       <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 md:p-8 animate-slideUp mx-4">
         {/* Warning Icon */}
         <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
@@ -124,7 +124,10 @@ function ReviewDetailContent() {
   const [reviewerEvaluations, setReviewerEvaluations] = useState<any[]>([]);
   const [currentReviewerId, setCurrentReviewerId] = useState<string>('');
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [assignmentStatus, setAssignmentStatus] = useState<string>('pending');  // ✅ ADD THIS
   const [selectedDocument, setSelectedDocument] = useState<{ name: string, url: string } | null>(null);
+
+  
   const [submissionData, setSubmissionData] = useState({
     id: id,
     title: 'Loading...',
@@ -152,6 +155,7 @@ function ReviewDetailContent() {
       if (result.success) {
         setReviewerEvaluations(result.evaluations || []);
         setCurrentReviewerId(result.currentReviewerId || '');
+        setAssignmentStatus(result.assignmentStatus || 'pending');  // ✅ Store it
 
         if (result.submission) {
           setSubmissionData({
@@ -161,9 +165,10 @@ function ReviewDetailContent() {
             assignedDate: result.submission.assignedDate,
             dueDate: result.submission.dueDate || 'TBD',
             description: result.submission.description,
-            status: result.submission.status
+            status: result.submission.status?.toLowerCase() || 'pending'  // ✅ Normalize here
           });
         }
+
 
         if (result.consolidatedDocument) {
           setSubmittedFiles([
@@ -177,6 +182,7 @@ function ReviewDetailContent() {
             }
           ]);
         }
+
       } else {
         console.error('Failed to load evaluations:', result.error);
       }
@@ -277,25 +283,23 @@ function ReviewDetailContent() {
 
     return (
       <div className="relative">
-        <div 
-          className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 to-transparent" 
+        <div
+          className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 to-transparent"
           style={{ height: isLast && !hasNestedReplies ? '30px' : '100%' }}
         ></div>
 
         <div className="ml-10 sm:ml-12 mt-4 relative">
           <div className="absolute left-[-28px] top-6 w-7 h-0.5 bg-gray-300 rounded-full"></div>
 
-          <div className={`rounded-2xl p-4 sm:p-5 border-2 shadow-sm transition-all duration-300 hover:shadow-md ${
-            isMyReply 
-              ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/60' 
+          <div className={`rounded-2xl p-4 sm:p-5 border-2 shadow-sm transition-all duration-300 hover:shadow-md ${isMyReply
+              ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/60'
               : 'bg-white border-gray-200/60'
-          }`}>
+            }`}>
             <div className="flex gap-3 sm:gap-4">
-              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md ${
-                isMyReply 
-                  ? 'bg-gradient-to-br from-blue-600 to-blue-700' 
+              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md ${isMyReply
+                  ? 'bg-gradient-to-br from-blue-600 to-blue-700'
                   : 'bg-gradient-to-br from-[#101C50] to-[#1a2d70]'
-              }`}>
+                }`}>
                 <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {reply.name.split(' ')[1]?.[0] || 'R'}
                 </span>
@@ -595,17 +599,15 @@ function ReviewDetailContent() {
 
                   return (
                     <div key={evaluation.id} className="animate-fadeIn" style={{ animationDelay: `${index * 100}ms` }}>
-                      <div className={`rounded-2xl p-5 sm:p-6 border-2 shadow-lg transition-all duration-300 hover:shadow-xl ${
-                        isMyEvaluation 
-                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300/60' 
+                      <div className={`rounded-2xl p-5 sm:p-6 border-2 shadow-lg transition-all duration-300 hover:shadow-xl ${isMyEvaluation
+                          ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-300/60'
                           : 'bg-white border-gray-200/60'
-                      }`}>
+                        }`}>
                         <div className="flex gap-4">
-                          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${
-                            isMyEvaluation 
-                              ? 'bg-gradient-to-br from-blue-600 to-blue-700' 
+                          <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg ${isMyEvaluation
+                              ? 'bg-gradient-to-br from-blue-600 to-blue-700'
                               : 'bg-gradient-to-br from-[#101C50] to-[#1a2d70]'
-                          }`}>
+                            }`}>
                             <span className="text-white font-bold text-base sm:text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                               {evaluation.name.split(' ')[1]?.[0] || 'R'}
                             </span>
@@ -771,8 +773,8 @@ function ReviewDetailContent() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            {/* Show "Start Review" if user hasn't reviewed yet, otherwise show "Edit Review" */}
-            {!currentUserReview ? (
+            {/* ✅ If status is pending OR no review, show "Start Review" */}
+            {assignmentStatus  === 'pending' || !currentUserReview ? (
               <button
                 onClick={handleStartReview}
                 className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl"
@@ -791,6 +793,7 @@ function ReviewDetailContent() {
               </button>
             )}
           </div>
+
         </div>
       </div>
 

@@ -10,6 +10,8 @@ import ReviewerReviewsTable from '@/components/staff-secretariat-admin/reviewers
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewerDetails } from '@/app/actions/secretariat-staff/getReviewerDetails';
 import { updateReviewerCode } from '@/app/actions/secretariat-staff/updateReviewerCode';
+import { updateReviewerExpertise } from '@/app/actions/secretariat-staff/updateReviewerExpertise';
+
 import{ Suspense } from 'react';
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
 function ReviewerDetailsContent() {
@@ -30,11 +32,12 @@ function ReviewerDetailsContent() {
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
 
-  useEffect(() => {
-    if (reviewerId) {
-      loadReviewerDetails();
-    }
-  }, [reviewerId]);
+    useEffect(() => {
+      if (reviewerId) {  // ✅ Add this check
+        loadReviewerDetails();
+      }
+    }, [reviewerId]);
+
 
   const loadReviewerDetails = async () => {
     if (!reviewerId) return;
@@ -86,13 +89,23 @@ function ReviewerDetailsContent() {
     setExpertiseAreas(expertiseAreas.filter((_, i) => i !== index));
   };
 
-  const handleSaveExpertise = async () => {
-    // Convert array back to comma-separated string for backend
-    const expertiseString = expertiseAreas.join(', ');
-    console.log('Saving expertise:', expertiseString);
+const handleSaveExpertise = async () => {
+  if (!reviewerId) {  // ✅ Add this check
+    alert('Reviewer ID not found');
+    return;
+  }
+
+  const expertiseString = expertiseAreas.join(', ');
+  const result = await updateReviewerExpertise(reviewerId, expertiseString);
+  
+  if (result.success) {
+    console.log('✅ Expertise updated');
     setIsEditingExpertise(false);
-    // TODO: await updateReviewerExpertise(reviewerId, expertiseString);
-  };
+    loadReviewerDetails();  // Reload data
+  } else {
+    alert('Failed to update expertise: ' + result.error);
+  }
+};
 
   const handleReviewClick = (id: string) => {
     router.push(`/staffmodule/submissions/details?id=${id}`);

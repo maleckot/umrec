@@ -69,6 +69,7 @@ export async function getResearcherSubmissions() {
       'research_instrument',
       'endorsement_letter',
       'proposal_defense',
+      'consolidated_review'
     ];
 
     const submissionsWithDocuments = await Promise.all(

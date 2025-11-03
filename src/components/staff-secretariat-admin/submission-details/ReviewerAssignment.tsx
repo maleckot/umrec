@@ -1,12 +1,13 @@
 // components/staff-secretariat-admin/submission-details/ReviewerAssignment.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Calendar } from 'lucide-react';
 
 interface Reviewer {
   id: string;
-  name: string;
+  full_name?: string;
+  name?: string;
   code: string;
   panel: string;
   email?: string;
@@ -20,6 +21,7 @@ interface ReviewerAssignmentProps {
   reviewDueDate: string;
   onDueDateChange: (date: string) => void;
   onAssign: (selectedReviewers: string[]) => void;
+  preSelectedReviewers?: string[]; // ✅ NEW prop
 }
 
 // ✅ Panel descriptions mapping
@@ -36,12 +38,18 @@ export default function ReviewerAssignment({
   maxReviewers, 
   reviewDueDate,
   onDueDateChange,
-  onAssign 
+  onAssign,
+  preSelectedReviewers = [], // ✅ NEW default
 }: ReviewerAssignmentProps) {
-  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>(preSelectedReviewers);
   const [searchQuery, setSearchQuery] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'panel' | 'individual'>('individual');
+
+  // ✅ SYNC with preSelectedReviewers when they change
+  useEffect(() => {
+    setSelectedReviewers(preSelectedReviewers);
+  }, [preSelectedReviewers]);
 
   // Calculate minimum date (today)
   const today = new Date().toISOString().split('T')[0];
@@ -52,11 +60,14 @@ export default function ReviewerAssignment({
     .sort();
 
   // Filter reviewers based on search query
-  const filteredReviewers = reviewers.filter(r =>
-    r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    r.panel.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredReviewers = reviewers.filter(r => {
+    const name = r.full_name || r.name || '';
+    return (
+      name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.panel.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  });
 
   // ✅ Group reviewers by panel (dynamically)
   const reviewersByPanel = filteredReviewers.reduce((acc, reviewer) => {
@@ -88,26 +99,28 @@ export default function ReviewerAssignment({
   };
 
   // Handle panel selection
-  const handlePanelToggle = (panelName: string) => {
-    const panelReviewers = reviewersByPanel[panelName] || [];
-    const panelReviewerIds = panelReviewers.map(r => r.id);
-    
-    const isPanelSelected = isPanelFullySelected(panelName);
-    
-    if (isPanelSelected) {
-      setSelectedReviewers(prev => prev.filter(id => !panelReviewerIds.includes(id)));
-    } else {
-      setSelectedReviewers(prev => {
-        const newSelected = [...prev];
-        panelReviewerIds.forEach(id => {
-          if (!newSelected.includes(id) && newSelected.length < maxReviewers) {
-            newSelected.push(id);
-          }
-        });
-        return newSelected.slice(0, maxReviewers);
+const handlePanelToggle = (panelName: string) => {
+  // Use ALL reviewers (unfiltered) for this calculation
+  const allPanelReviewers = reviewers.filter(r => r.panel === panelName);
+  const panelReviewerIds = allPanelReviewers.map(r => r.id);
+  
+  const isPanelSelected = isPanelFullySelected(panelName);
+  
+  if (isPanelSelected) {
+    setSelectedReviewers(prev => prev.filter(id => !panelReviewerIds.includes(id)));
+  } else {
+    setSelectedReviewers(prev => {
+      const newSelected = [...prev];
+      panelReviewerIds.forEach(id => {
+        if (!newSelected.includes(id) && newSelected.length < maxReviewers) {
+          newSelected.push(id);
+        }
       });
-    }
-  };
+      return newSelected.slice(0, maxReviewers);
+    });
+  }
+};
+
 
   // Handle individual reviewer selection
   const handleToggleReviewer = (reviewerId: string) => {
@@ -143,6 +156,10 @@ export default function ReviewerAssignment({
     return reviewers.filter(r => selectedReviewers.includes(r.id));
   };
 
+  const getReviewerName = (reviewer: Reviewer) => {
+    return reviewer.full_name || reviewer.name || 'Unknown Reviewer';
+  };
+
   const allSelected = selectedReviewers.length === filteredReviewers.length && filteredReviewers.length > 0;
 
   if (category === 'Exempted') {
@@ -170,7 +187,7 @@ export default function ReviewerAssignment({
         {/* Header */}
         <div className="bg-[#101C50] p-4 lg:p-6">
           <h3 className="text-lg font-bold text-white mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Assign Reviewers ({category})
+            Assign Reviewers ({category}) {preSelectedReviewers.length > 0 && '(Pre-selected)'}
           </h3>
           
           {/* ✅ Due Date Section - Responsive */}
@@ -283,13 +300,18 @@ export default function ReviewerAssignment({
                       />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {reviewer.name}
+                          {getReviewerName(reviewer)}
                         </p>
                         <p className="text-xs text-gray-500 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                           {PANEL_DESCRIPTIONS[reviewer.panel] || reviewer.panel}
                         </p>
                       </div>
                     </div>
+                    {preSelectedReviewers.includes(reviewer.id) && (
+                      <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Previous Reviewer
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500 ml-3 flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {reviewer.code}
                     </span>
@@ -340,7 +362,7 @@ export default function ReviewerAssignment({
                           {panelReviewers.map(reviewer => (
                             <div key={reviewer.id} className="flex items-center justify-between py-1 px-2 bg-gray-50 rounded text-xs">
                               <span className="text-gray-700 truncate flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                {reviewer.name}
+                                {getReviewerName(reviewer)}
                               </span>
                               <span className="text-gray-500 ml-2 flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {reviewer.code}
@@ -428,7 +450,7 @@ export default function ReviewerAssignment({
                   <li key={reviewer.id} className="text-sm font-medium text-gray-800 flex items-center justify-between gap-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <span className="w-2 h-2 rounded-full bg-blue-600 flex-shrink-0"></span>
-                      <span className="truncate">{reviewer.name}</span>
+                      <span className="truncate">{getReviewerName(reviewer)}</span>
                     </div>
                     <span className="text-xs text-gray-500 flex-shrink-0">{reviewer.code}</span>
                   </li>

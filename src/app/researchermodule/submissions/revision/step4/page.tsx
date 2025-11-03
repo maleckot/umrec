@@ -265,14 +265,14 @@ function RevisionStep4Content() {
     if (!value) {
       return `${fieldName} is required`;
     }
-    const trimmedValue = value.trim().toLowerCase();
-    if (!trimmedValue) {
-      return `${fieldName} is required`;
-    }
-    const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
-    if (naVariations.includes(trimmedValue)) {
-      return `${fieldName} cannot be "N/A" - please provide actual information`;
-    }
+    // const trimmedValue = value.trim().toLowerCase();
+    // if (!trimmedValue) {
+    //   return `${fieldName} is required`;
+    // }
+    // const naVariations = ['n/a', 'na', 'n.a', 'n.a.', 'not applicable', 'none'];
+    // if (naVariations.includes(trimmedValue)) {
+    //   return `${fieldName} cannot be "N/A" - please provide actual information`;
+    // }
     const irrelevantPhrases = [
       'i dont know', "i don't know", 'idk', 'working in progress',
       'work in progress', 'wip', 'tbd', 'to be determined',
@@ -280,12 +280,12 @@ function RevisionStep4Content() {
       '123', 'abc', 'unknown', 'temp', 'temporary',
       'sample', 'example', 'placeholder'
     ];
-    if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
-      return `${fieldName} contains invalid text. Please provide accurate information`;
-    }
-    if (trimmedValue.length < 10) {
-      return `${fieldName} must be at least 10 characters with meaningful content`;
-    }
+    // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
+    //   return `${fieldName} contains invalid text. Please provide accurate information`;
+    // }
+    // if (trimmedValue.length < 10) {
+    //   return `${fieldName} must be at least 10 characters with meaningful content`;
+    // }
     return null;
   };
 

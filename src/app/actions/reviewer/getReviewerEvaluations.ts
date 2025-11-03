@@ -28,18 +28,59 @@ export async function getReviewerEvaluations(submissionId: string) {
     }
 
     console.log('✅ Submission found:', submission.title);
+    const { data: allDocsWithIds } = await supabase
+      .from('uploaded_documents')
+      .select('submission_id, document_type, file_name')
+      .order('uploaded_at', { ascending: false });
 
-    // ✅ Get consolidated document (SAME AS getSubmissionForReview)
+    console.log('🔍 ALL documents in table:');
+    allDocsWithIds?.forEach(doc => {
+      console.log(`   ${doc.submission_id} → ${doc.document_type}: ${doc.file_name}`);
+    });
+    // Check if consolidated_review exists at all
+    const consolidatedReviewDocs = allDocsWithIds?.filter(d => d.document_type === 'consolidated_review');
+    console.log(`📄 Total consolidated_review documents: ${consolidatedReviewDocs?.length}`);
+    consolidatedReviewDocs?.forEach(doc => {
+      console.log(`   - submission: ${doc.submission_id}`);
+    });
+    // ✅ Get consolidated document FOR REVIEWER (anonymous version) - WITH DEBUG
+    console.log('🔍 Searching for consolidated_review');
+    console.log('   submission_id:', submissionId);
+    console.log('   document_type: consolidated_review');
+
     const { data: consolidatedDoc, error: docError } = await supabase
       .from('uploaded_documents')
-      .select('*')
+      .select('id, submission_id, document_type, file_name, file_url, uploaded_at, revision_count')  // ✅ ADD THIS
       .eq('submission_id', submissionId)
-      .eq('document_type', 'consolidated_application')
+      .eq('document_type', 'consolidated_review')
       .order('uploaded_at', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    console.log('📄 Consolidated doc:', consolidatedDoc ? 'Found' : 'Not found', docError ? `Error: ${docError.message}` : '');
+    console.log('📄 Result:', {
+      found: !!consolidatedDoc,
+      doc: consolidatedDoc,
+      error: docError?.message,
+      errorCode: docError?.code
+    });
+
+    // ✅ If still not found, try fetching ALL documents for this submission
+    if (!consolidatedDoc) {
+      console.log('⚠️ Not found, fetching ALL documents for this submission...');
+      const { data: allDocs } = await supabase
+        .from('uploaded_documents')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .order('uploaded_at', { ascending: false });
+
+      console.log('📚 All documents found:', allDocs?.length || 0);
+      allDocs?.forEach(doc => {
+        console.log(`   - ${doc.document_type}: ${doc.file_name}`);
+      });
+    }
+
+
+
 
     // ✅ Generate signed URL (SAME AS getSubmissionForReview)
     let signedUrl = null;
@@ -162,10 +203,12 @@ export async function getReviewerEvaluations(submissionId: string) {
     // Get assignment info for due date
     const { data: assignment } = await supabase
       .from('reviewer_assignments')
-      .select('assigned_at')
+      .select('assigned_at, status')  // ✅ Add status here
       .eq('submission_id', submissionId)
       .eq('reviewer_id', user.id)
       .maybeSingle();
+
+    console.log('📋 Assignment:', assignment?.status);  // ✅ Debug log
 
     // Calculate due date
     const assignedDate = assignment?.assigned_at
@@ -174,10 +217,21 @@ export async function getReviewerEvaluations(submissionId: string) {
     const dueDate = new Date(assignedDate);
     dueDate.setDate(dueDate.getDate() + 30);
 
+    const getOrdinalSuffix = (num: number) => {
+      const j = num % 10;
+      const k = num % 100;
+
+      if (j === 1 && k !== 11) return 'st';
+      if (j === 2 && k !== 12) return 'nd';
+      if (j === 3 && k !== 13) return 'rd';
+      return 'th';
+    };
+
     return {
       success: true,
       evaluations,
       currentReviewerId: user.id,
+      assignmentStatus: assignment?.status || 'pending',  // ✅ NEW LINE
       submission: {
         id: submission.id,
         title: submission.title,
@@ -190,12 +244,15 @@ export async function getReviewerEvaluations(submissionId: string) {
       },
       consolidatedDocument: consolidatedDoc ? {
         name: consolidatedDoc.file_name,
-        displayTitle: `Consolidated Application - ${submission.title}`, // ✅ Add this
+        displayTitle: consolidatedDoc.revision_count > 0
+          ? `Consolidated Application (${consolidatedDoc.revision_count + 1}${getOrdinalSuffix(consolidatedDoc.revision_count + 1)} Revision) - ${submission.title}`
+          : `Consolidated Application - ${submission.title}`,
         url: signedUrl,
-        uploadedAt: consolidatedDoc.uploaded_at
+        uploadedAt: consolidatedDoc.uploaded_at,
+        revisionCount: consolidatedDoc.revision_count || 0
       } : null
-    };
 
+    };
 
   } catch (error) {
     console.error('❌ Error in getReviewerEvaluations:', error);

@@ -185,7 +185,7 @@ export async function generatePdfFromDatabase(submissionId: string): Promise<Pdf
     };
   }
 }
-// ========== 1. APPLICATION FORM ==========
+// ========== 1. APPLICATION FORM (UPDATED) ==========
 export async function generateApplicationFormPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
@@ -203,14 +203,13 @@ export async function generateApplicationFormPdf(
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
       if (!text || text.trim() === '') return [];
 
-      // ✅ FIX: Handle newlines first
       const sanitizedText = stripHtmlAndSanitize(text);
       const paragraphs = sanitizedText.split('\n');
       const allLines: string[] = [];
 
       for (const paragraph of paragraphs) {
         if (!paragraph.trim()) {
-          allLines.push(''); // Preserve empty lines
+          allLines.push('');
           continue;
         }
 
@@ -219,8 +218,6 @@ export async function generateApplicationFormPdf(
 
         for (const word of words) {
           const testLine = currentLine ? `${currentLine} ${word}` : word;
-
-          // ✅ Safe to measure - no newlines
           const width = helvetica.widthOfTextAtSize(testLine, fontSize);
 
           if (width > maxWidth) {
@@ -242,7 +239,6 @@ export async function generateApplicationFormPdf(
 
       return allLines;
     };
-
 
     let page = pdfDoc.addPage([pageWidth, pageHeight]);
     let yPos = pageHeight - margin;
@@ -308,7 +304,7 @@ export async function generateApplicationFormPdf(
 
     page.drawText('Title of Study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    const titleLines = wrapText(step1?.title || 'N/A', pageWidth - 2 * margin - 10, 9);
+    const titleLines = wrapText(step1?.title || step2?.title || 'N/A', pageWidth - 2 * margin - 10, 9);
     titleLines.forEach(line => {
       if (yPos < 100) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -324,49 +320,62 @@ export async function generateApplicationFormPdf(
     page.drawText('Study Site', { x: pageWidth / 2, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
     page.drawText('(To be provided by UMREC)', { x: margin + 5, y: yPos, size: 9, font: helvetica, color: rgb(0.5, 0.5, 0.5) });
-    page.drawText(step1?.studySiteType || step2?.studySite || 'N/A', { x: pageWidth / 2, y: yPos, size: 9, font: helvetica });
+    page.drawText(step2?.studySite || 'N/A', { x: pageWidth / 2, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
-
-    page.drawText('Type of Review', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
-    yPos -= 12;
-    // page.drawText('Full Board Review', { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    // yPos -= 20;
 
     page.drawText('Name of Researchers', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     page.drawText('Contact Number', { x: margin + 200, y: yPos, size: 9, font: helveticaBold });
     page.drawText('Email Address', { x: margin + 330, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
 
-    const leadName = `${step1?.projectLeaderFirstName || ''} ${step1?.projectLeaderMiddleName || ''} ${step1?.projectLeaderLastName || ''}`.trim();
+    const leadName = `${step1?.projectLeaderFirstName || step2?.researcherFirstName || ''} ${step1?.projectLeaderMiddleName || step2?.researcherMiddleName || ''} ${step1?.projectLeaderLastName || step2?.researcherLastName || ''}`.trim();
     page.drawText(leadName, { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    page.drawText(step1?.projectLeaderContact || '', { x: margin + 200, y: yPos, size: 9, font: helvetica });
-    page.drawText(step1?.projectLeaderEmail || '', { x: margin + 330, y: yPos, size: 9, font: helvetica });
+    page.drawText(step1?.projectLeaderContact || step2?.mobileNo || '', { x: margin + 200, y: yPos, size: 9, font: helvetica });
+    page.drawText(step1?.projectLeaderEmail || step2?.email || '', { x: margin + 330, y: yPos, size: 9, font: helvetica });
     yPos -= 15;
 
-    if (step1?.coAuthors) {
-      page.drawText('Members:', { x: margin + 5, y: yPos, size: 9, font: helvetica, color: rgb(0.5, 0.5, 0.5) });
+    // ✅ NEW: CO-RESEARCHERS SECTION
+    if (step2?.coResearchers && Array.isArray(step2.coResearchers) && step2.coResearchers.length > 0) {
+      page.drawText('Co-Researchers:', { x: margin + 5, y: yPos, size: 9, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) });
       yPos -= 12;
-      const coAuthorsLines = wrapText(step1.coAuthors, 150, 9);
-      coAuthorsLines.forEach(line => {
+      step2.coResearchers.forEach((coAuth: any, index: number) => {
         if (yPos < 100) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           yPos = pageHeight - margin;
         }
-        page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
-        yPos -= 12;
+        const coAuthLine = `${index + 1}. ${coAuth.name || 'N/A'} | ${coAuth.contact || 'N/A'} | ${coAuth.email || 'N/A'}`;
+        page.drawText(coAuthLine, { x: margin + 10, y: yPos, size: 8, font: helvetica });
+        yPos -= 11;
       });
+      yPos -= 5;
     }
 
-    yPos -= 15;
+    // ✅ NEW: TECHNICAL ADVISERS SECTION
+    if (step2?.technicalAdvisers && Array.isArray(step2.technicalAdvisers) && step2.technicalAdvisers.length > 0) {
+      page.drawText('Technical Advisers:', { x: margin + 5, y: yPos, size: 9, font: helveticaBold, color: rgb(0.2, 0.2, 0.2) });
+      yPos -= 12;
+      step2.technicalAdvisers.forEach((adviser: any, index: number) => {
+        if (yPos < 100) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPos = pageHeight - margin;
+        }
+        const adviserLine = `${index + 1}. ${adviser.name || 'N/A'} | ${adviser.contact || 'N/A'} | ${adviser.email || 'N/A'}`;
+        page.drawText(adviserLine, { x: margin + 10, y: yPos, size: 8, font: helvetica });
+        yPos -= 11;
+      });
+      yPos -= 10;
+    }
+
+    yPos -= 5;
 
     page.drawText('College/Department', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    page.drawText(step1?.college || step2?.college || 'N/A', { x: margin + 5, y: yPos, size: 9, font: helvetica });
+    page.drawText(step2?.college || 'N/A', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
     page.drawText('Institution', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    page.drawText(step1?.organization || step2?.institution || 'University of Makati', { x: margin + 5, y: yPos, size: 9, font: helvetica });
+    page.drawText(step2?.institution || 'University of Makati', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
     page.drawText('Address of Institution', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
@@ -381,28 +390,36 @@ export async function generateApplicationFormPdf(
 
     page.drawText('Type of Study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    const typeOfStudy = step1?.typeOfStudy || step2?.typeOfStudy || [];
+    const typeOfStudy = step2?.typeOfStudy || [];
     const studyTypes = Array.isArray(typeOfStudy) ? typeOfStudy : [typeOfStudy];
     studyTypes.forEach((type: string) => {
       page.drawText(`${checkbox(true)} ${type}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
       yPos -= 12;
     });
+    if (step2?.typeOfStudyOthers) {
+      page.drawText(`${checkbox(true)} Others: ${step2.typeOfStudyOthers}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    }
     yPos -= 10;
 
-    const siteType = step1?.studySiteType || step2?.studySiteType || 'Single Site';
+    const siteType = step2?.studySiteType || 'Single Site';
     page.drawText(`${checkbox(true)} ${siteType}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
     page.drawText('Source of Funding', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    const funding = step1?.sourceOfFunding || step2?.sourceOfFunding || [];
+    const funding = step2?.sourceOfFunding || [];
     const fundingSources = Array.isArray(funding) ? funding : [funding];
     fundingSources.forEach((source: string) => {
       page.drawText(`${checkbox(true)} ${source}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
       yPos -= 12;
     });
-    if (step1?.fundingOthers || step2?.fundingOthers) {
-      page.drawText(step1?.fundingOthers || step2?.fundingOthers, { x: margin + 15, y: yPos, size: 9, font: helvetica });
+    if (step2?.pharmaceuticalSponsor) {
+      page.drawText(`Pharmaceutical Sponsor: ${step2.pharmaceuticalSponsor}`, { x: margin + 15, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    }
+    if (step2?.fundingOthers) {
+      page.drawText(`Other Funding: ${step2.fundingOthers}`, { x: margin + 15, y: yPos, size: 9, font: helvetica });
       yPos -= 12;
     }
     yPos -= 15;
@@ -410,27 +427,27 @@ export async function generateApplicationFormPdf(
     page.drawText('Duration of the study', { x: margin + 5, y: yPos, size: 9, font: helveticaBold });
     page.drawText('No. of study participants', { x: pageWidth / 2, y: yPos, size: 9, font: helveticaBold });
     yPos -= 12;
-    const startDate = step1?.startDate || step2?.startDate || 'N/A';
-    const endDate = step1?.endDate || step2?.endDate || 'N/A';
+    const startDate = step2?.startDate || 'N/A';
+    const endDate = step2?.endDate || 'N/A';
     page.drawText(`Start date: ${startDate}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    page.drawText(step1?.numParticipants?.toString() || step2?.numParticipants?.toString() || 'N/A', { x: pageWidth / 2, y: yPos, size: 9, font: helvetica });
+    page.drawText(step2?.numParticipants?.toString() || 'N/A', { x: pageWidth / 2, y: yPos, size: 9, font: helvetica });
     yPos -= 12;
     page.drawText(`End date: ${endDate}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
     page.drawText('*Has the Research undergone a Technical Review/pre-oral defense?', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 12;
-    const hasTechReview = step1?.technicalReview === 'Yes' || step1?.technicalReview === true;
+    const hasTechReview = step2?.technicalReview === 'yes' || step2?.technicalReview === 'Yes' || step2?.technicalReview === true;
     page.drawText(`${checkbox(hasTechReview)} Yes    ${checkbox(!hasTechReview)} No`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 20;
 
     page.drawText('*Has the Research been submitted to another UMREC?', { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 12;
-    const submittedOther = step1?.submittedToOtherUMREC === 'Yes' || step1?.submittedToOtherUMREC === true;
+    const submittedOther = step2?.submittedToOther === 'yes' || step2?.submittedToOther === 'Yes' || step2?.submittedToOther === true;
     page.drawText(`${checkbox(submittedOther)} Yes    ${checkbox(!submittedOther)} No`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
     yPos -= 25;
 
-    if (yPos < 200) {
+    if (yPos < 400) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
       yPos = pageHeight - margin;
     }
@@ -445,7 +462,7 @@ export async function generateApplicationFormPdf(
     page.drawText('Checklist of Documents', { x: margin + 5, y: yPos - 10, size: 10, font: helveticaBold });
     yPos -= 25;
 
-    const docChecklist = step2?.documentChecklist || {};
+    const docChecklist = step2 || {};
 
     const leftX = margin + 5;
     const rightX = pageWidth / 2;
@@ -454,50 +471,78 @@ export async function generateApplicationFormPdf(
 
     page.drawText('Basic requirements:', { x: leftX, y: leftY, size: 9, font: helveticaBold });
     leftY -= 12;
-    page.drawText(`${checkbox(docChecklist.hasApplicationForm || true)} Application for Ethics Review`, { x: leftX, y: leftY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasApplicationForm || false)} Application for Ethics Review`, { x: leftX, y: leftY, size: 8, font: helvetica });
     leftY -= 11;
-    page.drawText(`${checkbox(docChecklist.hasResearchProtocol || true)} Research Protocol`, { x: leftX, y: leftY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasResearchProtocol || false)} Research Protocol`, { x: leftX, y: leftY, size: 8, font: helvetica });
     leftY -= 11;
-    page.drawText(`${checkbox(docChecklist.hasInformedConsentEnglish || false)} Informed Consent Form`, { x: leftX, y: leftY, size: 8, font: helvetica });
+
+    // ✅ UPDATED: Check actual values for informed consent
+    const hasInformedConsent = docChecklist.hasInformedConsent || docChecklist.hasInformedConsentEnglish || false;
+    page.drawText(`${checkbox(hasInformedConsent)} Informed Consent Form`, { x: leftX, y: leftY, size: 8, font: helvetica });
     leftY -= 11;
-    if (docChecklist.hasInformedConsentEnglish) {
+    if (hasInformedConsent) {
       page.drawText('     [X] English version', { x: leftX, y: leftY, size: 8, font: helvetica });
       leftY -= 11;
+      if (docChecklist.hasInformedConsentOthers) {
+        page.drawText('     [X] Filipino version', { x: leftX, y: leftY, size: 8, font: helvetica });
+        leftY -= 11;
+      }
     }
-    if (docChecklist.hasInformedConsentFilipino) {
-      page.drawText('     [X] Filipino version', { x: leftX, y: leftY, size: 8, font: helvetica });
+
+    // ✅ NEW: Assent Form
+    page.drawText(`${checkbox(docChecklist.hasAssentForm || false)} Assent Form`, { x: leftX, y: leftY, size: 8, font: helvetica });
+    leftY -= 11;
+    if (docChecklist.hasAssentForm) {
+      page.drawText('     [X] English version', { x: leftX, y: leftY, size: 8, font: helvetica });
       leftY -= 11;
+      if (docChecklist.hasAssentFormOthers) {
+        page.drawText('     [X] Filipino version', { x: leftX, y: leftY, size: 8, font: helvetica });
+        leftY -= 11;
+      }
     }
+
     page.drawText(`${checkbox(docChecklist.hasEndorsementLetter || false)} Endorsement Letter`, { x: leftX, y: leftY, size: 8, font: helvetica });
     leftY -= 11;
-    page.drawText(`${checkbox(false)} Questionnaire`, { x: leftX, y: leftY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasQuestionnaire || false)} Questionnaire`, { x: leftX, y: leftY, size: 8, font: helvetica });
 
+    // ✅ UPDATED: Supplementary Documents with all fields
     page.drawText('Supplementary Documents:', { x: rightX, y: rightY, size: 9, font: helveticaBold });
     rightY -= 12;
-    page.drawText(`${checkbox(false)} Technical review/pre-oral defense proof`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasTechnicalReview || false)} Technical review/pre-oral defense proof`, { x: rightX, y: rightY, size: 8, font: helvetica });
     rightY -= 11;
-    page.drawText(`${checkbox(false)} Data Collection Forms`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasDataCollectionForms || false)} Data Collection Forms`, { x: rightX, y: rightY, size: 8, font: helvetica });
     rightY -= 11;
-    page.drawText(`${checkbox(false)} Product Brochure`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasProductBrochure || false)} Product Brochure`, { x: rightX, y: rightY, size: 8, font: helvetica });
     rightY -= 11;
-    page.drawText(`${checkbox(false)} FDA Authorization`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasFDAAuthorization || false)} FDA Authorization`, { x: rightX, y: rightY, size: 8, font: helvetica });
     rightY -= 11;
-    page.drawText(`${checkbox(false)} Company Permit`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasCompanyPermit || false)} Company Permit`, { x: rightX, y: rightY, size: 8, font: helvetica });
     rightY -= 11;
-    page.drawText(`${checkbox(false)} Special Population Permit`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    page.drawText(`${checkbox(docChecklist.hasSpecialPopulationPermit || false)} Special Population Permit`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    rightY -= 11;
+
+    // ✅ NEW: Special Population Details
+    if (docChecklist.hasSpecialPopulationPermit && docChecklist.specialPopulationPermitDetails) {
+      page.drawText(`Details: ${docChecklist.specialPopulationPermitDetails}`, { x: rightX + 10, y: rightY, size: 8, font: helvetica });
+      rightY -= 11;
+    }
+
+    // ✅ NEW: Other Documents
+    page.drawText(`${checkbox(docChecklist.hasOtherDocs || false)} Other Documents`, { x: rightX, y: rightY, size: 8, font: helvetica });
+    rightY -= 11;
+
+    if (docChecklist.hasOtherDocs && docChecklist.otherDocsDetails) {
+      page.drawText(`Details: ${docChecklist.otherDocsDetails}`, { x: rightX + 10, y: rightY, size: 8, font: helvetica });
+      rightY -= 11;
+    }
 
     yPos = Math.min(leftY, rightY) - 20;
 
-    page.drawText('Accomplished by:', { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    yPos -= 30;
-    page.drawLine({
-      start: { x: margin + 5, y: yPos },
-      end: { x: margin + 250, y: yPos },
-      thickness: 1,
-    });
-    yPos -= 12;
-    page.drawText('Signature over printed name', { x: margin + 5, y: yPos, size: 8, font: helvetica });
-    yPos -= 20;
+    if (yPos < 150) {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPos = pageHeight - margin;
+    }
+
     page.drawText(`Date submitted: ${new Date().toISOString().split('T')[0]}`, { x: margin + 5, y: yPos, size: 9, font: helvetica });
 
     const pages = pdfDoc.getPages();
@@ -528,7 +573,7 @@ export async function generateApplicationFormPdf(
     };
   }
 }
-// ========== 2. RESEARCH PROTOCOL WITH IMAGES & SIGNATURES ==========
+// ========== 2. RESEARCH PROTOCOL WITH IMAGES & SIGNATURES (UPDATED) ==========
 export async function generateResearchProtocolPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
@@ -541,46 +586,45 @@ export async function generateResearchProtocolPdf(
     const pageHeight = 792;
     const margin = 50;
 
-const embedImageFromUrl = async (imageUrl: string) => {
-  try {
-    const response = await fetch(imageUrl);
-    const imageBytes = await response.arrayBuffer();
+    const embedImageFromUrl = async (imageUrl: string) => {
+      try {
+        const response = await fetch(imageUrl);
+        const imageBytes = await response.arrayBuffer();
 
-    const uint8Array = new Uint8Array(imageBytes);
-    
-    // ✅ Better detection logic
-    const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4e;
-    const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8;
+        const uint8Array = new Uint8Array(imageBytes);
 
-    console.log(`🖼️ Image bytes: [${uint8Array[0]}, ${uint8Array[1]}, ${uint8Array[2]}], isPNG: ${isPNG}, isJPEG: ${isJPEG}`);
+        // ✅ Better detection logic
+        const isPNG = uint8Array[0] === 0x89 && uint8Array[1] === 0x50 && uint8Array[2] === 0x4e;
+        const isJPEG = uint8Array[0] === 0xFF && uint8Array[1] === 0xD8;
 
-    try {
-      if (isPNG) {
-        console.log('📌 Embedding as PNG');
-        return await pdfDoc.embedPng(imageBytes);
-      } else if (isJPEG) {
-        console.log('📌 Embedding as JPEG');
-        return await pdfDoc.embedJpg(imageBytes);
-      } else {
-        // Try PNG first, then JPEG as fallback
-        console.log('❓ Unknown format, trying PNG first...');
+        console.log(`🖼️ Image bytes: [${uint8Array[0]}, ${uint8Array[1]}, ${uint8Array[2]}], isPNG: ${isPNG}, isJPEG: ${isJPEG}`);
+
         try {
-          return await pdfDoc.embedPng(imageBytes);
-        } catch {
-          console.log('⚠️ PNG failed, trying JPEG...');
-          return await pdfDoc.embedJpg(imageBytes);
+          if (isPNG) {
+            console.log('📌 Embedding as PNG');
+            return await pdfDoc.embedPng(imageBytes);
+          } else if (isJPEG) {
+            console.log('📌 Embedding as JPEG');
+            return await pdfDoc.embedJpg(imageBytes);
+          } else {
+            // Try PNG first, then JPEG as fallback
+            console.log('❓ Unknown format, trying PNG first...');
+            try {
+              return await pdfDoc.embedPng(imageBytes);
+            } catch {
+              console.log('⚠️ PNG failed, trying JPEG...');
+              return await pdfDoc.embedJpg(imageBytes);
+            }
+          }
+        } catch (embedError) {
+          console.error(`❌ Failed to embed image (${imageUrl}):`, embedError);
+          return null;
         }
+      } catch (error) {
+        console.error('❌ Error fetching image:', error);
+        return null;
       }
-    } catch (embedError) {
-      console.error(`❌ Failed to embed image (${imageUrl}):`, embedError);
-      return null;
-    }
-  } catch (error) {
-    console.error('❌ Error fetching image:', error);
-    return null;
-  }
-};
-
+    };
 
     // ✅ Helper: Extract image URLs from HTML
     const extractImageUrls = (html: string): string[] => {
@@ -667,86 +711,86 @@ const embedImageFromUrl = async (imageUrl: string) => {
 
     const step1 = submissionData.step1;
     const step3 = submissionData.step3?.formData;
-        // ✅ Add debugging
-        console.log('🔍 Content check for introduction:');
-        console.log('Has <img tags?', step3?.introduction?.includes('<img'));
-        console.log('Image URLs found:', extractImageUrls(step3?.introduction || ''));
-        console.log('First 300 chars:', step3?.introduction?.substring(0, 300));
 
-const addSection = async (title: string, content: string) => {
-  if (!content) return;
+    // ✅ Add debugging
+    console.log('🔍 Content check for introduction:');
+    console.log('Has <img tags?', step3?.introduction?.includes('<img'));
+    console.log('Image URLs found:', extractImageUrls(step3?.introduction || ''));
+    console.log('First 300 chars:', step3?.introduction?.substring(0, 300));
 
-  if (yPos < 120) {
-    page = pdfDoc.addPage([pageWidth, pageHeight]);
-    yPos = pageHeight - margin;
-  }
+    const addSection = async (title: string, content: string) => {
+      if (!content) return;
 
-  // ✅ EXTRACT IMAGES FIRST (before any HTML stripping!)
-  const imageUrls = extractImageUrls(content);
-  console.log('📸 Found images:', imageUrls);
+      if (yPos < 120) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        yPos = pageHeight - margin;
+      }
 
-  // Draw section header
-  page.drawRectangle({
-    x: margin,
-    y: yPos - 12,
-    width: pageWidth - 2 * margin,
-    height: 12,
-    color: rgb(0.95, 0.95, 0.95),
-  });
-  page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
-  yPos -= 20;
+      // ✅ EXTRACT IMAGES FIRST (before any HTML stripping!)
+      const imageUrls = extractImageUrls(content);
+      console.log('📸 Found images:', imageUrls);
 
-  // Draw text (strips HTML)
-  const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
-  for (const line of lines) {
-    if (yPos < 80) {
-      page = pdfDoc.addPage([pageWidth, pageHeight]);
-      yPos = pageHeight - margin;
-    }
-    page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    yPos -= 12;
-  }
+      // Draw section header
+      page.drawRectangle({
+        x: margin,
+        y: yPos - 12,
+        width: pageWidth - 2 * margin,
+        height: 12,
+        color: rgb(0.95, 0.95, 0.95),
+      });
+      page.drawText(title, { x: margin + 5, y: yPos - 10, size: 9, font: helveticaBold });
+      yPos -= 20;
 
-  // ✅ EMBED IMAGES
-  for (const imageUrl of imageUrls) {
-    if (!imageUrl) continue;
-    
-    console.log('🖼️ Embedding image:', imageUrl);
-    
-    try {
-      const embeddedImage = await embedImageFromUrl(imageUrl);
-
-      if (embeddedImage) {
-        const imgWidth = 300;
-        const imgHeight = (embeddedImage.height / embeddedImage.width) * imgWidth;
-
-        if (yPos - imgHeight < 80) {
+      // Draw text (strips HTML)
+      const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
+      for (const line of lines) {
+        if (yPos < 80) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           yPos = pageHeight - margin;
         }
-
-        yPos -= imgHeight + 10;
-
-        page.drawImage(embeddedImage, {
-          x: margin + 5,
-          y: yPos,
-          width: imgWidth,
-          height: imgHeight,
-        });
-
-        console.log('✅ Image embedded');
-        yPos -= 10;
-      } else {
-        console.warn('⚠️ Failed to embed image');
+        page.drawText(line, { x: margin + 5, y: yPos, size: 9, font: helvetica });
+        yPos -= 12;
       }
-    } catch (error) {
-      console.error('❌ Error embedding image:', error);
-    }
-  }
 
-  yPos -= 10;
-};
+      // ✅ EMBED IMAGES
+      for (const imageUrl of imageUrls) {
+        if (!imageUrl) continue;
 
+        console.log('🖼️ Embedding image:', imageUrl);
+
+        try {
+          const embeddedImage = await embedImageFromUrl(imageUrl);
+
+          if (embeddedImage) {
+            const imgWidth = 300;
+            const imgHeight = (embeddedImage.height / embeddedImage.width) * imgWidth;
+
+            if (yPos - imgHeight < 80) {
+              page = pdfDoc.addPage([pageWidth, pageHeight]);
+              yPos = pageHeight - margin;
+            }
+
+            yPos -= imgHeight + 10;
+
+            page.drawImage(embeddedImage, {
+              x: margin + 5,
+              y: yPos,
+              width: imgWidth,
+              height: imgHeight,
+            });
+
+            console.log('✅ Image embedded');
+            yPos -= 10;
+          } else {
+            console.warn('⚠️ Failed to embed image');
+          }
+        } catch (error) {
+          console.error('❌ Error embedding image:', error);
+        }
+      }
+
+      yPos -= 10;
+    };
 
     // Add all sections with images
     await addSection('I. Title of the Study', step3?.title || step1?.title || 'N/A');
@@ -764,31 +808,25 @@ const addSection = async (title: string, content: string) => {
     await addSection('XIII. References (Main Themes Only)', step3?.references || 'N/A');
 
     // ✅ Add researcher signatures
-    if (yPos < 200) {
+    if (yPos < 250) {
       page = pdfDoc.addPage([pageWidth, pageHeight]);
       yPos = pageHeight - margin;
     }
 
     page.drawText('Accomplished by:', { x: margin + 5, y: yPos, size: 9, font: helvetica });
-    yPos -= 20;
+    yPos -= 30;
 
     const researchers = submissionData.step3?.researchers || [];
 
     if (researchers.length > 0) {
       for (const researcher of researchers) {
-        if (yPos < 100) {
+        if (yPos < 150) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           yPos = pageHeight - margin;
         }
 
-        // Draw researcher name
-        page.drawText(researcher.name || 'Unknown', {
-          x: margin + 5,
-          y: yPos,
-          size: 9,
-          font: helveticaBold,
-        });
-        yPos -= 15;
+        // ✅ SIGNATURE ON TOP (NEW)
+        let signatureEmbedded = false;
 
         // ✅ TRY signed URL FIRST, then fallback to base64
         if (researcher.signature || researcher.signatureBase64) {
@@ -819,6 +857,7 @@ const addSection = async (title: string, content: string) => {
               const sigWidth = 100;
               const sigHeight = (signatureImage.height / signatureImage.width) * sigWidth;
 
+              // ✅ Draw signature image at current yPos
               page.drawImage(signatureImage, {
                 x: margin + 5,
                 y: yPos - sigHeight,
@@ -827,19 +866,21 @@ const addSection = async (title: string, content: string) => {
               });
 
               yPos -= sigHeight + 5;
+              signatureEmbedded = true;
               console.log('✅ Signature embedded for:', researcher.name);
             } else {
               throw new Error('Could not embed signature');
             }
           } catch (error) {
             console.error('❌ Error embedding signature:', error);
-            // Draw placeholder line
+            // Draw placeholder line if signature fails
             page.drawLine({
               start: { x: margin + 5, y: yPos },
               end: { x: margin + 150, y: yPos },
               thickness: 1,
             });
-            yPos -= 15;
+            yPos -= 20;
+            signatureEmbedded = false;
           }
         } else {
           // No signature - draw line
@@ -848,8 +889,18 @@ const addSection = async (title: string, content: string) => {
             end: { x: margin + 150, y: yPos },
             thickness: 1,
           });
-          yPos -= 15;
+          yPos -= 20;
+          signatureEmbedded = false;
         }
+
+        // ✅ RESEARCHER NAME BELOW SIGNATURE (MOVED DOWN)
+        page.drawText(researcher.name || 'Unknown', {
+          x: margin + 5,
+          y: yPos,
+          size: 9,
+          font: helveticaBold,
+        });
+        yPos -= 12;
 
         page.drawText('Signature over printed name', {
           x: margin + 5,
@@ -908,7 +959,9 @@ const addSection = async (title: string, content: string) => {
   }
 }
 
-// ========== 3. INFORMED CONSENT FORM ==========
+
+
+// ========== 3. INFORMED CONSENT FORM (FINAL VERSION) ==========
 export async function generateConsentFormPdf(
   submissionData: any
 ): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
@@ -920,6 +973,13 @@ export async function generateConsentFormPdf(
     const pageWidth = 612;
     const pageHeight = 792;
     const margin = 50;
+
+    // ✅ HELPER: Print field with fallback (skip if both empty)
+    const printField = (primary: any, fallback: any = '') => {
+      if (primary && String(primary).trim()) return String(primary);
+      if (fallback && String(fallback).trim()) return String(fallback);
+      return ''; // ✅ Empty string = section won't print
+    };
 
     const wrapText = (text: string, maxWidth: number, fontSize: number) => {
       if (!text || text.trim() === '') return [];
@@ -964,7 +1024,8 @@ export async function generateConsentFormPdf(
     let yPos = pageHeight - margin;
 
     const step4 = submissionData.step4?.formData || submissionData.step4;
-    const consentType = submissionData.step4?.consentType;
+    const step2 = submissionData.step2;
+    const consentType = submissionData.step4?.consentType || 'adult';
 
     // ===== UMREC HEADER =====
     page.drawRectangle({
@@ -992,8 +1053,11 @@ export async function generateConsentFormPdf(
 
     yPos -= 70;
 
-    // PARTICIPANT GROUP
-    const informedConsentFor = step4?.informed_consent_for;
+    // ✅ PARTICIPANT GROUP (INTELLIGENT FALLBACK - ONLY PRINTS IF EXISTS)
+    const informedConsentFor = printField(
+      step4?.informedConsentFor,
+      step4?.participantGroupIdentity
+    );
     if (informedConsentFor) {
       page.drawText('Informed Consent Form for:', {
         x: margin,
@@ -1011,8 +1075,7 @@ export async function generateConsentFormPdf(
       yPos -= 25;
     }
 
-    // PROJECT AND RESEARCHER INFO
-    const step2 = submissionData.step2;
+    // ✅ PROJECT AND RESEARCHER INFO
     if (step2) {
       page.drawText('PROJECT AND RESEARCHER INFORMATION', {
         x: margin,
@@ -1022,35 +1085,24 @@ export async function generateConsentFormPdf(
       });
       yPos -= 15;
 
-      const leadName = `${step2.project_leader_first_name || ''} ${step2.project_leader_last_name || ''}`.trim();
-      if (leadName) {
-        page.drawText(`Principal Investigator: ${leadName}`, {
+      const institution = step2.organization || 'University of Makati';
+      page.drawText(`Organization: ${institution}`, {
+        x: margin,
+        y: yPos,
+        size: 9,
+        font: helvetica,
+      });
+      yPos -= 12;
+
+      const email = step2.project_leader_email || '';
+      if (email) {
+        page.drawText(`Email: ${email}`, {
           x: margin,
           y: yPos,
           size: 9,
           font: helvetica,
         });
         yPos -= 12;
-
-        const institution = step2.organization || 'University of Makati';
-        page.drawText(`Organization: ${institution}`, {
-          x: margin,
-          y: yPos,
-          size: 9,
-          font: helvetica,
-        });
-        yPos -= 12;
-
-        const email = step2.project_leader_email || '';
-        if (email) {
-          page.drawText(`Email: ${email}`, {
-            x: margin,
-            y: yPos,
-            size: 9,
-            font: helvetica,
-          });
-          yPos -= 12;
-        }
       }
 
       const projectTitle = step2.title || '';
@@ -1079,8 +1131,12 @@ export async function generateConsentFormPdf(
       yPos -= 15;
     }
 
+    // ✅ DYNAMIC SECTION RENDERER (ONLY PRINTS IF CONTENT EXISTS)
     const addConsentSection = (title: string, content: string) => {
-      if (!content) return;
+        console.log(`📋 ${title}: "${content?.substring(0, 50)}" (length: ${content?.length})`);
+
+      // ✅ SKIP ENTIRELY if content is empty
+      if (!content || content.trim() === '') return;
 
       if (yPos < 100) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -1090,7 +1146,7 @@ export async function generateConsentFormPdf(
       page.drawText(title, { x: margin, y: yPos, size: 10, font: helveticaBold });
       yPos -= 15;
 
-      const lines = wrapText(content, pageWidth - 2 * margin, 9);
+      const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
       lines.forEach(line => {
         if (yPos < 60) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
@@ -1104,118 +1160,91 @@ export async function generateConsentFormPdf(
     };
 
     // ========== ADULT CONSENT - ENGLISH ==========
-    if (step4?.adultLanguage === 'english' || step4?.adultLanguage === 'both') {
-      if (step4?.introductionEnglish) {
-        addConsentSection('1. INTRODUCTION', step4.introductionEnglish);
-      }
-      if (step4?.purposeEnglish) {
-        addConsentSection('2. PURPOSE OF THE STUDY', step4.purposeEnglish);
-      }
-      if (step4?.researchInterventionEnglish) {
-        addConsentSection('3. TYPE OF RESEARCH INTERVENTION', step4.researchInterventionEnglish);
-      }
-      if (step4?.participantSelectionEnglish) {
-        addConsentSection('4. PARTICIPANT SELECTION', step4.participantSelectionEnglish);
-      }
-      if (step4?.voluntaryParticipationEnglish) {
-        addConsentSection('5. VOLUNTARY PARTICIPATION', step4.voluntaryParticipationEnglish);
-      }
-      if (step4?.proceduresEnglish) {
-        addConsentSection('6. PROCEDURES', step4.proceduresEnglish);
-      }
-      if (step4?.durationEnglish) {
-        addConsentSection('7. DURATION', step4.durationEnglish);
-      }
-      if (step4?.risksEnglish) {
-        addConsentSection('8. RISKS AND INCONVENIENCES', step4.risksEnglish);
-      }
-      if (step4?.benefitsEnglish) {
-        addConsentSection('9. BENEFITS', step4.benefitsEnglish);
-      }
-      if (step4?.reimbursementsEnglish) {
-        addConsentSection('10. REIMBURSEMENTS', step4.reimbursementsEnglish);
-      }
-      if (step4?.confidentialityEnglish) {
-        addConsentSection('11. CONFIDENTIALITY', step4.confidentialityEnglish);
-      }
-      if (step4?.sharingResultsEnglish) {
-        addConsentSection('12. SHARING THE RESULTS', step4.sharingResultsEnglish);
-      }
-      if (step4?.rightToRefuseEnglish) {
-        addConsentSection('13. RIGHT TO REFUSE OR WITHDRAW', step4.rightToRefuseEnglish);
-      }
-      if (step4?.whoToContactEnglish) {
-        addConsentSection('14. WHO TO CONTACT', step4.whoToContactEnglish);
-      }
+    if (
+      consentType === 'adult' || consentType === 'both' &&
+      (step4?.adultLanguage === 'english' || step4?.adultLanguage === 'both')
+    ) {
+      addConsentSection('1. INTRODUCTION', printField(step4?.introductionEnglish));
+      addConsentSection('2. PURPOSE OF THE STUDY', printField(step4?.purposeEnglish));
+      addConsentSection('3. TYPE OF RESEARCH INTERVENTION', printField(step4?.researchInterventionEnglish));
+      addConsentSection('4. PARTICIPANT SELECTION', printField(step4?.participantSelectionEnglish));
+      addConsentSection('5. VOLUNTARY PARTICIPATION', printField(step4?.voluntaryParticipationEnglish));
+      addConsentSection('6. PROCEDURES', printField(step4?.proceduresEnglish));
+      addConsentSection('7. DURATION', printField(step4?.durationEnglish));
+      addConsentSection('8. RISKS AND INCONVENIENCES', printField(step4?.risksEnglish));
+      addConsentSection('9. BENEFITS', printField(step4?.benefitsEnglish));
+      addConsentSection('10. REIMBURSEMENTS', printField(step4?.reimbursementsEnglish));
+      addConsentSection('11. CONFIDENTIALITY', printField(step4?.confidentialityEnglish));
+      addConsentSection('12. SHARING THE RESULTS', printField(step4?.sharingResultsEnglish));
+      addConsentSection('13. RIGHT TO REFUSE OR WITHDRAW', printField(step4?.rightToRefuseEnglish));
+      addConsentSection('14. WHO TO CONTACT', printField(step4?.whoToContactEnglish));
     }
 
     // ========== ADULT CONSENT - TAGALOG ==========
-    if (step4?.adultLanguage === 'tagalog' || step4?.adultLanguage === 'both') {
-      if (yPos < 600) {
-        page = pdfDoc.addPage([pageWidth, pageHeight]);
-        yPos = pageHeight - margin;
-      }
+    if (
+      consentType === 'adult' || consentType === 'both' &&
+      (step4?.adultLanguage === 'tagalog' || step4?.adultLanguage === 'both')
+    ) {
+      // ✅ CHECK if any Tagalog content exists before printing header
+      const hasTagalogContent = [
+        step4?.introductionTagalog,
+        step4?.purposeTagalog,
+        step4?.researchInterventionTagalog,
+        step4?.participantSelectionTagalog,
+        step4?.voluntaryParticipationTagalog,
+        step4?.proceduresTagalog,
+        step4?.durationTagalog,
+        step4?.risksTagalog,
+        step4?.benefitsTagalog,
+        step4?.reimbursementsTagalog,
+        step4?.confidentialityTagalog,
+        step4?.sharingResultsTagalog,
+        step4?.rightToRefuseTagalog,
+        step4?.whoToContactTagalog,
+      ].some(field => field && String(field).trim());
 
-      page.drawText('PAHINTULOT NA MAY KAALAMAN (TAGALOG)', {
-        x: margin,
-        y: yPos,
-        size: 11,
-        font: helveticaBold,
-      });
-      yPos -= 20;
+      if (hasTagalogContent) {
+        if (yPos < 600) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPos = pageHeight - margin;
+        }
 
-      if (step4?.introductionTagalog) {
-        addConsentSection('1. PAMBUNGAD', step4.introductionTagalog);
-      }
-      if (step4?.purposeTagalog) {
-        addConsentSection('2. LAYUNIN NG PANANALIKSIK', step4.purposeTagalog);
-      }
-      if (step4?.researchInterventionTagalog) {
-        addConsentSection('3. URI NG PANANALIKSIK NA PAKIKIBAHAGI', step4.researchInterventionTagalog);
-      }
-      if (step4?.participantSelectionTagalog) {
-        addConsentSection('4. PAGPILI NG KALAHOK', step4.participantSelectionTagalog);
-      }
-      if (step4?.voluntaryParticipationTagalog) {
-        addConsentSection('5. KUSANG PAKIKIBAHAGI', step4.voluntaryParticipationTagalog);
-      }
-      if (step4?.proceduresTagalog) {
-        addConsentSection('6. MGA PAMAMARAAN', step4.proceduresTagalog);
-      }
-      if (step4?.durationTagalog) {
-        addConsentSection('7. TAGAL', step4.durationTagalog);
-      }
-      if (step4?.risksTagalog) {
-        addConsentSection('8. MGA PANGANIB AT ABALA', step4.risksTagalog);
-      }
-      if (step4?.benefitsTagalog) {
-        addConsentSection('9. MGA BENEPISYO', step4.benefitsTagalog);
-      }
-      if (step4?.reimbursementsTagalog) {
-        addConsentSection('10. PAGBABAYAD-BAYAD', step4.reimbursementsTagalog);
-      }
-      if (step4?.confidentialityTagalog) {
-        addConsentSection('11. PAGIGING KUMPIDENSYAL', step4.confidentialityTagalog);
-      }
-      if (step4?.sharingResultsTagalog) {
-        addConsentSection('12. PAGBABAHAGI NG MGA RESULTA', step4.sharingResultsTagalog);
-      }
-      if (step4?.rightToRefuseTagalog) {
-        addConsentSection('13. KARAPATAN NA TUMANGGI O LUMABAS', step4.rightToRefuseTagalog);
-      }
-      if (step4?.whoToContactTagalog) {
-        addConsentSection('14. SINO ANG MAKAKAUSAP', step4.whoToContactTagalog);
+        page.drawText('PAHINTULOT NA MAY KAALAMAN', {
+          x: margin,
+          y: yPos,
+          size: 11,
+          font: helveticaBold,
+        });
+        yPos -= 20;
+
+        addConsentSection('1. PAMBUNGAD', printField(step4?.introductionTagalog));
+        addConsentSection('2. LAYUNIN NG PANANALIKSIK', printField(step4?.purposeTagalog));
+        addConsentSection('3. URI NG PANANALIKSIK NA PAKIKIBAHAGI', printField(step4?.researchInterventionTagalog));
+        addConsentSection('4. PAGPILI NG KALAHOK', printField(step4?.participantSelectionTagalog));
+        addConsentSection('5. KUSANG PAKIKIBAHAGI', printField(step4?.voluntaryParticipationTagalog));
+        addConsentSection('6. MGA PAMAMARAAN', printField(step4?.proceduresTagalog));
+        addConsentSection('7. TAGAL', printField(step4?.durationTagalog));
+        addConsentSection('8. MGA PANGANIB AT ABALA', printField(step4?.risksTagalog));
+        addConsentSection('9. MGA BENEPISYO', printField(step4?.benefitsTagalog));
+        addConsentSection('10. PAGBABAYAD-BAYAD', printField(step4?.reimbursementsTagalog));
+        addConsentSection('11. PAGIGING KUMPIDENSYAL', printField(step4?.confidentialityTagalog));
+        addConsentSection('12. PAGBABAHAGI NG MGA RESULTA', printField(step4?.sharingResultsTagalog));
+        addConsentSection('13. KARAPATAN NA TUMANGGI O LUMABAS', printField(step4?.rightToRefuseTagalog));
+        addConsentSection('14. SINO ANG MAKAKAUSAP', printField(step4?.whoToContactTagalog));
       }
     }
 
     // ========== MINOR ASSENT - ENGLISH ==========
-    if (step4?.minorLanguage === 'english' || step4?.minorLanguage === 'both') {
+    if (
+      consentType === 'minor' || consentType === 'both' &&
+      (step4?.minorLanguage === 'english' || step4?.minorLanguage === 'both')
+    ) {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
       }
 
-      page.drawText('INFORMED ASSENT FORM (MINOR)', {
+      page.drawText('INFORMED ASSENT FORM FOR MINORS (ENGLISH)', {
         x: margin,
         y: yPos,
         size: 11,
@@ -1223,43 +1252,28 @@ export async function generateConsentFormPdf(
       });
       yPos -= 20;
 
-      if (step4?.introductionMinorEnglish) {
-        addConsentSection('1. INTRODUCTION', step4.introductionMinorEnglish);
-      }
-      if (step4?.purposeMinorEnglish) {
-        addConsentSection('2. PURPOSE OF RESEARCH', step4.purposeMinorEnglish);
-      }
-      if (step4?.choiceOfParticipantsEnglish) {
-        addConsentSection('3. CHOICE OF PARTICIPANTS', step4.choiceOfParticipantsEnglish);
-      }
-      if (step4?.voluntarinessMinorEnglish) {
-        addConsentSection('4. VOLUNTARINESS OF PARTICIPATION', step4.voluntarinessMinorEnglish);
-      }
-      if (step4?.proceduresMinorEnglish) {
-        addConsentSection('5. PROCEDURES', step4.proceduresMinorEnglish);
-      }
-      if (step4?.risksMinorEnglish) {
-        addConsentSection('6. RISKS AND INCONVENIENCES', step4.risksMinorEnglish);
-      }
-      if (step4?.benefitsMinorEnglish) {
-        addConsentSection('7. POSSIBLE BENEFITS', step4.benefitsMinorEnglish);
-      }
-      if (step4?.confidentialityMinorEnglish) {
-        addConsentSection('8. CONFIDENTIALITY', step4.confidentialityMinorEnglish);
-      }
-      if (step4?.sharingFindingsEnglish) {
-        addConsentSection('9. SHARING THE FINDINGS', step4.sharingFindingsEnglish);
-      }
+      addConsentSection('1. INTRODUCTION', printField(step4?.introductionMinorEnglish));
+      addConsentSection('2. PURPOSE OF RESEARCH', printField(step4?.purposeMinorEnglish));
+      addConsentSection('3. CHOICE OF PARTICIPANTS', printField(step4?.choiceOfParticipantsEnglish));
+      addConsentSection('4. VOLUNTARINESS OF PARTICIPATION', printField(step4?.voluntarinessMinorEnglish));
+      addConsentSection('5. PROCEDURES', printField(step4?.proceduresMinorEnglish));
+      addConsentSection('6. RISKS AND INCONVENIENCES', printField(step4?.risksMinorEnglish));
+      addConsentSection('7. POSSIBLE BENEFITS', printField(step4?.benefitsMinorEnglish));
+      addConsentSection('8. CONFIDENTIALITY', printField(step4?.confidentialityMinorEnglish));
+      addConsentSection('9. SHARING THE FINDINGS', printField(step4?.sharingFindingsEnglish));
     }
 
     // ========== MINOR ASSENT - TAGALOG ==========
-    if (step4?.minorLanguage === 'tagalog' || step4?.minorLanguage === 'both') {
+    if (
+      consentType === 'minor' || consentType === 'both' &&
+      (step4?.minorLanguage === 'tagalog' || step4?.minorLanguage === 'both')
+    ) {
       if (yPos < 600) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
       }
 
-      page.drawText('PAHINTULOT NA MAY KAALAMAN PARA SA BATA (TAGALOG)', {
+      page.drawText('PAHINTULOT NA MAY KAALAMAN PARA SA BATA', {
         x: margin,
         y: yPos,
         size: 11,
@@ -1267,38 +1281,20 @@ export async function generateConsentFormPdf(
       });
       yPos -= 20;
 
-      if (step4?.introductionMinorTagalog) {
-        addConsentSection('1. PAMBUNGAD', step4.introductionMinorTagalog);
-      }
-      if (step4?.purposeMinorTagalog) {
-        addConsentSection('2. LAYUNIN NG PANANALIKSIK', step4.purposeMinorTagalog);
-      }
-      if (step4?.choiceOfParticipantsTagalog) {
-        addConsentSection('3. PAGPILI NG KALAHOK', step4.choiceOfParticipantsTagalog);
-      }
-      if (step4?.voluntarinessMinorTagalog) {
-        addConsentSection('4. KUSANG PAKIKIBAHAGI', step4.voluntarinessMinorTagalog);
-      }
-      if (step4?.proceduresMinorTagalog) {
-        addConsentSection('5. MGA PAMAMARAAN', step4.proceduresMinorTagalog);
-      }
-      if (step4?.risksMinorTagalog) {
-        addConsentSection('6. MGA PANGANIB AT ABALA', step4.risksMinorTagalog);
-      }
-      if (step4?.benefitsMinorTagalog) {
-        addConsentSection('7. POSIBLENG MGA BENEPISYO', step4.benefitsMinorTagalog);
-      }
-      if (step4?.confidentialityMinorTagalog) {
-        addConsentSection('8. PAGIGING KUMPIDENSYAL', step4.confidentialityMinorTagalog);
-      }
-      if (step4?.sharingFindingsTagalog) {
-        addConsentSection('9. PAGBABAHAGI NG MGA NATUKLASAN', step4.sharingFindingsTagalog);
-      }
+      addConsentSection('1. PAMBUNGAD', printField(step4?.introductionMinorTagalog));
+      addConsentSection('2. LAYUNIN NG PANANALIKSIK', printField(step4?.purposeMinorTagalog));
+      addConsentSection('3. PAGPILI NG KALAHOK', printField(step4?.choiceOfParticipantsTagalog));
+      addConsentSection('4. KUSANG PAKIKIBAHAGI', printField(step4?.voluntarinessMinorTagalog));
+      addConsentSection('5. MGA PAMAMARAAN', printField(step4?.proceduresMinorTagalog));
+      addConsentSection('6. MGA PANGANIB AT ABALA', printField(step4?.risksMinorTagalog));
+      addConsentSection('7. POSIBLENG MGA BENEPISYO', printField(step4?.benefitsMinorTagalog));
+      addConsentSection('8. PAGIGING KUMPIDENSYAL', printField(step4?.confidentialityMinorTagalog));
+      addConsentSection('9. PAGBABAHAGI NG MGA NATUKLASAN', printField(step4?.sharingFindingsTagalog));
     }
 
-    // CONTACT INFORMATION
+    // ✅ CONTACT INFORMATION (ONLY PRINTS IF EXISTS)
     if (step4?.contact_person || step4?.contact_number) {
-      if (yPos < 80) {
+      if (yPos < 100) {
         page = pdfDoc.addPage([pageWidth, pageHeight]);
         yPos = pageHeight - margin;
       }
@@ -1306,17 +1302,18 @@ export async function generateConsentFormPdf(
       page.drawText('CONTACT INFORMATION', { x: margin, y: yPos, size: 10, font: helveticaBold });
       yPos -= 15;
 
-      if (step4.contact_person) {
+      if (step4?.contact_person) {
         page.drawText(`Contact Person: ${step4.contact_person}`, { x: margin, y: yPos, size: 9, font: helvetica });
         yPos -= 12;
       }
 
-      if (step4.contact_number) {
+      if (step4?.contact_number) {
         page.drawText(`Contact Number: ${step4.contact_number}`, { x: margin, y: yPos, size: 9, font: helvetica });
+        yPos -= 12;
       }
     }
 
-    // PAGE NUMBERS
+    // ✅ PAGE NUMBERS
     const pages = pdfDoc.getPages();
     pages.forEach((page, index) => {
       page.drawText(`Page ${index + 1} of ${pages.length}`, {
@@ -1342,6 +1339,558 @@ export async function generateConsentFormPdf(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to generate Consent Form PDF',
+    };
+
+
+
+
+  }
+
+}
+
+
+export async function generateConsolidatedReviewerPdf(
+  submissionData: any
+): Promise<{ success: boolean; pdfData?: string; fileName?: string; pageCount?: number; error?: string }> {
+  try {
+    const pdfDoc = await PDFDocument.create();
+    const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const helveticaItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+
+    const pageWidth = 612;
+    const pageHeight = 792;
+    const margin = 50;
+
+    let page = pdfDoc.addPage([pageWidth, pageHeight]);
+    let yPos = pageHeight - margin;
+
+    // HELPER: Print field with fallback
+    const printField = (primary: any, fallback: any = '') => {
+      if (primary && String(primary).trim()) return String(primary);
+      if (fallback && String(fallback).trim()) return String(fallback);
+      return '';
+    };
+
+    const wrapText = (text: string, maxWidth: number, fontSize: number) => {
+      if (!text || text.trim() === '') return [];
+      const sanitizedText = stripHtmlAndSanitize(text);
+      const paragraphs = sanitizedText.split('\n');
+      const allLines: string[] = [];
+
+      for (const paragraph of paragraphs) {
+        if (!paragraph.trim()) {
+          allLines.push('');
+          continue;
+        }
+
+        const words = paragraph.split(' ');
+        let currentLine = '';
+
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const width = helvetica.widthOfTextAtSize(testLine, fontSize);
+
+          if (width > maxWidth) {
+            if (currentLine) {
+              allLines.push(currentLine);
+              currentLine = word;
+            } else {
+              currentLine = testLine;
+            }
+          } else {
+            currentLine = testLine;
+          }
+        }
+
+        if (currentLine) {
+          allLines.push(currentLine);
+        }
+      }
+
+      return allLines;
+    };
+
+    const addSection = (title: string, content: string) => {
+      if (!content || content.trim() === '') return;
+
+      if (yPos < 100) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        yPos = pageHeight - margin;
+      }
+
+      page.drawText(title, { x: margin, y: yPos, size: 10, font: helveticaBold });
+      yPos -= 15;
+
+      const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
+      lines.forEach(line => {
+        if (yPos < 60) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPos = pageHeight - margin;
+        }
+        page.drawText(line, { x: margin, y: yPos, size: 9, font: helvetica });
+        yPos -= 12;
+      });
+
+      yPos -= 10;
+    };
+
+    const addPageBreak = () => {
+      page = pdfDoc.addPage([pageWidth, pageHeight]);
+      yPos = pageHeight - margin;
+    };
+
+    // DYNAMIC SECTION RENDERER (ONLY PRINTS IF CONTENT EXISTS)
+    const addConsentSection = (title: string, content: string) => {
+      if (!content || content.trim() === '') return;
+
+      if (yPos < 100) {
+        page = pdfDoc.addPage([pageWidth, pageHeight]);
+        yPos = pageHeight - margin;
+      }
+
+      page.drawText(title, { x: margin, y: yPos, size: 10, font: helveticaBold });
+      yPos -= 15;
+
+      const lines = wrapText(content, pageWidth - 2 * margin - 10, 9);
+      lines.forEach(line => {
+        if (yPos < 60) {
+          page = pdfDoc.addPage([pageWidth, pageHeight]);
+          yPos = pageHeight - margin;
+        }
+        page.drawText(line, { x: margin, y: yPos, size: 9, font: helvetica });
+        yPos -= 12;
+      });
+
+      yPos -= 15;
+    };
+
+    // ========== COVER PAGE ==========
+    page.drawText('RESEARCH SUBMISSION CONSOLIDATED DOCUMENT', {
+      x: pageWidth / 2 - helveticaBold.widthOfTextAtSize('RESEARCH SUBMISSION CONSOLIDATED DOCUMENT', 16) / 2,
+      y: yPos,
+      size: 16,
+      font: helveticaBold,
+    });
+    yPos -= 40;
+
+    page.drawText('For Reviewer Use Only', {
+      x: pageWidth / 2 - helveticaItalic.widthOfTextAtSize('For Reviewer Use Only', 11) / 2,
+      y: yPos,
+      size: 11,
+      font: helveticaItalic,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+    yPos -= 50;
+
+    const step1 = submissionData.step1;
+    const step2 = submissionData.step2;
+    const step3 = submissionData.step3?.formData;
+    const step4 = submissionData.step4?.formData || submissionData.step4;
+    const consentType = submissionData.step4?.consentType || 'adult';
+
+    page.drawText('Research Title:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 15;
+
+    const titleLines = wrapText(step1?.title || step2?.title || 'N/A', pageWidth - 2 * margin - 10, 9);
+    titleLines.forEach(line => {
+      page.drawText(line, { x: margin, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    });
+
+    yPos -= 20;
+
+    page.drawText(`Submission Date: ${new Date().toISOString().split('T')[0]}`, {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 50;
+
+    page.drawText('Table of Contents:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 15;
+
+    page.drawText('1. Research Protocol & Study Information', {
+      x: margin + 10,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 12;
+
+    page.drawText('2. Informed Consent Form', {
+      x: margin + 10,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 25;
+
+    // ========== SECTION 1: RESEARCH PROTOCOL & STUDY INFO ==========
+    addPageBreak();
+
+    page.drawText('SECTION 1: RESEARCH PROTOCOL & STUDY INFORMATION', {
+      x: margin,
+      y: yPos,
+      size: 12,
+      font: helveticaBold,
+    });
+    yPos -= 30;
+
+    page.drawText('Study Title:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 12;
+
+    const titleLines2 = wrapText(step1?.title || step2?.title || 'N/A', pageWidth - 2 * margin - 10, 9);
+    titleLines2.forEach(line => {
+      page.drawText(line, { x: margin, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    });
+
+    yPos -= 10;
+
+
+
+    page.drawText('Organization:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 12;
+    page.drawText(step2?.organization || step2?.institution || 'University of Makati', {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 15;
+
+    page.drawText('College/Department:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 12;
+    page.drawText(step2?.college || 'N/A', { x: margin, y: yPos, size: 9, font: helvetica });
+    yPos -= 20;
+
+    page.drawText('Type of Study:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 12;
+    const typeOfStudy = step2?.typeOfStudy || [];
+    const studyTypes = Array.isArray(typeOfStudy) ? typeOfStudy : [typeOfStudy];
+    studyTypes.forEach((type: string) => {
+      page.drawText(`• ${type}`, { x: margin + 10, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    });
+    yPos -= 5;
+
+    page.drawText('Source of Funding:', {
+      x: margin,
+      y: yPos,
+      size: 10,
+      font: helveticaBold,
+    });
+    yPos -= 12;
+    const funding = step2?.sourceOfFunding || [];
+    const fundingSources = Array.isArray(funding) ? funding : [funding];
+    fundingSources.forEach((source: string) => {
+      page.drawText(`• ${source}`, { x: margin + 10, y: yPos, size: 9, font: helvetica });
+      yPos -= 12;
+    });
+    yPos -= 10;
+
+    page.drawText(`Study Duration: ${step2?.startDate} to ${step2?.endDate}`, {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 12;
+
+    page.drawText(`Number of Participants: ${step2?.numParticipants || 'N/A'}`, {
+      x: margin,
+      y: yPos,
+      size: 9,
+      font: helvetica,
+    });
+    yPos -= 20;
+
+    // Research Protocol Sections
+    addSection('I. Introduction', step3?.introduction);
+    addSection('II. Background of the Study', step3?.background);
+    addSection('III. Statement of the Problem/Objectives', step3?.problemStatement);
+    addSection('IV. Scope and Delimitation', step3?.scopeDelimitation);
+    addSection('V. Related Literature & Studies', step3?.literatureReview);
+    addSection('VI. Research Methodology', step3?.methodology);
+    addSection('VII. Population, Respondents, and Sample Size', step3?.population);
+    addSection('VIII. Sampling Technique', step3?.samplingTechnique);
+    addSection('IX. Research Instrument and Validation', step3?.researchInstrument);
+    addSection('X. Statistical Treatment of Data', step3?.statisticalTreatment);
+    addSection('XI. Ethical Consideration', step3?.ethicalConsideration);
+    addSection('XII. References', step3?.references);
+
+    // ========== SECTION 2: INFORMED CONSENT FORM ==========
+    addPageBreak();
+
+    page.drawText('SECTION 2: INFORMED CONSENT FORM', {
+      x: margin,
+      y: yPos,
+      size: 12,
+      font: helveticaBold,
+    });
+    yPos -= 30;
+
+    const informedConsentFor = printField(step4?.informedConsentFor, step4?.participantGroupIdentity);
+    if (informedConsentFor) {
+      page.drawText('Informed Consent Form for:', {
+        x: margin,
+        y: yPos,
+        size: 10,
+        font: helveticaBold,
+      });
+      yPos -= 12;
+      page.drawText(informedConsentFor, { x: margin, y: yPos, size: 9, font: helvetica });
+      yPos -= 20;
+    }
+
+    // ========== ADULT CONSENT - ENGLISH ==========
+    if (
+      (consentType === 'adult' || consentType === 'both') &&
+      (step4?.adultLanguage === 'english' || step4?.adultLanguage === 'both')
+    ) {
+      addConsentSection('1. INTRODUCTION', printField(step4?.introductionEnglish));
+      addConsentSection('2. PURPOSE OF THE STUDY', printField(step4?.purposeEnglish));
+      addConsentSection('3. TYPE OF RESEARCH INTERVENTION', printField(step4?.researchInterventionEnglish));
+      addConsentSection('4. PARTICIPANT SELECTION', printField(step4?.participantSelectionEnglish));
+      addConsentSection('5. VOLUNTARY PARTICIPATION', printField(step4?.voluntaryParticipationEnglish));
+      addConsentSection('6. PROCEDURES', printField(step4?.proceduresEnglish));
+      addConsentSection('7. DURATION', printField(step4?.durationEnglish));
+      addConsentSection('8. RISKS AND INCONVENIENCES', printField(step4?.risksEnglish));
+      addConsentSection('9. BENEFITS', printField(step4?.benefitsEnglish));
+      addConsentSection('10. REIMBURSEMENTS', printField(step4?.reimbursementsEnglish));
+      addConsentSection('11. CONFIDENTIALITY', printField(step4?.confidentialityEnglish));
+      addConsentSection('12. SHARING THE RESULTS', printField(step4?.sharingResultsEnglish));
+      addConsentSection('13. RIGHT TO REFUSE OR WITHDRAW', printField(step4?.rightToRefuseEnglish));
+    }
+
+    // ========== ADULT CONSENT - TAGALOG ==========
+    if (
+      (consentType === 'adult' || consentType === 'both') &&
+      (step4?.adultLanguage === 'tagalog' || step4?.adultLanguage === 'both')
+    ) {
+      const hasTagalogContent = [
+        step4?.introductionTagalog,
+        step4?.purposeTagalog,
+        step4?.researchInterventionTagalog,
+        step4?.participantSelectionTagalog,
+        step4?.voluntaryParticipationTagalog,
+        step4?.proceduresTagalog,
+        step4?.durationTagalog,
+        step4?.risksTagalog,
+        step4?.benefitsTagalog,
+        step4?.reimbursementsTagalog,
+        step4?.confidentialityTagalog,
+        step4?.sharingResultsTagalog,
+        step4?.rightToRefuseTagalog,
+        step4?.whoToContactTagalog,
+      ].some(field => field && String(field).trim());
+
+      if (hasTagalogContent) {
+        if (yPos < 600) {
+          addPageBreak();
+        }
+
+        page.drawText('PAHINTULOT NA MAY KAALAMAN', {
+          x: margin,
+          y: yPos,
+          size: 11,
+          font: helveticaBold,
+        });
+        yPos -= 20;
+
+        addConsentSection('1. PAMBUNGAD', printField(step4?.introductionTagalog));
+        addConsentSection('2. LAYUNIN NG PANANALIKSIK', printField(step4?.purposeTagalog));
+        addConsentSection('3. URI NG PANANALIKSIK NA PAKIKIBAHAGI', printField(step4?.researchInterventionTagalog));
+        addConsentSection('4. PAGPILI NG KALAHOK', printField(step4?.participantSelectionTagalog));
+        addConsentSection('5. KUSANG PAKIKIBAHAGI', printField(step4?.voluntaryParticipationTagalog));
+        addConsentSection('6. MGA PAMAMARAAN', printField(step4?.proceduresTagalog));
+        addConsentSection('7. TAGAL', printField(step4?.durationTagalog));
+        addConsentSection('8. MGA PANGANIB AT ABALA', printField(step4?.risksTagalog));
+        addConsentSection('9. MGA BENEPISYO', printField(step4?.benefitsTagalog));
+        addConsentSection('10. PAGBABAYAD-BAYAD', printField(step4?.reimbursementsTagalog));
+        addConsentSection('11. PAGIGING KUMPIDENSYAL', printField(step4?.confidentialityTagalog));
+        addConsentSection('12. PAGBABAHAGI NG MGA RESULTA', printField(step4?.sharingResultsTagalog));
+        addConsentSection('13. KARAPATAN NA TUMANGGI O LUMABAS', printField(step4?.rightToRefuseTagalog));
+      }
+    }
+
+    // ========== MINOR ASSENT - ENGLISH ==========
+    if (
+      (consentType === 'minor' || consentType === 'both') &&
+      (step4?.minorLanguage === 'english' || step4?.minorLanguage === 'both')
+    ) {
+      if (yPos < 600) {
+        addPageBreak();
+      }
+
+      page.drawText('INFORMED ASSENT FORM FOR MINORS (ENGLISH)', {
+        x: margin,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+      });
+      yPos -= 20;
+
+      addConsentSection('1. INTRODUCTION', printField(step4?.introductionMinorEnglish));
+      addConsentSection('2. PURPOSE OF RESEARCH', printField(step4?.purposeMinorEnglish));
+      addConsentSection('3. CHOICE OF PARTICIPANTS', printField(step4?.choiceOfParticipantsEnglish));
+      addConsentSection('4. VOLUNTARINESS OF PARTICIPATION', printField(step4?.voluntarinessMinorEnglish));
+      addConsentSection('5. PROCEDURES', printField(step4?.proceduresMinorEnglish));
+      addConsentSection('6. RISKS AND INCONVENIENCES', printField(step4?.risksMinorEnglish));
+      addConsentSection('7. POSSIBLE BENEFITS', printField(step4?.benefitsMinorEnglish));
+      addConsentSection('8. CONFIDENTIALITY', printField(step4?.confidentialityMinorEnglish));
+      addConsentSection('9. SHARING THE FINDINGS', printField(step4?.sharingFindingsEnglish));
+    }
+
+    // ========== MINOR ASSENT - TAGALOG ==========
+    if (
+      (consentType === 'minor' || consentType === 'both') &&
+      (step4?.minorLanguage === 'tagalog' || step4?.minorLanguage === 'both')
+    ) {
+      if (yPos < 600) {
+        addPageBreak();
+      }
+
+      page.drawText('PAHINTULOT NA MAY KAALAMAN PARA SA BATA', {
+        x: margin,
+        y: yPos,
+        size: 11,
+        font: helveticaBold,
+      });
+      yPos -= 20;
+
+      addConsentSection('1. PAMBUNGAD', printField(step4?.introductionMinorTagalog));
+      addConsentSection('2. LAYUNIN NG PANANALIKSIK', printField(step4?.purposeMinorTagalog));
+      addConsentSection('3. PAGPILI NG KALAHOK', printField(step4?.choiceOfParticipantsTagalog));
+      addConsentSection('4. KUSANG PAKIKIBAHAGI', printField(step4?.voluntarinessMinorTagalog));
+      addConsentSection('5. MGA PAMAMARAAN', printField(step4?.proceduresMinorTagalog));
+      addConsentSection('6. MGA PANGANIB AT ABALA', printField(step4?.risksMinorTagalog));
+      addConsentSection('7. POSIBLENG MGA BENEPISYO', printField(step4?.benefitsMinorTagalog));
+      addConsentSection('8. PAGIGING KUMPIDENSYAL', printField(step4?.confidentialityMinorTagalog));
+      addConsentSection('9. PAGBABAHAGI NG MGA NATUKLASAN', printField(step4?.sharingFindingsTagalog));
+    }
+    const supabase = await createClient();
+    const downloadPdf = async (fileUrl: string) => {
+      const { data: fileData } = await supabase.storage
+        .from('research-documents')
+        .download(fileUrl);
+
+      if (fileData) {
+        const arrayBuffer = await fileData.arrayBuffer();
+        return Buffer.from(arrayBuffer);
+      }
+      return null;
+    };
+
+    // Get research_instrument document (questionnaire)
+    const { data: documents } = await supabase
+      .from('uploaded_documents')
+      .select('*')
+      .eq('submission_id', submissionData.submissionId) // Add submissionId to submissionData
+      .eq('document_type', 'research_instrument');
+
+    if (documents && documents.length > 0) {
+      const doc = documents[0];
+      try {
+        const pdfBytes = await downloadPdf(doc.file_url);
+        if (pdfBytes) {
+          const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+          // Add separator page
+          const separatorPage = pdfDoc.addPage([612, 792]);
+          separatorPage.drawRectangle({
+            x: 30,
+            y: 356,
+            width: 552,
+            height: 80,
+            color: rgb(1, 0.843, 0),
+          });
+          separatorPage.drawText('ATTACHMENT: RESEARCH INSTRUMENT (QUESTIONNAIRE)', {
+            x: 80,
+            y: 390,
+            size: 14,
+            font: helveticaBold,
+            color: rgb(0.027, 0.067, 0.224),
+          });
+
+          // Add questionnaire pages
+          const attachmentPdf = await PDFDocument.load(pdfBytes);
+          const pages = await pdfDoc.copyPages(
+            attachmentPdf,
+            attachmentPdf.getPageIndices()
+          );
+          pages.forEach(page => pdfDoc.addPage(page));
+        }
+      } catch (error) {
+        console.error('Error adding research instrument:', error);
+      }
+    }
+    // PAGE NUMBERS & FOOTER
+    const pages = pdfDoc.getPages();
+    pages.forEach((page, index) => {
+      page.drawText(`Page ${index + 1} of ${pages.length}`, {
+        x: 265,
+        y: 20,
+        size: 8,
+        font: helvetica,
+        color: rgb(0.6, 0.6, 0.6),
+      });
+
+      page.drawText('CONFIDENTIAL - FOR REVIEWER USE ONLY', {
+        x: margin,
+        y: 30,
+        size: 8,
+        font: helveticaItalic,
+        color: rgb(0.7, 0, 0),
+      });
+    });
+
+    const pdfBytes = await pdfDoc.save();
+    const pdfBase64 = `data:application/pdf;base64,${Buffer.from(pdfBytes).toString('base64')}`;
+
+    return {
+      success: true,
+      pdfData: pdfBase64,
+      fileName: `UMREC_Consolidated_Review_${Date.now()}.pdf`,
+      pageCount: pages.length,
+    };
+  } catch (error) {
+    console.error('Consolidated PDF generation error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to generate consolidated PDF',
     };
   }
 }

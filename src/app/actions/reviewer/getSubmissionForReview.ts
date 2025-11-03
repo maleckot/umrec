@@ -33,7 +33,7 @@ export async function getSubmissionForReview(submissionId: string) {
       .from('uploaded_documents')
       .select('*')
       .eq('submission_id', submissionId)
-      .eq('document_type', 'consolidated_application')
+      .eq('document_type', 'consolidated_review')
       .order('uploaded_at', { ascending: false })
       .limit(1)
       .single();

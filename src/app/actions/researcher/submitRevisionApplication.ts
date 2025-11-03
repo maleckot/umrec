@@ -6,7 +6,8 @@ import { revalidatePath } from 'next/cache';
 import {
   generateApplicationFormPdf,
   generateResearchProtocolPdf,
-  generateConsentFormPdf
+  generateConsentFormPdf,
+  generateConsolidatedReviewerPdf
 } from '@/app/actions/generatePdfFromDatabase';
 
 // --- HELPER FUNCTIONS ---
@@ -100,26 +101,28 @@ async function uploadRevisedFile(
 ) {
   try {
     console.log(`🔧 Processing ${documentType}...`);
-    
+
     if (!base64Data) {
       console.warn(`⚠️ No file data for ${documentType}, skipping`);
       return { success: true, skipped: true };
     }
 
     // 1. Try to find existing document
+    // 1. Try to find existing document
     const { data: oldDoc, error: findError } = await supabase
       .from('uploaded_documents')
-      .select('id, file_url')
+      .select('id, file_url, revision_count')  // ✅ ADD revision_count
       .eq('submission_id', submissionId)
       .eq('document_type', documentType)
-      .maybeSingle(); // ✅ Use maybeSingle instead of single
+      .maybeSingle();
+
 
     // 2. Extract and convert base64
     let base64String = base64Data;
     if (base64Data.includes(',')) {
       base64String = base64Data.split(',')[1];
     }
-    
+
     const pdfBuffer = Buffer.from(base64String, 'base64');
     const filePath = `${userId}/${submissionId}/${documentType}_${Date.now()}.pdf`;
 
@@ -152,11 +155,12 @@ async function uploadRevisedFile(
           file_name: fileName,
           file_size: pdfBuffer.length,
           uploaded_at: new Date().toISOString(),
+          revision_count: (oldDoc.revision_count || 0) + 1,  // ✅ INCREMENT
         })
         .eq('id', oldDoc.id);
 
       if (updateError) throw new Error(`Update failed: ${updateError.message}`);
-      console.log(`✅ Updated ${documentType}`);
+      console.log(`✅ Updated ${documentType} (revision ${(oldDoc.revision_count || 0) + 1})`);
     } else {
       // ✅ CREATE new document record if it doesn't exist
       const { error: insertError } = await supabase
@@ -168,6 +172,7 @@ async function uploadRevisedFile(
           file_name: fileName,
           file_size: pdfBuffer.length,
           uploaded_at: new Date().toISOString(),
+          revision_count: 0,  // ✅ START at 0 for new docs
         });
 
       if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
@@ -219,18 +224,18 @@ async function overwriteGeneratedPdf(
     // 1. Find the old document record
     const { data: oldDoc, error: findError } = await supabase
       .from('uploaded_documents')
-      .select('id, file_url')
+      .select('id, file_url, revision_count')  // ✅ SELECT revision_count
       .eq('submission_id', submissionId)
       .eq('document_type', documentType)
-      .single();
+      .maybeSingle();  // ✅ Use maybeSingle in case doc doesn't exist
 
-    if (findError) {
+    if (findError && findError.code !== 'PGRST116') {
       console.warn(`Could not find old ${documentType} record. This may be fine if it failed first time.`);
       return;
     }
 
     // 2. Delete the old file from storage
-    if (oldDoc.file_url) {
+    if (oldDoc?.file_url) {
       console.log(`Deleting old generated PDF: ${oldDoc.file_url}`);
       const { error: deleteError } = await supabase.storage
         .from('research-documents')
@@ -252,7 +257,7 @@ async function overwriteGeneratedPdf(
 
     if (uploadError) throw new Error(`Failed to upload new ${documentType} PDF: ${uploadError.message}`);
 
-    // 4. Update the 'uploaded_documents' record
+    // 4. Update the 'uploaded_documents' record - INCREMENT revision_count
     const { error: updateError } = await supabase
       .from('uploaded_documents')
       .update({
@@ -260,16 +265,18 @@ async function overwriteGeneratedPdf(
         file_name: `${baseFileName}_${submissionId}.pdf`,
         file_size: pdfBuffer.length,
         uploaded_at: new Date().toISOString(),
+        revision_count: (oldDoc?.revision_count || 0) + 1,  // ✅ INCREMENT
       })
       .eq('id', oldDoc.id);
 
     if (updateError) throw new Error(`Failed to update ${documentType} record: ${updateError.message}`);
 
-    console.log(`✅ Successfully overwrote ${documentType} PDF.`);
+    console.log(`✅ Successfully overwrote ${documentType} PDF (revision ${(oldDoc?.revision_count || 0) + 1})`);
   } catch (error) {
     console.error(`Error in overwriteGeneratedPdf for ${documentType}:`, error);
   }
 }
+
 
 // --- MAIN REVISION ACTION ---
 export async function submitRevisionApplication(
@@ -476,106 +483,106 @@ export async function submitRevisionApplication(
       );
 
       let researchersWithPaths = revisionData.step3?.researchers || [];
-if (Array.isArray(researchersWithPaths)) {
-  console.log('📝 Processing researcher signatures for revision...');
-  
-  researchersWithPaths = await Promise.all(
-    researchersWithPaths.map(async (researcher: any, index: number) => {
-      // ✅ NEW UPLOAD - signatureBase64 is present
-      if (researcher.signatureBase64) {
-        try {
-          let base64Data = researcher.signatureBase64;
-          if (base64Data.includes(',')) {
-            base64Data = base64Data.split(',')[1];
-          }
-          
-          const buffer = Buffer.from(base64Data, 'base64');
-          const signaturePath = `${user.id}/${submissionId}/signatures/researcher-${index + 1}-${Date.now()}.png`;
+      if (Array.isArray(researchersWithPaths)) {
+        console.log('📝 Processing researcher signatures for revision...');
 
-          console.log(`Uploading NEW signature for ${researcher.name} to: ${signaturePath}`);
-          const { error: uploadError } = await supabase.storage
-            .from('research-documents')
-            .upload(signaturePath, buffer, {
-              contentType: 'image/png',
-              upsert: true
-            });
+        researchersWithPaths = await Promise.all(
+          researchersWithPaths.map(async (researcher: any, index: number) => {
+            // ✅ NEW UPLOAD - signatureBase64 is present
+            if (researcher.signatureBase64) {
+              try {
+                let base64Data = researcher.signatureBase64;
+                if (base64Data.includes(',')) {
+                  base64Data = base64Data.split(',')[1];
+                }
 
-          if (uploadError) {
-            console.error(`Signature upload error for ${researcher.name}:`, uploadError);
-            // Return old data if upload fails
+                const buffer = Buffer.from(base64Data, 'base64');
+                const signaturePath = `${user.id}/${submissionId}/signatures/researcher-${index + 1}-${Date.now()}.png`;
+
+                console.log(`Uploading NEW signature for ${researcher.name} to: ${signaturePath}`);
+                const { error: uploadError } = await supabase.storage
+                  .from('research-documents')
+                  .upload(signaturePath, buffer, {
+                    contentType: 'image/png',
+                    upsert: true
+                  });
+
+                if (uploadError) {
+                  console.error(`Signature upload error for ${researcher.name}:`, uploadError);
+                  // Return old data if upload fails
+                  return {
+                    id: researcher.id,
+                    name: researcher.name,
+                    signaturePath: researcher.signaturePath || null,
+                    signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
+                  };
+                }
+
+                console.log(`✅ Uploaded NEW signature for ${researcher.name}`);
+                return {
+                  id: researcher.id,
+                  name: researcher.name,
+                  signaturePath: signaturePath,
+                  signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
+                };
+              } catch (err) {
+                console.error(`Error processing signature for ${researcher.name}:`, err);
+                return {
+                  id: researcher.id,
+                  name: researcher.name,
+                  signaturePath: researcher.signaturePath || null,
+                  signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
+                };
+              }
+            }
+
+            // ✅ EXISTING SIGNATURE - fetch from storage and convert to base64
+            if (researcher.signaturePath) {
+              try {
+                console.log(`♻️ Fetching existing signature for ${researcher.name}: ${researcher.signaturePath}`);
+
+                // Download the file from storage
+                const { data: fileData, error: downloadError } = await supabase.storage
+                  .from('research-documents')
+                  .download(researcher.signaturePath);
+
+                if (downloadError) throw downloadError;
+
+                // Convert blob to base64
+                const arrayBuffer = await fileData.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
+
+                console.log(`✅ Converted existing signature to base64 for ${researcher.name}`);
+
+                return {
+                  id: researcher.id,
+                  name: researcher.name,
+                  signaturePath: researcher.signaturePath,
+                  signatureBase64: base64, // ✅ Add base64 for PDF generation
+                };
+              } catch (err) {
+                console.error(`Error fetching existing signature for ${researcher.name}:`, err);
+                return {
+                  id: researcher.id,
+                  name: researcher.name,
+                  signaturePath: researcher.signaturePath,
+                  signatureBase64: null,
+                };
+              }
+            }
+
+            // ✅ NO SIGNATURE
+            console.warn(`⚠️ No signature for researcher ${researcher.name}`);
             return {
               id: researcher.id,
               name: researcher.name,
-              signaturePath: researcher.signaturePath || null,
-              signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
+              signaturePath: null,
+              signatureBase64: null,
             };
-          }
-
-          console.log(`✅ Uploaded NEW signature for ${researcher.name}`);
-          return {
-            id: researcher.id,
-            name: researcher.name,
-            signaturePath: signaturePath,
-            signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
-          };
-        } catch (err) {
-          console.error(`Error processing signature for ${researcher.name}:`, err);
-          return {
-            id: researcher.id,
-            name: researcher.name,
-            signaturePath: researcher.signaturePath || null,
-            signatureBase64: researcher.signatureBase64, // ✅ Keep base64 for PDF
-          };
-        }
+          })
+        );
       }
-      
-      // ✅ EXISTING SIGNATURE - fetch from storage and convert to base64
-      if (researcher.signaturePath) {
-        try {
-          console.log(`♻️ Fetching existing signature for ${researcher.name}: ${researcher.signaturePath}`);
-          
-          // Download the file from storage
-          const { data: fileData, error: downloadError } = await supabase.storage
-            .from('research-documents')
-            .download(researcher.signaturePath);
-
-          if (downloadError) throw downloadError;
-
-          // Convert blob to base64
-          const arrayBuffer = await fileData.arrayBuffer();
-          const buffer = Buffer.from(arrayBuffer);
-          const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
-
-          console.log(`✅ Converted existing signature to base64 for ${researcher.name}`);
-          
-          return {
-            id: researcher.id,
-            name: researcher.name,
-            signaturePath: researcher.signaturePath,
-            signatureBase64: base64, // ✅ Add base64 for PDF generation
-          };
-        } catch (err) {
-          console.error(`Error fetching existing signature for ${researcher.name}:`, err);
-          return {
-            id: researcher.id,
-            name: researcher.name,
-            signaturePath: researcher.signaturePath,
-            signatureBase64: null,
-          };
-        }
-      }
-      
-      // ✅ NO SIGNATURE
-      console.warn(`⚠️ No signature for researcher ${researcher.name}`);
-      return {
-        id: researcher.id,
-        name: researcher.name,
-        signaturePath: null,
-        signatureBase64: null,
-      };
-    })
-  );
-}
 
       const { error: step3Error } = await supabase
         .from('research_protocols')
@@ -611,60 +618,60 @@ if (Array.isArray(researchersWithPaths)) {
           adult_consent:
             revisionData.step4.consentType === 'adult' || revisionData.step4.consentType === 'both'
               ? {
-                  adultLanguage: revisionData.step4.adultLanguage || 'english',
-                  introductionEnglish: revisionData.step4.introductionEnglish || '',
-                  introductionTagalog: revisionData.step4.introductionTagalog || '',
-                  purposeEnglish: revisionData.step4.purposeEnglish || '',
-                  purposeTagalog: revisionData.step4.purposeTagalog || '',
-                  researchInterventionEnglish: revisionData.step4.researchInterventionEnglish || '',
-                  researchInterventionTagalog: revisionData.step4.researchInterventionTagalog || '',
-                  participantSelectionEnglish: revisionData.step4.participantSelectionEnglish || '',
-                  participantSelectionTagalog: revisionData.step4.participantSelectionTagalog || '',
-                  voluntaryParticipationEnglish: revisionData.step4.voluntaryParticipationEnglish || '',
-                  voluntaryParticipationTagalog: revisionData.step4.voluntaryParticipationTagalog || '',
-                  proceduresEnglish: revisionData.step4.proceduresEnglish || '',
-                  proceduresTagalog: revisionData.step4.proceduresTagalog || '',
-                  durationEnglish: revisionData.step4.durationEnglish || '',
-                  durationTagalog: revisionData.step4.durationTagalog || '',
-                  risksEnglish: revisionData.step4.risksEnglish || '',
-                  risksTagalog: revisionData.step4.risksTagalog || '',
-                  benefitsEnglish: revisionData.step4.benefitsEnglish || '',
-                  benefitsTagalog: revisionData.step4.benefitsTagalog || '',
-                  reimbursementsEnglish: revisionData.step4.reimbursementsEnglish || '',
-                  reimbursementsTagalog: revisionData.step4.reimbursementsTagalog || '',
-                  confidentialityEnglish: revisionData.step4.confidentialityEnglish || '',
-                  confidentialityTagalog: revisionData.step4.confidentialityTagalog || '',
-                  sharingResultsEnglish: revisionData.step4.sharingResultsEnglish || '',
-                  sharingResultsTagalog: revisionData.step4.sharingResultsTagalog || '',
-                  rightToRefuseEnglish: revisionData.step4.rightToRefuseEnglish || '',
-                  rightToRefuseTagalog: revisionData.step4.rightToRefuseTagalog || '',
-                  whoToContactEnglish: revisionData.step4.whoToContactEnglish || '',
-                  whoToContactTagalog: revisionData.step4.whoToContactTagalog || '',
-                }
+                adultLanguage: revisionData.step4.adultLanguage || 'english',
+                introductionEnglish: revisionData.step4.introductionEnglish || '',
+                introductionTagalog: revisionData.step4.introductionTagalog || '',
+                purposeEnglish: revisionData.step4.purposeEnglish || '',
+                purposeTagalog: revisionData.step4.purposeTagalog || '',
+                researchInterventionEnglish: revisionData.step4.researchInterventionEnglish || '',
+                researchInterventionTagalog: revisionData.step4.researchInterventionTagalog || '',
+                participantSelectionEnglish: revisionData.step4.participantSelectionEnglish || '',
+                participantSelectionTagalog: revisionData.step4.participantSelectionTagalog || '',
+                voluntaryParticipationEnglish: revisionData.step4.voluntaryParticipationEnglish || '',
+                voluntaryParticipationTagalog: revisionData.step4.voluntaryParticipationTagalog || '',
+                proceduresEnglish: revisionData.step4.proceduresEnglish || '',
+                proceduresTagalog: revisionData.step4.proceduresTagalog || '',
+                durationEnglish: revisionData.step4.durationEnglish || '',
+                durationTagalog: revisionData.step4.durationTagalog || '',
+                risksEnglish: revisionData.step4.risksEnglish || '',
+                risksTagalog: revisionData.step4.risksTagalog || '',
+                benefitsEnglish: revisionData.step4.benefitsEnglish || '',
+                benefitsTagalog: revisionData.step4.benefitsTagalog || '',
+                reimbursementsEnglish: revisionData.step4.reimbursementsEnglish || '',
+                reimbursementsTagalog: revisionData.step4.reimbursementsTagalog || '',
+                confidentialityEnglish: revisionData.step4.confidentialityEnglish || '',
+                confidentialityTagalog: revisionData.step4.confidentialityTagalog || '',
+                sharingResultsEnglish: revisionData.step4.sharingResultsEnglish || '',
+                sharingResultsTagalog: revisionData.step4.sharingResultsTagalog || '',
+                rightToRefuseEnglish: revisionData.step4.rightToRefuseEnglish || '',
+                rightToRefuseTagalog: revisionData.step4.rightToRefuseTagalog || '',
+                whoToContactEnglish: revisionData.step4.whoToContactEnglish || '',
+                whoToContactTagalog: revisionData.step4.whoToContactTagalog || '',
+              }
               : null,
           minor_assent:
             revisionData.step4.consentType === 'minor' || revisionData.step4.consentType === 'both'
               ? {
-                  minorLanguage: revisionData.step4.minorLanguage || 'english',
-                  introductionMinorEnglish: revisionData.step4.introductionMinorEnglish || '',
-                  introductionMinorTagalog: revisionData.step4.introductionMinorTagalog || '',
-                  purposeMinorEnglish: revisionData.step4.purposeMinorEnglish || '',
-                  purposeMinorTagalog: revisionData.step4.purposeMinorTagalog || '',
-                  choiceOfParticipantsEnglish: revisionData.step4.choiceOfParticipantsEnglish || '',
-                  choiceOfParticipantsTagalog: revisionData.step4.choiceOfParticipantsTagalog || '',
-                  voluntarinessMinorEnglish: revisionData.step4.voluntarinessMinorEnglish || '',
-                  voluntarinessMinorTagalog: revisionData.step4.voluntarinessMinorTagalog || '',
-                  proceduresMinorEnglish: revisionData.step4.proceduresMinorEnglish || '',
-                  proceduresMinorTagalog: revisionData.step4.proceduresMinorTagalog || '',
-                  risksMinorEnglish: revisionData.step4.risksMinorEnglish || '',
-                  risksMinorTagalog: revisionData.step4.risksMinorTagalog || '',
-                  benefitsMinorEnglish: revisionData.step4.benefitsMinorEnglish || '',
-                  benefitsMinorTagalog: revisionData.step4.benefitsMinorTagalog || '',
-                  confidentialityMinorEnglish: revisionData.step4.confidentialityMinorEnglish || '',
-                  confidentialityMinorTagalog: revisionData.step4.confidentialityMinorTagalog || '',
-                  sharingFindingsEnglish: revisionData.step4.sharingFindingsEnglish || '',
-                  sharingFindingsTagalog: revisionData.step4.sharingFindingsTagalog || '',
-                }
+                minorLanguage: revisionData.step4.minorLanguage || 'english',
+                introductionMinorEnglish: revisionData.step4.introductionMinorEnglish || '',
+                introductionMinorTagalog: revisionData.step4.introductionMinorTagalog || '',
+                purposeMinorEnglish: revisionData.step4.purposeMinorEnglish || '',
+                purposeMinorTagalog: revisionData.step4.purposeMinorTagalog || '',
+                choiceOfParticipantsEnglish: revisionData.step4.choiceOfParticipantsEnglish || '',
+                choiceOfParticipantsTagalog: revisionData.step4.choiceOfParticipantsTagalog || '',
+                voluntarinessMinorEnglish: revisionData.step4.voluntarinessMinorEnglish || '',
+                voluntarinessMinorTagalog: revisionData.step4.voluntarinessMinorTagalog || '',
+                proceduresMinorEnglish: revisionData.step4.proceduresMinorEnglish || '',
+                proceduresMinorTagalog: revisionData.step4.proceduresMinorTagalog || '',
+                risksMinorEnglish: revisionData.step4.risksMinorEnglish || '',
+                risksMinorTagalog: revisionData.step4.risksMinorTagalog || '',
+                benefitsMinorEnglish: revisionData.step4.benefitsMinorEnglish || '',
+                benefitsMinorTagalog: revisionData.step4.benefitsMinorTagalog || '',
+                confidentialityMinorEnglish: revisionData.step4.confidentialityMinorEnglish || '',
+                confidentialityMinorTagalog: revisionData.step4.confidentialityMinorTagalog || '',
+                sharingFindingsEnglish: revisionData.step4.sharingFindingsEnglish || '',
+                sharingFindingsTagalog: revisionData.step4.sharingFindingsTagalog || '',
+              }
               : null,
           contact_person: safeString(revisionData.step4.contactPerson),
           contact_number: safeString(revisionData.step4.contactNumber),
@@ -762,9 +769,62 @@ if (Array.isArray(researchersWithPaths)) {
       .single();
 
     // ✅ BUILD pdfData with correct structure
+    // ✅ BUILD pdfData MATCHING submitResearchApplication structure
     const pdfData = {
-      step1: updatedSubmission,
-      step2: updatedAppForm,
+      step1: {
+        title: updatedSubmission?.title,
+        projectLeaderFirstName: updatedSubmission?.project_leader_first_name,
+        projectLeaderMiddleName: updatedSubmission?.project_leader_middle_name,
+        projectLeaderLastName: updatedSubmission?.project_leader_last_name,
+        projectLeaderEmail: updatedSubmission?.project_leader_email,
+        projectLeaderContact: updatedSubmission?.project_leader_contact,
+        organization: updatedSubmission?.organization,
+      },
+      step2: {
+        title: updatedSubmission?.title,
+        studySite: updatedAppForm?.study_site,
+        researcherFirstName: updatedAppForm?.researcher_first_name,
+        researcherMiddleName: updatedAppForm?.researcher_middle_name,
+        researcherLastName: updatedAppForm?.researcher_last_name,
+        college: updatedAppForm?.college,
+        institution: updatedAppForm?.institution || 'University of Makati',
+        institutionAddress: updatedAppForm?.institution_address,
+        typeOfStudy: updatedAppForm?.type_of_study || [],
+        studySiteType: updatedAppForm?.study_site_type,
+        sourceOfFunding: updatedAppForm?.source_of_funding || [],
+        pharmaceuticalSponsor: updatedAppForm?.pharmaceutical_sponsor,
+        fundingOthers: updatedAppForm?.funding_others,
+        startDate: updatedAppForm?.study_duration?.startDate,
+        endDate: updatedAppForm?.study_duration?.endDate,
+        numParticipants: updatedAppForm?.num_participants,
+        technicalReview: updatedAppForm?.technical_review,
+        submittedToOther: updatedAppForm?.submitted_to_other,
+        coResearchers: updatedAppForm?.co_researcher?.map((co: any) => ({
+          name: co.fullName,
+          contact: co.contactNumber,
+          email: co.emailAddress
+        })) || [],
+
+        // ✅ Transform technical_advisers to match PDF format
+        technicalAdvisers: updatedAppForm?.technical_advisers?.map((adv: any) => ({
+          name: adv.fullName,
+          contact: adv.contactNumber,
+          email: adv.emailAddress
+        })) || [],
+        // ✅ ADD DOCUMENT CHECKLIST
+        hasApplicationForm: updatedAppForm?.document_checklist?.hasApplicationForm,
+        hasResearchProtocol: updatedAppForm?.document_checklist?.hasResearchProtocol,
+        hasInformedConsent: updatedAppForm?.document_checklist?.hasInformedConsent,
+        hasEndorsementLetter: updatedAppForm?.document_checklist?.hasEndorsementLetter,
+        hasQuestionnaire: updatedAppForm?.document_checklist?.hasQuestionnaire,
+        hasTechnicalReview: updatedAppForm?.document_checklist?.hasTechnicalReview,
+        hasDataCollectionForms: updatedAppForm?.document_checklist?.hasDataCollectionForms,
+        hasProductBrochure: updatedAppForm?.document_checklist?.hasProductBrochure,
+        hasFDAAuthorization: updatedAppForm?.document_checklist?.hasFDAAuthorization,
+        hasCompanyPermit: updatedAppForm?.document_checklist?.hasCompanyPermit,
+        hasSpecialPopulationPermit: updatedAppForm?.document_checklist?.hasSpecialPopulationPermit,
+        hasOtherDocs: updatedAppForm?.document_checklist?.hasOtherDocs,
+      },
       step3: {
         formData: {
           title: updatedProtocol?.title,
@@ -784,16 +844,63 @@ if (Array.isArray(researchersWithPaths)) {
         researchers: updatedProtocol?.researchers,
       },
       step4: {
-        ...updatedConsent?.adult_consent,
-        ...updatedConsent?.minor_assent,
         consentType: updatedConsent?.consent_type,
         adultLanguage: updatedConsent?.adult_consent?.adultLanguage,
         minorLanguage: updatedConsent?.minor_assent?.minorLanguage,
-        contactPerson: updatedConsent?.contact_person,
-        contactNumber: updatedConsent?.contact_number,
-        informedConsentFor: updatedConsent?.informed_consent_for,
+        formData: {
+          participantGroupIdentity: updatedConsent?.informed_consent_for,
+          contactPerson: updatedConsent?.contact_person,
+          contactNumber: updatedConsent?.contact_number,
+          introductionEnglish: updatedConsent?.adult_consent?.introductionEnglish,
+          introductionTagalog: updatedConsent?.adult_consent?.introductionTagalog,
+          purposeEnglish: updatedConsent?.adult_consent?.purposeEnglish,
+          purposeTagalog: updatedConsent?.adult_consent?.purposeTagalog,
+          researchInterventionEnglish: updatedConsent?.adult_consent?.researchInterventionEnglish,
+          researchInterventionTagalog: updatedConsent?.adult_consent?.researchInterventionTagalog,
+          participantSelectionEnglish: updatedConsent?.adult_consent?.participantSelectionEnglish,
+          participantSelectionTagalog: updatedConsent?.adult_consent?.participantSelectionTagalog,
+          voluntaryParticipationEnglish: updatedConsent?.adult_consent?.voluntaryParticipationEnglish,
+          voluntaryParticipationTagalog: updatedConsent?.adult_consent?.voluntaryParticipationTagalog,
+          proceduresEnglish: updatedConsent?.adult_consent?.proceduresEnglish,
+          proceduresTagalog: updatedConsent?.adult_consent?.proceduresTagalog,
+          durationEnglish: updatedConsent?.adult_consent?.durationEnglish,
+          durationTagalog: updatedConsent?.adult_consent?.durationTagalog,
+          risksEnglish: updatedConsent?.adult_consent?.risksEnglish,
+          risksTagalog: updatedConsent?.adult_consent?.risksTagalog,
+          benefitsEnglish: updatedConsent?.adult_consent?.benefitsEnglish,
+          benefitsTagalog: updatedConsent?.adult_consent?.benefitsTagalog,
+          reimbursementsEnglish: updatedConsent?.adult_consent?.reimbursementsEnglish,
+          reimbursementsTagalog: updatedConsent?.adult_consent?.reimbursementsTagalog,
+          confidentialityEnglish: updatedConsent?.adult_consent?.confidentialityEnglish,
+          confidentialityTagalog: updatedConsent?.adult_consent?.confidentialityTagalog,
+          sharingResultsEnglish: updatedConsent?.adult_consent?.sharingResultsEnglish,
+          sharingResultsTagalog: updatedConsent?.adult_consent?.sharingResultsTagalog,
+          rightToRefuseEnglish: updatedConsent?.adult_consent?.rightToRefuseEnglish,
+          rightToRefuseTagalog: updatedConsent?.adult_consent?.rightToRefuseTagalog,
+          whoToContactEnglish: updatedConsent?.adult_consent?.whoToContactEnglish,
+          whoToContactTagalog: updatedConsent?.adult_consent?.whoToContactTagalog,
+          introductionMinorEnglish: updatedConsent?.minor_assent?.introductionMinorEnglish,
+          introductionMinorTagalog: updatedConsent?.minor_assent?.introductionMinorTagalog,
+          purposeMinorEnglish: updatedConsent?.minor_assent?.purposeMinorEnglish,
+          purposeMinorTagalog: updatedConsent?.minor_assent?.purposeMinorTagalog,
+          choiceOfParticipantsEnglish: updatedConsent?.minor_assent?.choiceOfParticipantsEnglish,
+          choiceOfParticipantsTagalog: updatedConsent?.minor_assent?.choiceOfParticipantsTagalog,
+          voluntarinessMinorEnglish: updatedConsent?.minor_assent?.voluntarinessMinorEnglish,
+          voluntarinessMinorTagalog: updatedConsent?.minor_assent?.voluntarinessMinorTagalog,
+          proceduresMinorEnglish: updatedConsent?.minor_assent?.proceduresMinorEnglish,
+          proceduresMinorTagalog: updatedConsent?.minor_assent?.proceduresMinorTagalog,
+          risksMinorEnglish: updatedConsent?.minor_assent?.risksMinorEnglish,
+          risksMinorTagalog: updatedConsent?.minor_assent?.risksMinorTagalog,
+          benefitsMinorEnglish: updatedConsent?.minor_assent?.benefitsMinorEnglish,
+          benefitsMinorTagalog: updatedConsent?.minor_assent?.benefitsMinorTagalog,
+          confidentialityMinorEnglish: updatedConsent?.minor_assent?.confidentialityMinorEnglish,
+          confidentialityMinorTagalog: updatedConsent?.minor_assent?.confidentialityMinorTagalog,
+          sharingFindingsEnglish: updatedConsent?.minor_assent?.sharingFindingsEnglish,
+          sharingFindingsTagalog: updatedConsent?.minor_assent?.sharingFindingsTagalog,
+        },
       },
     };
+
 
     console.log('PDF Data structure ready');
 
@@ -820,23 +927,128 @@ if (Array.isArray(researchersWithPaths)) {
     const consentPdf = await generateConsentFormPdf(pdfData);
     await overwriteGeneratedPdf(supabase, user.id, submissionId, consentPdf, 'consent_form', 'Informed_Consent_Form');
 
+    // Replace the consolidatedPdfData section in submitRevisionApplication with this:
+
+const consolidatedPdfData = {
+  step1: {
+    title: updatedSubmission?.title,
+    projectLeaderFirstName: updatedSubmission?.project_leader_first_name,
+    projectLeaderMiddleName: updatedSubmission?.project_leader_middle_name,
+    projectLeaderLastName: updatedSubmission?.project_leader_last_name,
+    projectLeaderEmail: updatedSubmission?.project_leader_email,
+    projectLeaderContact: updatedSubmission?.project_leader_contact,
+    organization: updatedSubmission?.organization,
+  },
+  step2: {
+    title: updatedSubmission?.title,
+    studySite: updatedAppForm?.study_site,
+    researcherFirstName: updatedAppForm?.researcher_first_name,
+    researcherMiddleName: updatedAppForm?.researcher_middle_name,
+    researcherLastName: updatedAppForm?.researcher_last_name,
+    college: updatedAppForm?.college,
+    institution: updatedAppForm?.institution || 'University of Makati',
+    institutionAddress: updatedAppForm?.institution_address,
+    typeOfStudy: updatedAppForm?.type_of_study || [],
+    studySiteType: updatedAppForm?.study_site_type,
+    sourceOfFunding: updatedAppForm?.source_of_funding || [],
+    pharmaceuticalSponsor: updatedAppForm?.pharmaceutical_sponsor,
+    fundingOthers: updatedAppForm?.funding_others,
+    startDate: updatedAppForm?.study_duration?.startDate,
+    endDate: updatedAppForm?.study_duration?.endDate,
+    numParticipants: updatedAppForm?.num_participants,
+    technicalReview: updatedAppForm?.technical_review,
+    submittedToOther: updatedAppForm?.submitted_to_other,
+    coResearchers: updatedAppForm?.co_researcher?.map((co: any) => ({
+      name: co.fullName,
+      contact: co.contactNumber,
+      email: co.emailAddress
+    })) || [],
+    technicalAdvisers: updatedAppForm?.technical_advisers?.map((adv: any) => ({
+      name: adv.fullName,
+      contact: adv.contactNumber,
+      email: adv.emailAddress
+    })) || [],
+    organization: updatedSubmission?.organization, // ✅ ADD THIS for reviewer PDF
+  },
+  step3: {
+    formData: {
+      title: updatedProtocol?.title,
+      introduction: updatedProtocol?.introduction,
+      background: updatedProtocol?.background,
+      problemStatement: updatedProtocol?.problem_statement,
+      scopeDelimitation: updatedProtocol?.scope_delimitation,
+      literatureReview: updatedProtocol?.literature_review,
+      methodology: updatedProtocol?.methodology,
+      population: updatedProtocol?.population,
+      samplingTechnique: updatedProtocol?.sampling_technique,
+      researchInstrument: updatedProtocol?.research_instrument,
+      statisticalTreatment: updatedProtocol?.statistical_treatment,
+      ethicalConsideration: updatedProtocol?.ethical_consideration,
+      references: updatedProtocol?.research_references,
+    },
+    researchers: updatedProtocol?.researchers,
+  },
+  step4: {
+    consentType: updatedConsent?.consent_type,
+    adultLanguage: updatedConsent?.adult_consent?.adultLanguage,
+    minorLanguage: updatedConsent?.minor_assent?.minorLanguage,
+    formData: {
+      participantGroupIdentity: updatedConsent?.informed_consent_for,
+      informedConsentFor: updatedConsent?.informed_consent_for,
+      contactPerson: updatedConsent?.contact_person,
+      contactNumber: updatedConsent?.contact_number,
+      // ✅ SPREAD OPERATOR - This flattens the nested objects
+      ...(updatedConsent?.adult_consent || {}),
+      ...(updatedConsent?.minor_assent || {}),
+    },
+  },
+  submissionId: submissionId, // ✅ Required for attachment merging
+};
+
+console.log('📄 Consolidated PDF Data structure ready');
+
+// Then generate the PDF
+console.log('Re-generating Consolidated Document for Reviewer...');
+try {
+  // 🔍 DEBUG: Log the data being passed
+console.log('🔍 DEBUG - Consent Type:', consolidatedPdfData.step4.consentType);
+console.log('🔍 DEBUG - Adult Language:', consolidatedPdfData.step4.adultLanguage);
+console.log('🔍 DEBUG - Minor Language:', consolidatedPdfData.step4.minorLanguage);
+console.log('🔍 DEBUG - Introduction English:', consolidatedPdfData.step4.formData.introductionEnglish?.substring(0, 100));
+console.log('🔍 DEBUG - Full formData keys:', Object.keys(consolidatedPdfData.step4.formData));
+  const consolidatedReviewerPdf = await generateConsolidatedReviewerPdf(consolidatedPdfData);
+
+  await overwriteGeneratedPdf(
+    supabase,
+    user.id,
+    submissionId,
+    consolidatedReviewerPdf,
+    'consolidated_review',
+    'Consolidated_Review'
+  );
+  console.log('✅ Consolidated reviewer PDF regenerated');
+} catch (error) {
+  console.error('❌ Consolidated review generation error:', error);
+  // Don't fail the whole process
+}
+
     console.log('✅ All PDFs regenerated and overwritten.');
 
     console.log('🔄 Resetting ALL document verifications for re-verification...');
-      const { error: resetVerificationsError } = await supabase
-        .from('document_verifications')
-        .update({
-          is_approved: null,
-          feedback_comment: null,
-          verified_at: null,
-        })
-        .eq('submission_id', submissionId); // ✅ Affects ALL documents at once
+    const { error: resetVerificationsError } = await supabase
+      .from('document_verifications')
+      .update({
+        is_approved: null,
+        feedback_comment: null,
+        verified_at: null,
+      })
+      .eq('submission_id', submissionId); // ✅ Affects ALL documents at once
 
-      if (resetVerificationsError) {
-        console.warn(`⚠️ Warning resetting verifications: ${resetVerificationsError.message}`);
-      } else {
-        console.log('✅ All document verifications reset successfully');
-      }
+    if (resetVerificationsError) {
+      console.warn(`⚠️ Warning resetting verifications: ${resetVerificationsError.message}`);
+    } else {
+      console.log('✅ All document verifications reset successfully');
+    }
 
     // --- 5. Update submission status ---
     console.log('Updating main submission status to pending...');

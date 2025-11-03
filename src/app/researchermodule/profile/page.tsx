@@ -1,7 +1,6 @@
-// app/researchermodule/profile/page.tsx
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
@@ -14,32 +13,35 @@ import { getResearcherProfile } from '@/app/actions/researcher/getResearcherProf
 import { updateResearcherProfile } from '@/app/actions/researcher/updateResearcherProfile';
 import { User, Mail, Building, GraduationCap } from 'lucide-react';
 
+// ✅ Initialize default userData object
+const DEFAULT_USER_DATA = {
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  dateOfBirth: '',
+  phone: '',
+  gender: '',
+  school: '',
+  college: '',
+  program: '',
+  yearLevel: '',
+  section: '',
+  studentNo: '',
+  email: '',
+  organization: '',
+  username: '',
+};
+
 export default function ProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'personal' | 'account' | 'submission'>('personal');
   const [isEditing, setIsEditing] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [originalData, setOriginalData] = useState<any>(null);
   
-  const [userData, setUserData] = useState({
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    dateOfBirth: '',
-    contactNumber: '',
-    gender: '',
-    school: '',
-    college: '',
-    program: '',
-    yearLevel: '',
-    section: '',
-    studentNo: '',
-    email: '',
-    organization: '',
-    username: '',
-  });
-
+  // ✅ Initialize with DEFAULT_USER_DATA
+  const [userData, setUserData] = useState(DEFAULT_USER_DATA);
+  const [originalData, setOriginalData] = useState(DEFAULT_USER_DATA);
   const [submissions, setSubmissions] = useState<any[]>([]);
 
   useEffect(() => {
@@ -52,30 +54,31 @@ export default function ProfilePage() {
 
     if (result.success && result.profile) {
       const profileData = {
-        firstName: result.profile.firstName || '',
-        middleName: result.profile.middleName || '',
-        lastName: result.profile.lastName || '',
-        dateOfBirth: result.profile.dateOfBirth || '',
-        contactNumber: result.profile.contactNumber || '',
-        gender: result.profile.gender || '',
-        school: result.profile.school || '',
-        college: result.profile.college || '',
-        program: result.profile.program || '',
-        yearLevel: result.profile.yearLevel || '',
-        section: result.profile.section || '',
-        studentNo: result.profile.studentNo || '',
-        email: result.profile.email || '',
-        organization: result.profile.organization || '',
-        username: result.profile.username || ''
+        firstName: result.profile?.firstName ?? '',
+        middleName: result.profile?.middleName ?? '',
+        lastName: result.profile?.lastName ?? '',
+        dateOfBirth: result.profile?.dateOfBirth ?? '',
+        phone: result.profile?.phone ?? '',
+        gender: result.profile?.gender ?? '',
+        school: result.profile?.school ?? '',
+        college: result.profile?.college ?? '',
+        program: result.profile?.program ?? '',
+        yearLevel: result.profile?.yearLevel ?? '',
+        section: result.profile?.section ?? '',
+        studentNo: result.profile?.studentNo ?? '',
+        email: result.profile?.email ?? '',
+        organization: result.profile?.organization ?? '',
+        username: result.profile?.username ?? '',
       };
-      
+
+      // ✅ Set both at the same time
       setUserData(profileData);
       setOriginalData(profileData);
       setSubmissions(result.submissions || []);
     } else {
       alert('Failed to load profile data');
     }
-    
+
     setLoading(false);
   };
 
@@ -99,7 +102,7 @@ export default function ProfilePage() {
     } else {
       alert('Failed to save changes: ' + result.error);
     }
-    
+
     setLoading(false);
   };
 
@@ -227,7 +230,7 @@ export default function ProfilePage() {
             <div className="lg:col-span-8 xl:col-span-9">
               <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200">
                 <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
-                
+
                 <div className="p-4 sm:p-6 md:p-8">
                   {activeTab === 'personal' && (
                     <PersonalInformationTab

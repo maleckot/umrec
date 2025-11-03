@@ -14,6 +14,7 @@ import HistoryTab from '@/components/staff-secretariat-admin/submission-details/
 import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
 import { getReviewers } from '@/app/actions/secretariat-staff/secretariat/getReviewers';
 import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/assignReviewers';
+import { getPastReviewers } from '@/app/actions/secretariat-staff/secretariat/getPastReviewers';
 import { Suspense } from 'react';
 
 // Success Modal Component
@@ -75,6 +76,8 @@ function AssignReviewersContent() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [reviewers, setReviewers] = useState<any[]>([]);
+  const [pastReviewers, setPastReviewers] = useState<any[]>([]);
+  const [selectedReviewers, setSelectedReviewers] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
   const [reviewDueDate, setReviewDueDate] = useState<string>('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -115,16 +118,27 @@ function AssignReviewersContent() {
 
     setLoading(true);
     try {
-      // Load submission details
-      const submissionResult = await getClassificationDetails(submissionId);
+      console.log('📌 Fetching data for submission:', submissionId);
 
-      // ✅ Load ALL reviewers (your getReviewers returns all)
+      const submissionResult = await getClassificationDetails(submissionId);
+      console.log('✅ Classification result:', submissionResult);
+
       const reviewersResult = await getReviewers();
+      console.log('✅ Reviewers result:', reviewersResult);
+
+      const pastReviewersResult = await getPastReviewers(submissionId);
+      console.log('✅ Past reviewers result:', pastReviewersResult);
+
+      // ✅ Set PAST reviewers with logging
+      if (pastReviewersResult.success) {
+        console.log('🎯 Auto-selecting past reviewers:', pastReviewersResult.pastReviewerIds);
+        setSelectedReviewers(pastReviewersResult.pastReviewerIds || []);
+      } else {
+        console.log('❌ Failed to fetch past reviewers:', pastReviewersResult.error);
+      }
 
       if (submissionResult.success) {
         setData(submissionResult);
-
-        // Set suggested due date based on classification
         const suggestedDate = getSuggestedDueDate(
           submissionResult.submission?.classificationType || 'Expedited'
         );
@@ -136,21 +150,18 @@ function AssignReviewersContent() {
       }
 
       if (reviewersResult.success) {
-        // ✅ Set ALL reviewers
         setReviewers(reviewersResult.reviewers || []);
-        console.log(`Loaded ${reviewersResult.reviewers?.length || 0} reviewers`);
       } else {
         console.error('Failed to load reviewers:', reviewersResult.error);
       }
 
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ Error in loadData:', error);
       alert('Failed to load submission details');
     } finally {
       setLoading(false);
     }
   };
-
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -176,16 +187,15 @@ function AssignReviewersContent() {
   const getMaxReviewers = () => {
     switch (category) {
       case 'Exempted':
-        return 0; // ✅ No reviewers
+        return 0; // No reviewers
       case 'Expedited':
-        return 3; // ✅ Max 3 reviewers
+        return 3; // Max 3 reviewers
       case 'Full Review':
-        return reviewers.length; // ✅ ALL loaded reviewers
+        return reviewers.length; // ALL loaded reviewers
       default:
         return 3;
     }
   };
-
 
   // Helper functions for category styling
   const getCategoryColor = (cat: string) => {
@@ -227,8 +237,8 @@ function AssignReviewersContent() {
     }
   };
 
-  const handleAssign = async (selectedReviewers: string[]) => {
-    console.log('Assigning reviewers:', selectedReviewers);
+  const handleAssign = async (selectedReviewerIds: string[]) => {
+    console.log('Assigning reviewers:', selectedReviewerIds);
     console.log('Review due date:', reviewDueDate);
 
     // Validate due date
@@ -238,10 +248,12 @@ function AssignReviewersContent() {
     }
 
     try {
-      const result = await assignReviewers(submissionId!, selectedReviewers, reviewDueDate);
+      const result = await assignReviewers(submissionId!, selectedReviewerIds, reviewDueDate);
 
       if (result.success) {
-        setAssignedCount(result.assignmentCount || selectedReviewers.length);
+        // ✅ Calculate total assigned (both updated + inserted)
+        const total = (result.updated || 0) + (result.inserted || 0);
+        setAssignedCount(total);
         setShowSuccessModal(true);
       } else {
         alert(result.error || 'Failed to assign reviewers');
@@ -364,6 +376,34 @@ function AssignReviewersContent() {
                 </div>
               </div>
 
+              {/* ✅ Past Reviewers Banner */}
+              {pastReviewers.length > 0 && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="text-blue-600 text-xl">⟲</div>
+                    <div>
+                      <h3 className="font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Previous Reviewers - Auto-Selected
+                      </h3>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {pastReviewers.map(reviewer => (
+                          <div
+                            key={reviewer.id}
+                            className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            ✓ {reviewer.name}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-sm text-blue-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        These reviewers have been selected to review the resubmitted work. Click "Assign" below to proceed.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {data.consolidatedDocument ? (
                 <ConsolidatedDocument
                   title="Consolidated Document"
@@ -387,6 +427,7 @@ function AssignReviewersContent() {
                 reviewDueDate={reviewDueDate}
                 onDueDateChange={setReviewDueDate}
                 onAssign={handleAssign}
+                preSelectedReviewers={selectedReviewers}
               />
             </>
           )}

@@ -11,6 +11,7 @@ import ReviewerReviewsTable from '@/components/staff-secretariat-admin/reviewers
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewerDetails } from '@/app/actions/secretariat-staff/getReviewerDetails';
 import { updateReviewerCode } from '@/app/actions/secretariat-staff/updateReviewerCode';
+import { updateReviewerExpertise } from '@/app/actions/secretariat-staff/updateReviewerExpertise';
 
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
 
@@ -86,11 +87,23 @@ function ReviewerDetailsContent() {
     setExpertiseAreas(expertiseAreas.filter((_, i) => i !== index));
   };
 
-  const handleSaveExpertise = async () => {
-    const expertiseString = expertiseAreas.join(', ');
-    console.log('Saving expertise:', expertiseString);
+const handleSaveExpertise = async () => {
+  if (!reviewerId) {  // ✅ Check this
+    alert('Reviewer ID not found');
+    return;
+  }
+
+  const expertiseString = expertiseAreas.join(', ');
+  const result = await updateReviewerExpertise(reviewerId, expertiseString);
+  
+  if (result.success) {
+    console.log('✅ Expertise updated');
     setIsEditingExpertise(false);
-  };
+    loadReviewerDetails();  // Reload data
+  } else {
+    alert('Failed to update expertise: ' + result.error);
+  }
+};
 
   const handleReviewClick = (reviewId: string) => {
     router.push(`/secretariatmodule/submissions/details?id=${reviewId}`);

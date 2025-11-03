@@ -22,6 +22,21 @@ function parseFullName(fullName: string) {
   }
 }
 
+// ✅ Helper function to get document display name
+function getDocumentDisplayName(documentType: string): string {
+  const displayNames: { [key: string]: string } = {
+    'application_form': 'Application For Ethics Review',
+    'research_protocol': 'Research Protocol',
+    'consent_form': 'Informed Consent Form',
+    'research_instrument': 'Research Instrument / Questionnaire',
+    'proposal_defense': 'Certificate of Approval / Proposal Defense',
+    'endorsement_letter': 'Endorsement Letter',
+    'consolidated_application': 'Consolidated Application',
+  };
+
+  return displayNames[documentType] || documentType.replace(/_/g, ' ').toUpperCase();
+}
+
 export async function getResearcherProfile() {
   try {
     const supabase = await createClient();
@@ -66,7 +81,7 @@ export async function getResearcherProfile() {
       (submissions || []).map(async (submission) => {
         const { data: documents } = await supabase
           .from('uploaded_documents')
-          .select('id, file_name, file_url, uploaded_at')
+          .select('id, file_name, file_url, uploaded_at, document_type')  // ✅ Get document_type
           .eq('submission_id', submission.id)
           .order('uploaded_at', { ascending: false });
 
@@ -80,6 +95,7 @@ export async function getResearcherProfile() {
             return {
               ...doc,
               signedUrl: urlData?.signedUrl || null,
+              displayName: getDocumentDisplayName(doc.document_type),  // ✅ Get display name
             };
           })
         );
@@ -101,7 +117,7 @@ export async function getResearcherProfile() {
         middleName: middleName,      // ✅ Parsed
         lastName: lastName,          // ✅ Parsed
         dateOfBirth: profile.date_of_birth,
-        contactNumber: profile.phone,
+      phone: profile.phone,  // ✅ CORRECT
         gender: profile.gender,
         school: profile.school,
         college: profile.college,
