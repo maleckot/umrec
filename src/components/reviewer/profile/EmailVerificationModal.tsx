@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { X, Mail, Loader2 } from 'lucide-react';
+import { verifyEmailCode } from '@/app/actions/reviewer/verifyEmailCode';
 
 interface EmailVerificationModalProps {
   isOpen: boolean;
@@ -81,34 +82,40 @@ export default function EmailVerificationModal({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const verificationCode = code.join('');
+  // In EmailVerificationModal.tsx, change handleSubmit:
+
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  const verificationCode = code.join('');
+  
+  if (verificationCode.length !== 6) {
+    setError('Please enter the complete 6-digit code');
+    return;
+  }
+
+  setError('');
+  setLoading(true);
+
+  try {
+    // ✅ Verify code with backend
+    const result = await verifyEmailCode(verificationCode, email);
     
-    if (verificationCode.length !== 6) {
-      setError('Please enter the complete 6-digit code');
-      return;
-    }
-
-    setError('');
-    setLoading(true);
-
-    try {
-      // For frontend testing, accept any 6-digit code
-      // In production, this would verify with backend
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate verification - always succeed for testing
+    if (result.success) {
       onVerify();
       setCode(['', '', '', '', '', '']);
-    } catch (err) {
-      setError('Invalid verification code. Please try again.');
+    } else {
+      setError(result.error || 'Invalid verification code. Please try again.');
       setCode(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    setError('An error occurred. Please try again.');
+    setCode(['', '', '', '', '', '']);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const handleResend = async () => {
     if (onResendCode) {

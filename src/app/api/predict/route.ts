@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { text, model_name = 'distilbert' } = await request.json();
+    const { text, model_name = 'bert' } = await request.json();
     
     // Validate input
     if (!text || text.trim().length === 0) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
-        text: cleanedText, 
+        text: cleanedText,  
         model_name,
         use_chunking: true 
       }),

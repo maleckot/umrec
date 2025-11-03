@@ -1,7 +1,26 @@
-// app/actions/researcher/getResearcherProfile.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
+
+// ✅ Helper function to parse full name
+function parseFullName(fullName: string) {
+  if (!fullName) return { firstName: '', middleName: '', lastName: '' };
+  
+  const parts = fullName.trim().split(/\s+/);
+  
+  if (parts.length === 1) {
+    return { firstName: parts[0], middleName: '', lastName: '' };
+  } else if (parts.length === 2) {
+    return { firstName: parts[0], middleName: '', lastName: parts[1] };
+  } else {
+    // Last element is last name, first is first name, rest is middle name
+    return {
+      firstName: parts[0],
+      middleName: parts.slice(1, -1).join(' '),
+      lastName: parts[parts.length - 1],
+    };
+  }
+}
 
 export async function getResearcherProfile() {
   try {
@@ -24,6 +43,9 @@ export async function getResearcherProfile() {
     if (profileError) {
       return { success: false, error: 'Failed to fetch profile' };
     }
+
+    // ✅ Parse full_name into parts
+    const { firstName, middleName, lastName } = parseFullName(profile.full_name || '');
 
     // Get user's submissions
     const { data: submissions, error: submissionsError } = await supabase
@@ -75,9 +97,9 @@ export async function getResearcherProfile() {
         id: profile.id,
         email: user.email,
         fullName: profile.full_name,
-        firstName: profile.first_name,
-        middleName: profile.middle_name,
-        lastName: profile.last_name,
+        firstName: firstName,        // ✅ Parsed
+        middleName: middleName,      // ✅ Parsed
+        lastName: lastName,          // ✅ Parsed
         dateOfBirth: profile.date_of_birth,
         contactNumber: profile.phone,
         gender: profile.gender,

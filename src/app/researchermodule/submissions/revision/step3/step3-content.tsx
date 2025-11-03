@@ -172,250 +172,286 @@ export default function RevisionStep3Content() {
     [{ id: '1', name: '', signature: null }]
   );
 
-  // ✅ SINGLE useEffect - FETCH COMMENTS + RESEARCH PROTOCOL
-  useEffect(() => {
-    setIsClient(true);
-    const fetchData = async () => {
-      if (!submissionId) return;
+useEffect(() => {
+  setIsClient(true);
+  const fetchData = async () => {
+    if (!submissionId) return;
 
+    try {
+      const supabase = createClient();
+
+      // ✅ FETCH REVIEWER COMMENTS FIRST
       try {
-        const supabase = createClient();
+        setLoadingComments(true);
 
-        // ✅ FETCH REVIEWER COMMENTS FIRST
-        try {
-          setLoadingComments(true);
+        if (isQuickRevision && submissionId) {
+          // ✅ QUICK REVISION: Try document_verifications FIRST, then fall back to submission_comments
+          console.log(`Quick Revision Mode: Fetching feedback for ${submissionId}`);
+          
+          let feedbackFound = false;
 
-          if (isQuickRevision) { // ✅ Use isQuickRevision
-            // Quick revision - get from document_verifications
-            const { data: verification } = await supabase
-              .from('document_verifications')
-              .select('feedback_comment')
-              .eq('document_id', docId)
-              .single();
+          // Try to get from document_verifications first (if docId available)
+          if (docId) {
+            try {
+              const { data: verification } = await supabase
+                .from('document_verifications')
+                .select('feedback_comment')
+                .eq('document_id', docId)
+                .single();
 
-            if (verification?.feedback_comment) {
-              setRevisionComments(verification.feedback_comment);
-            } else {
-              setRevisionComments('No specific feedback provided. Please review and update your research protocol based on the feedback provided.');
-            }
-          } else {
-            // Regular revision - get from reviews table
-            const { data: reviews } = await supabase
-              .from('reviews')
-              .select(
-                `
-                protocol_recommendation,
-                protocol_disapproval_reasons,
-                protocol_ethics_recommendation,
-                protocol_technical_suggestions,
-                icf_recommendation,
-                icf_disapproval_reasons,
-                icf_ethics_recommendation,
-                icf_technical_suggestions
-                `
-              )
-              .eq('submission_id', submissionId)
-              .eq('status', 'submitted');
-
-            if (reviews && reviews.length > 0) {
-              const allComments = reviews
-                .map((review, index) => {
-                  let text = `**Reviewer ${index + 1}:**\n`;
-
-                  if (review.protocol_recommendation) {
-                    text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
-                  }
-                  if (review.protocol_disapproval_reasons) {
-                    text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
-                  }
-                  if (review.protocol_ethics_recommendation) {
-                    text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
-                  }
-                  if (review.protocol_technical_suggestions) {
-                    text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
-                  }
-
-                  if (review.icf_recommendation) {
-                    text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
-                  }
-                  if (review.icf_disapproval_reasons) {
-                    text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
-                  }
-                  if (review.icf_ethics_recommendation) {
-                    text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
-                  }
-                  if (review.icf_technical_suggestions) {
-                    text += `💡 **ICF Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
-                  }
-
-                  return text;
-                })
-                .join('\n---\n');
-
-              setRevisionComments(allComments);
-            } else {
-              setRevisionComments('Please expand the introduction section to provide more context about your research. Also ensure all methodology sections are clearly detailed with specific procedures.');
+              if (verification?.feedback_comment) {
+                console.log('✅ Found feedback in document_verifications');
+                setRevisionComments(verification.feedback_comment);
+                feedbackFound = true;
+              }
+            } catch (err) {
+              console.warn('⚠️ No verification feedback found for docId:', docId);
             }
           }
-        } catch (err) {
-          console.warn('Error fetching comments:', err);
-          setRevisionComments('Unable to load reviewer comments.');
-        } finally {
-          setLoadingComments(false);
+
+          // If no document_verifications feedback, try submission_comments
+          if (!feedbackFound) {
+            try {
+              const { data: unresolved_comments, error } = await supabase
+                .from('submission_comments')
+                .select('comment_text, created_at')
+                .eq('submission_id', submissionId)
+                .eq('is_resolved', false)
+                .order('created_at', { ascending: false });
+
+              if (error) {
+                console.warn('⚠️ No unresolved comments found:', error);
+                setRevisionComments('No specific feedback provided. Please review and update your research protocol based on the feedback provided.');
+              } else if (unresolved_comments && unresolved_comments.length > 0) {
+                console.log(`📝 Found ${unresolved_comments.length} unresolved submission comments`);
+                const allComments = unresolved_comments
+                  .map((comment, index) => {
+                    return `**Comment ${index + 1}:**\n${comment.comment_text}\n`;
+                  })
+                  .join('\n---\n');
+                setRevisionComments(allComments);
+              } else {
+                setRevisionComments('No specific feedback provided. Please review and update your research protocol based on the feedback provided.');
+              }
+            } catch (err) {
+              console.error('Error fetching submission comments:', err);
+              setRevisionComments('Unable to load reviewer feedback.');
+            }
+          }
+        } else {
+          // ✅ FULL REVISION: Get comments from reviews table
+          console.log(`Full Revision Mode: Fetching reviews for ${submissionId}`);
+          
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select(
+              `
+              protocol_recommendation,
+              protocol_disapproval_reasons,
+              protocol_ethics_recommendation,
+              protocol_technical_suggestions,
+              icf_recommendation,
+              icf_disapproval_reasons,
+              icf_ethics_recommendation,
+              icf_technical_suggestions
+              `
+            )
+            .eq('submission_id', submissionId)
+            .eq('status', 'submitted');
+
+          if (reviews && reviews.length > 0) {
+            const allComments = reviews
+              .map((review, index) => {
+                let text = `**Reviewer ${index + 1}:**\n`;
+
+                if (review.protocol_recommendation) {
+                  text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
+                }
+                if (review.protocol_disapproval_reasons) {
+                  text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
+                }
+                if (review.protocol_ethics_recommendation) {
+                  text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
+                }
+                if (review.protocol_technical_suggestions) {
+                  text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
+                }
+
+                if (review.icf_recommendation) {
+                  text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
+                }
+                if (review.icf_disapproval_reasons) {
+                  text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
+                }
+                if (review.icf_ethics_recommendation) {
+                  text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
+                }
+                if (review.icf_technical_suggestions) {
+                  text += `💡 **ICF Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
+                }
+
+                return text;
+              })
+              .join('\n---\n');
+
+            setRevisionComments(allComments);
+          } else {
+            setRevisionComments('Please expand the introduction section to provide more context about your research. Also ensure all methodology sections are clearly detailed with specific procedures.');
+          }
         }
+      } catch (err) {
+        console.warn('Error fetching comments:', err);
+        setRevisionComments('Unable to load reviewer comments.');
+      } finally {
+        setLoadingComments(false);
+      }
 
-        // ✅ FETCH RESEARCH PROTOCOL
-        const { data: protocolData, error } = await supabase
-          .from('research_protocols')
-          .select('*')
-          .eq('submission_id', submissionId)
-          .single();
+      // ✅ FETCH RESEARCH PROTOCOL
+      const { data: protocolData, error } = await supabase
+        .from('research_protocols')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .single();
 
-        if (error) {
-          console.warn('Research protocol not found:', error.message);
-          isInitialMount.current = false; // Allow auto-save to kick in
-          return;
-        }
+      if (error) {
+        console.warn('Research protocol not found:', error.message);
+        isInitialMount.current = false;
+        return;
+      }
 
-        if (protocolData) {
-          console.log('📋 Loaded research protocol data:', protocolData);
+      if (protocolData) {
+        console.log('📋 Loaded research protocol data:', protocolData);
 
-          const replaceImagePathsWithSignedUrls = async (htmlContent: string) => {
-            if (!htmlContent) return htmlContent;
+        const replaceImagePathsWithSignedUrls = async (htmlContent: string) => {
+          if (!htmlContent) return htmlContent;
 
-            let modifiedContent = htmlContent;
-            const pathRegex = /(?:src|href)=[\"']([a-f0-9\-]+\/protocol-images\/[^\"']+)[\"']/g;
+          let modifiedContent = htmlContent;
+          const pathRegex = /(?:src|href)=[\"']([a-f0-9\-]+\/protocol-images\/[^\"']+)[\"']/g;
 
-            const matches = Array.from(htmlContent.matchAll(pathRegex));
-            if (matches.length > 0) {
-              console.log(`🔄 Fixing ${matches.length} storage paths to signed URLs`);
+          const matches = Array.from(htmlContent.matchAll(pathRegex));
+          if (matches.length > 0) {
+            console.log(`🔄 Fixing ${matches.length} storage paths to signed URLs`);
 
-              for (const match of matches) {
-                const storagePath = match[1];
+            for (const match of matches) {
+              const storagePath = match[1];
+              try {
+                const { data: urlData } = await supabase.storage
+                  .from('research-documents')
+                  .createSignedUrl(storagePath, 3600);
+
+                if (urlData?.signedUrl) {
+                  modifiedContent = modifiedContent.replace(storagePath, urlData.signedUrl);
+                }
+              } catch (err) {
+                console.warn('Failed to sign URL:', storagePath);
+              }
+            }
+          }
+          return modifiedContent;
+        };
+
+        // ✅ Replace all image paths with signed URLs
+        const introduction = await replaceImagePathsWithSignedUrls(protocolData.introduction);
+        const background = await replaceImagePathsWithSignedUrls(protocolData.background);
+        const problemStatement = await replaceImagePathsWithSignedUrls(protocolData.problem_statement);
+        const scopeDelimitation = await replaceImagePathsWithSignedUrls(protocolData.scope_delimitation);
+        const literatureReview = await replaceImagePathsWithSignedUrls(protocolData.literature_review);
+        const methodology = await replaceImagePathsWithSignedUrls(protocolData.methodology);
+        const population = await replaceImagePathsWithSignedUrls(protocolData.population);
+        const samplingTechnique = await replaceImagePathsWithSignedUrls(protocolData.sampling_technique);
+        const researchInstrument = await replaceImagePathsWithSignedUrls(protocolData.research_instrument);
+        const statisticalTreatment = await replaceImagePathsWithSignedUrls(protocolData.statistical_treatment);
+        const references = await replaceImagePathsWithSignedUrls(protocolData.research_references);
+        const ethicalConsideration = await replaceImagePathsWithSignedUrls(protocolData.ethical_consideration);
+
+        setFormData(prev => ({
+          ...prev,
+          title: protocolData.title || prev.title,
+          introduction,
+          background,
+          problemStatement,
+          scopeDelimitation,
+          literatureReview,
+          methodology,
+          population,
+          samplingTechnique,
+          researchInstrument,
+          ethicalConsideration,
+          statisticalTreatment,
+          references,
+        }));
+
+        if (protocolData.researchers && Array.isArray(protocolData.researchers)) {
+          const researchersWithSignatures = await Promise.all(
+            protocolData.researchers.map(async (r: any) => {
+              let displaySignature: string | null = null;
+              let base64Signature: string | null = null;
+
+              if (r.signaturePath && typeof r.signaturePath === 'string') {
                 try {
                   const { data: urlData } = await supabase.storage
                     .from('research-documents')
-                    .createSignedUrl(storagePath, 3600);
+                    .createSignedUrl(r.signaturePath, 3600);
+                  displaySignature = urlData?.signedUrl || null;
 
-                  if (urlData?.signedUrl) {
-                    modifiedContent = modifiedContent.replace(storagePath, urlData.signedUrl);
+                  if (displaySignature) {
+                    const response = await fetch(displaySignature);
+                    const blob = await response.blob();
+                    const reader = new FileReader();
+
+                    await new Promise((resolve) => {
+                      reader.onloadend = () => {
+                        base64Signature = reader.result as string;
+                        if (base64Signature) {
+                          sessionStorage.setItem(`signature_${r.id}`, base64Signature);
+                        }
+                        resolve(null);
+                      };
+                      reader.readAsDataURL(blob);
+                    });
                   }
+
+                  console.log(`✅ Loaded and converted signature for ${r.name}`);
                 } catch (err) {
-                  console.warn('Failed to sign URL:', storagePath);
+                  console.warn('Failed to load signature:', err);
+                  if (r.signatureBase64) {
+                    base64Signature = r.signatureBase64;
+                    if (base64Signature) {
+                      sessionStorage.setItem(`signature_${r.id}`, base64Signature);
+                    }
+                  }
+                }
+              } else if (r.signatureBase64) {
+                displaySignature = r.signatureBase64;
+                base64Signature = r.signatureBase64;
+                if (base64Signature) {
+                  sessionStorage.setItem(`signature_${r.id}`, base64Signature);
                 }
               }
-            }
-            return modifiedContent;
-          };
 
-          // ✅ Replace all image paths with signed URLs
-          const introduction = await replaceImagePathsWithSignedUrls(protocolData.introduction);
-          const background = await replaceImagePathsWithSignedUrls(protocolData.background);
-          const problemStatement = await replaceImagePathsWithSignedUrls(protocolData.problem_statement);
-          const scopeDelimitation = await replaceImagePathsWithSignedUrls(protocolData.scope_delimitation);
-          const literatureReview = await replaceImagePathsWithSignedUrls(protocolData.literature_review);
-          const methodology = await replaceImagePathsWithSignedUrls(protocolData.methodology);
-          const population = await replaceImagePathsWithSignedUrls(protocolData.population);
-          const samplingTechnique = await replaceImagePathsWithSignedUrls(protocolData.sampling_technique);
-          const researchInstrument = await replaceImagePathsWithSignedUrls(protocolData.research_instrument);
-          const statisticalTreatment = await replaceImagePathsWithSignedUrls(protocolData.statistical_treatment);
-          const references = await replaceImagePathsWithSignedUrls(protocolData.research_references);
-          const ethicalConsideration = await replaceImagePathsWithSignedUrls(protocolData.ethical_consideration); // ✅ ADDED THIS
+              return {
+                id: r.id || crypto.randomUUID(),
+                name: r.name || '',
+                signature: displaySignature,
+                signaturePath: r.signaturePath,
+                signatureBase64: base64Signature
+              };
+            })
+          );
 
-          setFormData(prev => ({
-            ...prev,
-            title: protocolData.title || prev.title,
-            introduction,
-            background,
-            problemStatement,
-            scopeDelimitation,
-            literatureReview,
-            methodology,
-            population,
-            samplingTechnique,
-            researchInstrument,
-            ethicalConsideration, // ✅ ADDED THIS
-            statisticalTreatment,
-            references,
-          }));
-
-          if (protocolData.researchers && Array.isArray(protocolData.researchers)) {
-            const researchersWithSignatures = await Promise.all(
-              protocolData.researchers.map(async (r: any) => {
-                let displaySignature: string | null = null;
-                let base64Signature: string | null = null;
-
-                if (r.signaturePath && typeof r.signaturePath === 'string') {
-                  try {
-                    // ✅ Get signed URL for display
-                    const { data: urlData } = await supabase.storage
-                      .from('research-documents')
-                      .createSignedUrl(r.signaturePath, 3600);
-                    displaySignature = urlData?.signedUrl || null;
-
-                    // ✅ CRITICAL: Fetch the actual file and convert to base64
-                    if (displaySignature) {
-                      const response = await fetch(displaySignature);
-                      const blob = await response.blob();
-                      const reader = new FileReader();
-
-                      await new Promise((resolve) => {
-                        reader.onloadend = () => {
-                          base64Signature = reader.result as string;
-                          // ✅ Store in sessionStorage for submission (with null check)
-                          if (base64Signature) {
-                            sessionStorage.setItem(`signature_${r.id}`, base64Signature);
-                          }
-                          resolve(null);
-                        };
-                        reader.readAsDataURL(blob);
-                      });
-                    }
-
-                    console.log(`✅ Loaded and converted signature for ${r.name}`);
-                  } catch (err) {
-                    console.warn('Failed to load signature:', err);
-                    // Fallback to base64 if available
-                    if (r.signatureBase64) {
-                      base64Signature = r.signatureBase64;
-                      // ✅ Line 381 - Add null check
-                      if (base64Signature) {
-                        sessionStorage.setItem(`signature_${r.id}`, base64Signature);
-                      }
-                    }
-                  }
-                } else if (r.signatureBase64) {
-                  displaySignature = r.signatureBase64;
-                  base64Signature = r.signatureBase64;
-                  // ✅ Line 387 - Add null check
-                  if (base64Signature) {
-                    sessionStorage.setItem(`signature_${r.id}`, base64Signature);
-                  }
-                }
-
-                return {
-                  id: r.id || crypto.randomUUID(),
-                  name: r.name || '',
-                  signature: displaySignature, // For display in UI
-                  signaturePath: r.signaturePath,
-                  signatureBase64: base64Signature // Keep for submission
-                };
-              })
-            );
-
-            console.log('👥 Researchers loaded with signatures:', researchersWithSignatures);
-            setResearchers(researchersWithSignatures);
-          }
+          console.log('👥 Researchers loaded with signatures:', researchersWithSignatures);
+          setResearchers(researchersWithSignatures);
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      } finally {
-        isInitialMount.current = false; // Allow auto-save to kick in
       }
-    };
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      isInitialMount.current = false;
+    }
+  };
 
-    fetchData();
-  }, [submissionId, docId, isQuickRevision]); // ✅ Correct dependencies
+  fetchData();
+}, [submissionId, docId, isQuickRevision]);
 
   // Auto-save on data change
   useEffect(() => {
@@ -481,15 +517,15 @@ export default function RevisionStep3Content() {
     if (!allowNA && naVariations.includes(trimmedValue)) {
       return `${fieldName} cannot be "N/A". Please provide actual content.`;
     }
-    const irrelevantPhrases = [
-      'i dont know', "i don't know", 'idk', 'working in progress',
-      'work in progress', 'wip', 'tbd', 'to be determined',
-      'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
-      '123', 'abc', 'unknown', 'temp', 'temporary'
-    ];
-    if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
-      return `${fieldName} contains invalid text.`;
-    }
+    // const irrelevantPhrases = [
+    //   'i dont know', "i don't know", 'idk', 'working in progress',
+    //   'work in progress', 'wip', 'tbd', 'to be determined',
+    //   'later', 'soon', 'testing', 'test', 'asdf', 'qwerty',
+    //   '123', 'abc', 'unknown', 'temp', 'temporary'
+    // ];
+    // if (irrelevantPhrases.some(phrase => trimmedValue.includes(phrase))) {
+    //   return `${fieldName} contains invalid text.`;
+    // }
     if (trimmedValue.length < 10) {
       return `${fieldName} must be at least 10 characters`;
     }

@@ -468,12 +468,30 @@ export async function saveStep3Data({
 
     const { data: protocolDoc } = await supabase
       .from('uploaded_documents')
-      .select('id')
+      .select('id, revision_count') // ✅ ADD revision_count HERE
       .eq('submission_id', submissionId)
       .eq('document_type', 'research_protocol')
       .single();
 
-    if (protocolDoc) {
+   if (protocolDoc) {
+  console.log(`📝 Found protocol doc: ${protocolDoc.id}, current revision: ${protocolDoc.revision_count}`);
+  
+  const currentRevisionCount = protocolDoc.revision_count || 0;
+  
+  const { error: incrementError } = await supabase
+    .from('uploaded_documents')
+    .update({
+      revision_count: currentRevisionCount + 1,
+    })
+    .eq('id', protocolDoc.id);
+
+  if (incrementError) {
+    console.error('❌ Error incrementing revision count:', incrementError);
+  } else {
+    console.log(`✅ Research protocol revision count incremented to ${currentRevisionCount + 1}`);
+  }
+
+
       const { data: existingVerif } = await supabase
         .from('document_verifications')
         .select('id')
@@ -506,7 +524,7 @@ export async function saveStep3Data({
       }
     }
 
-    // ✅ CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+// ✅ CHECK STATUS: If all document verifications are null/approved → "pending", else → "needs_revision"
     console.log('🔍 Checking document verification status...');
 
     const { data: allDocs } = await supabase
@@ -515,20 +533,21 @@ export async function saveStep3Data({
       .eq('submission_id', submissionId);
 
     if (allDocs && allDocs.length > 0) {
-      // Get all verification records for this submission
       const { data: allVerifications } = await supabase
         .from('document_verifications')
         .select('is_approved')
         .eq('submission_id', submissionId);
 
-      // Check if ALL verifications are null/approved is null
-      const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+      const allAreNullOrApproved =
+        !allVerifications ||
+        allVerifications.every((v) => v.is_approved === null || v.is_approved === true);
 
-      const newStatus = allAreNull ? 'pending' : 'needs_revision';
+      const newStatus = allAreNullOrApproved ? 'pending' : 'needs_revision';
 
-      console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+      console.log(
+        `📊 Status update: ${newStatus} (${allAreNullOrApproved ? 'All verifications null/approved' : 'Some verifications exist'})`
+      );
 
-      // Update submission status
       const { error: statusError } = await supabase
         .from('research_submissions')
         .update({
@@ -542,6 +561,27 @@ export async function saveStep3Data({
       }
 
       console.log(`✅ Submission status updated to: ${newStatus}`);
+
+      // ✅ CONDITIONAL: Mark comments resolved ONLY if all verifications pass
+      if (allAreNullOrApproved) {
+        console.log('✅ All verifications passed. Marking submission comments as resolved...');
+
+        const { error: commentError } = await supabase
+          .from('submission_comments')
+          .update({ is_resolved: true })
+          .eq('submission_id', submissionId)
+          .eq('is_resolved', false);
+
+        if (commentError) {
+          console.warn('⚠️ Could not mark comments as resolved:', commentError);
+        } else {
+          console.log('✅ All submission comments marked as resolved');
+        }
+      } else {
+        console.log(
+          '⚠️ Some verifications are still pending. Comments remain unresolved for next revision cycle.'
+        );
+      }
     }
 
     console.log('✅ Step 3 saved successfully!');

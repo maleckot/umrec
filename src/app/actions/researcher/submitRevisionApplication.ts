@@ -309,7 +309,9 @@ export async function submitRevisionApplication(
           project_leader_last_name: revisionData.step1.projectLeaderLastName,
           project_leader_email: revisionData.step1.projectLeaderEmail,
           project_leader_contact: revisionData.step1.projectLeaderContact,
-          co_authors: safeString(revisionData.step1.coAuthors),
+          co_authors: revisionData.step2?.coResearchers
+            ?.map((co: any) => co.name)
+            .join(', ') || null,
           organization: safeString(revisionData.step1.organization),
         })
         .eq('id', submissionId);
@@ -820,12 +822,28 @@ if (Array.isArray(researchersWithPaths)) {
 
     console.log('✅ All PDFs regenerated and overwritten.');
 
+    console.log('🔄 Resetting ALL document verifications for re-verification...');
+      const { error: resetVerificationsError } = await supabase
+        .from('document_verifications')
+        .update({
+          is_approved: null,
+          feedback_comment: null,
+          verified_at: null,
+        })
+        .eq('submission_id', submissionId); // ✅ Affects ALL documents at once
+
+      if (resetVerificationsError) {
+        console.warn(`⚠️ Warning resetting verifications: ${resetVerificationsError.message}`);
+      } else {
+        console.log('✅ All document verifications reset successfully');
+      }
+
     // --- 5. Update submission status ---
     console.log('Updating main submission status to pending...');
     const { error: finalStatusError } = await supabase
       .from('research_submissions')
       .update({
-        status: 'resubmit',
+        status: 'pending',
         updated_at: new Date().toISOString(),
       })
       .eq('id', submissionId);

@@ -145,8 +145,11 @@ export default function SecretariatSubmissionsPage() {
     else if (submission.status === 'classified') {
         router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
     } 
-    else if (submission.status === 'Resubmit') {
+    else if (submission.status === 'pending') {
         router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+    } 
+    if (submission.status === 'needs_revision') {
+      router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
     } 
     else if (submission.status === 'under_review') {
       router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);

@@ -1,3 +1,4 @@
+// src/app/actions/secretariat-staff/getWaitingRevisionDetails.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -36,11 +37,21 @@ export async function getWaitingRevisionDetails(submissionId: string) {
       researcher = resData;
     }
 
-    // Get ALL documents
+    // ✅ FILTER: Get ONLY the 6 original documents
+    const originalDocTypes = [
+      'application_form',
+      'consent_form',
+      'research_protocol',
+      'research_instrument',
+      'endorsement_letter',
+      'proposal_defense',
+    ];
+
     const { data: allDocuments } = await supabase
       .from('uploaded_documents')
       .select('*')
       .eq('submission_id', submissionId)
+      .in('document_type', originalDocTypes) // ✅ Filter by document type
       .order('uploaded_at', { ascending: true });
 
     // Get document verifications with feedback
@@ -49,13 +60,13 @@ export async function getWaitingRevisionDetails(submissionId: string) {
       .select('*')
       .eq('submission_id', submissionId);
 
-      const { data: reviewerAssignments } = await supabase
-        .from('reviewer_assignments')
-        .select('id, reviewer_id')
-        .eq('submission_id', submissionId);
+    const { data: reviewerAssignments } = await supabase
+      .from('reviewer_assignments')
+      .select('id, reviewer_id')
+      .eq('submission_id', submissionId);
 
-      const reviewersAssigned = reviewerAssignments?.length || 3;
-      const reviewersRequired = submission.assigned_reviewers_count || 0;
+    const reviewersAssigned = reviewerAssignments?.length || 0; // ✅ Changed from 3
+    const reviewersRequired = submission.assigned_reviewers_count || 0;
 
     // Get comments
     const { data: comments } = await supabase
@@ -73,7 +84,7 @@ export async function getWaitingRevisionDetails(submissionId: string) {
           .from('profiles')
           .select('id, full_name')
           .in('id', staffIds);
-        
+
         staffNames = new Map(staffProfiles?.map(s => [s.id, s.full_name]) || []);
       }
     }
@@ -81,13 +92,17 @@ export async function getWaitingRevisionDetails(submissionId: string) {
     // Build documents with feedback
     const documentsWithFeedback = allDocuments?.map(doc => {
       const verification = verifications?.find(v => v.document_id === doc.id);
-      
+
       return {
         id: doc.id,
         name: doc.file_name,
         type: doc.document_type,
-        status: verification?.is_approved === true ? 'Approved' : 
-                verification?.is_approved === false ? 'Rejected' : 'Pending',
+        status:
+          verification?.is_approved === true
+            ? 'Approved'
+            : verification?.is_approved === false
+              ? 'Rejected'
+              : 'Pending',
         feedback: verification?.feedback_comment || null,
         uploadedAt: doc.uploaded_at,
       };
@@ -118,17 +133,17 @@ export async function getWaitingRevisionDetails(submissionId: string) {
         needsRevision: submission.status === 'needs_revision',
         rejectedCount,
         totalDocuments: documentsWithFeedback.length,
-        reviewersRequired, // ✅ Add this
-        reviewersAssigned, // ✅ Add this
+        reviewersRequired,
+        reviewersAssigned,
       },
-      comments: comments?.map(c => ({
-        id: c.id,
-        commentText: c.comment_text,
-        createdAt: c.created_at,
-        staffName: staffNames.get(c.staff_id) || 'Staff Member',
-      })) || [],
+      comments:
+        comments?.map(c => ({
+          id: c.id,
+          commentText: c.comment_text,
+          createdAt: c.created_at,
+          staffName: staffNames.get(c.staff_id) || 'Staff Member',
+        })) || [],
     };
-
   } catch (error) {
     console.error('Error in getWaitingRevisionDetails:', error);
     return {

@@ -1,9 +1,8 @@
-// app/actions/researcher/getSubmissionActivity.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
 
-export async function getSubmissionActivity(submissionId: string) {
+export async function getSubmissionActivity(submissionId: string, targetDocId?: string) {
   try {
     const supabase = await createClient();
 
@@ -15,6 +14,7 @@ export async function getSubmissionActivity(submissionId: string) {
         submission: null,
         documents: [],
         revisionInfo: null,
+        submissionComments: [],
         comments: []
       };
     }
@@ -33,11 +33,11 @@ export async function getSubmissionActivity(submissionId: string) {
         submission: null,
         documents: [],
         revisionInfo: null,
+        submissionComments: [],
         comments: []
       };
     }
 
-    // Fetch ALL documents
     const { data: allDocuments, error: docsError } = await supabase
       .from('uploaded_documents')
       .select('*')
@@ -49,14 +49,16 @@ export async function getSubmissionActivity(submissionId: string) {
       .select('*')
       .eq('submission_id', submissionId);
 
-    // Fetch comments from submission_comments table
-    const { data: commentsData } = await supabase
+    // ✅ FETCH SUBMISSION COMMENTS (with id, comment_text, created_at)
+    const { data: submissionCommentData } = await supabase
       .from('submission_comments')
       .select('id, comment_text, created_at')
       .eq('submission_id', submissionId)
+      .eq('is_resolved', false)
       .order('created_at', { ascending: false });
 
     let documentsWithUrls = [];
+    let specificDocRevisionCount = 0;
     
     if (allDocuments && allDocuments.length > 0) {
       for (const doc of allDocuments) {
@@ -77,18 +79,27 @@ export async function getSubmissionActivity(submissionId: string) {
             isApproved: verification?.is_approved ?? null,
             needsRevision: verification?.is_approved === false,
             revisionComment: verification?.feedback_comment || null,
+            revisionCount: doc.revision_count || 0,
           });
+
+          if (targetDocId) {
+            const docIdStr = String(doc.id);
+            if (docIdStr === targetDocId && verification?.is_approved === false) {
+              specificDocRevisionCount = doc.revision_count || 0;
+            }
+          } else if (verification?.is_approved === false && specificDocRevisionCount === 0) {
+            specificDocRevisionCount = doc.revision_count || 0;
+          }
         }
       }
     }
 
     const rejectedDocs = verifications?.filter(v => v.is_approved === false) || [];
-    const revisionCount = rejectedDocs.length;
 
-   // ✅ COLLECT ONLY document verification feedbacks
+    // ✅ COLLECT ALL FEEDBACK (for backward compatibility)
     const allFeedback: Array<{ text: string; date: string; source: string }> = [];
     
-    // Add ONLY rejected document feedbacks
+    // Add document verification feedback
     rejectedDocs.forEach(doc => {
       if (doc.feedback_comment) {
         allFeedback.push({
@@ -99,14 +110,20 @@ export async function getSubmissionActivity(submissionId: string) {
       }
     });
     
-    // Do NOT add submission_comments here - they're global level comments
-    // Only add them if they exist AND show in revision card only for rejected docs
+    // Add submission comments to feedback
+    if (submissionCommentData && submissionCommentData.length > 0) {
+      submissionCommentData.forEach(comment => {
+        allFeedback.push({
+          text: comment.comment_text,
+          date: comment.created_at,
+          source: 'submission_comment'
+        });
+      });
+    }
     
-    // Sort by date (most recent first) and deduplicate
     const sortedFeedback = allFeedback
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     
-    // Deduplicate based on text content (case-insensitive)
     const uniqueFeedback = sortedFeedback.filter((feedback, index, self) =>
       index === self.findIndex(f => f.text.toLowerCase().trim() === feedback.text.toLowerCase().trim())
     );
@@ -123,9 +140,16 @@ export async function getSubmissionActivity(submissionId: string) {
       documents: documentsWithUrls,
       revisionInfo: {
         needsRevision: submission.status === 'needs_revision',
-        revisionCount: revisionCount,
-        message: uniqueFeedback[0]?.text || '', // Most recent from rejected docs only
-      },  
+        revisionCount: specificDocRevisionCount,
+        message: uniqueFeedback[0]?.text || '',
+      },
+      // ✅ NEW: Submission-level comments (for all revision components)
+      submissionComments: submissionCommentData?.map(c => ({
+        id: `submission-${c.id}`,
+        commentText: c.comment_text,
+        createdAt: c.created_at,
+      })) || [],
+      // Keep for backward compatibility
       comments: uniqueFeedback.map((f, index) => ({
         id: `feedback-${index}`,
         commentText: f.text,
@@ -140,6 +164,7 @@ export async function getSubmissionActivity(submissionId: string) {
       submission: null,
       documents: [],
       revisionInfo: null,
+      submissionComments: [],
       comments: []
     };
   }

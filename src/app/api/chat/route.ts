@@ -19,7 +19,7 @@ Key information:
 - Typical timeline: 2-4 weeks depending on classification
 - Exempted: No review needed
 - Expedited: 2 weeks, 3 reviewers
-- Full Review: 30 days, 5 reviewers
+- Full Review: 30 days, all reviewers
 
 Guidelines:
 - Be helpful, professional, and concise

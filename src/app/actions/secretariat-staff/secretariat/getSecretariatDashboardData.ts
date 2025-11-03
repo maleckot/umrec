@@ -43,6 +43,7 @@ export async function getSecretariatDashboardData() {
       .from('research_submissions')
       .select('id, submission_id, title, submitted_at, status')
       .neq('status', 'new_submission')  // ✅ Exclude new submissions
+      .neq('status', 'pending')  // ✅ Exclude new submissions
       .order('submitted_at', { ascending: false })
       .limit(5);
 
@@ -68,7 +69,7 @@ export async function getSecretariatDashboardData() {
       .from('reviewer_assignments')
       .select('*', { count: 'exact', head: true })
       .lte('due_date', sevenDaysAgo.toISOString())
-      .eq('status', 'pending');  // ✅ Only count pending reviews
+      .eq('status', 'under_review');  // ✅ Only count pending reviews
 
     // Format data
     const formattedRecentSubmissions = recentSubmissions?.map(sub => ({
@@ -123,7 +124,7 @@ export async function getSecretariatDashboardData() {
 function formatStatus(status: string): string {
   const statusMap: { [key: string]: string } = {
     'new_submission': 'New Submission',
-    'pending_review': 'Review Pending',
+    'pending': 'Resubmission',
     'awaiting_classification': 'Under Classification',
     'under_review': 'Under Review',
     'classified': 'Classified',
@@ -140,7 +141,7 @@ function formatStatus(status: string): string {
 function getStatusColor(status: string): string {
   const colorMap: { [key: string]: string } = {
     'new_submission': 'bg-blue-50 text-blue-600',
-    'pending_review': 'bg-blue-50 text-blue-600',
+    'pending': 'bg-amber-50 text-amber-600',
     'awaiting_classification': 'bg-amber-50 text-amber-600',
     'under_review': 'bg-purple-50 text-purple-600',
     'classified': 'bg-amber-50 text-amber-600',

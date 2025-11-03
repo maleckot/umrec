@@ -38,6 +38,7 @@ export async function getSecretariatSubmissions({
 
     // ALWAYS exclude new_submission for secretariat
     query = query.neq('status', 'new_submission');
+    query = query.neq('status', 'pending');
 
     // Apply search filter
     if (searchQuery && searchQuery.trim() !== '') {

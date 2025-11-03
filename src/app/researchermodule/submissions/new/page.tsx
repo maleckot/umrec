@@ -9,60 +9,64 @@ import { FileText, CheckCircle, Clock, MapPin } from 'lucide-react';
 export default function NewSubmissionPage() {
   const router = useRouter();
 
-  const requiredDocuments = [
-    {
-      text: 'Application Form Ethics Review (UMREC Form No. 0013-1)',
-      pdfUrl: '/documents/FORM-0013-1_APPLICATION-FOR-ETHICS-REVIEW.pdf',
-      hasPdf: true
-    },
-    {
-      text: 'Research Protocol (UMREC Form No. 0033)',
-      pdfUrl: '/documents/FORM-0033_RESEARCH-PROTOCOL.pdf',
-      hasPdf: true
-    },
-    {
-      text: 'Informed Consent Form (sample for legal-age respondents)',
-      pdfUrl: '/documents/Sample-Informed-Consent-Form.pdf',
-      hasPdf: true
-    },
-    {
-      text: 'Informed Consent Form (sample for minor respondents)',
-      pdfUrl: '/documents/FORM-0012-2_INFORMED-ASSENT-FORM.pdf',
-      hasPdf: true
-    },
-    {
-      text: 'Validated Research Instrument (Survey form/questionnaire)',
-      hasPdf: false
-    },
-    {
-      text: 'One-page attachment of proposal defense certification/evaluation for students (scan copies are allowed)',
-      hasPdf: false
-    },
-    {
-      text: 'Endorsement Letter from Research Adviser (scan copies are allowed)',
-      hasPdf: false
-    }
-  ];
+  // ✅ NEW - Points to public folder
+// ✅ UPDATED - Correct paths for your folder structure
+const requiredDocuments = [
+  {
+    text: 'Application Form Ethics Review (UMREC Form No. 0013-1)',
+    pdfUrl: '/forms/UMREC Form No. 0013-1.pdf',  // ✅ Changed
+    hasPdf: true
+  },
+  {
+    text: 'Research Protocol (UMREC Form No. 0033)',
+    pdfUrl: '/forms/UMREC Form No. 0033.pdf',  // ✅ Changed
+    hasPdf: true
+  },
+  {
+    text: 'Informed Consent Form (sample for legal-age respondents)',
+    pdfUrl: '/forms/Informed Consent Form.pdf',  // ✅ Changed
+    hasPdf: true
+  },
+  {
+    text: 'Informed Consent Form (sample for minor respondents)',
+    pdfUrl: '/forms/Informed Consent Form.pdf',  // ✅ Changed
+    hasPdf: true
+  },
+  {
+    text: 'Validated Research Instrument (Survey form/questionnaire)',
+    hasPdf: false
+  },
+  {
+    text: 'One-page attachment of proposal defense certification/evaluation for students (scan copies are allowed)',
+    hasPdf: false
+  },
+  {
+    text: 'Endorsement Letter from Research Adviser (scan copies are allowed)',
+    hasPdf: false
+  }
+];
+
+
 
   return (
-   <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
+    <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] to-[#DAE0E7]">
       <NavbarRoles role="researcher" />
-      
+
       <div className="pt-24 md:pt-28 lg:pt-32 px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 pb-8">
         <div className="max-w-[1600px] mx-auto">
           <div className="bg-white/95 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-xl border border-gray-200 p-6 sm:p-8 md:p-10 lg:p-12">
             {/* Enhanced Header */}
-    <div className="text-center mb-8 sm:mb-10 md:mb-12">
-  <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-[#003366] to-[#004080] rounded-full mb-6 sm:mb-8 shadow-lg">
-    <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
-  </div>
-  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    Submit Request For Ethics Review
-  </h1>
-  <p className="text-base sm:text-lg md:text-xl text-gray-600 mt-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-    To Our Valued Researchers,
-  </p>
-</div>
+            <div className="text-center mb-8 sm:mb-10 md:mb-12">
+              <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-[#003366] to-[#004080] rounded-full mb-6 sm:mb-8 shadow-lg">
+                <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-white" />
+              </div>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Submit Request For Ethics Review
+              </h1>
+              <p className="text-base sm:text-lg md:text-xl text-gray-600 mt-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                To Our Valued Researchers,
+              </p>
+            </div>
 
             {/* Introduction */}
             <div className="mb-8 sm:mb-10 md:mb-12">
@@ -88,25 +92,25 @@ export default function NewSubmissionPage() {
                       <p className="text-sm sm:text-base md:text-lg text-gray-700 flex-1 leading-relaxed font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         {doc.text}
                       </p>
-                     {doc.hasPdf && (
-  <a
-    href={doc.pdfUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#003366] to-[#004080] hover:from-[#004080] hover:to-[#003366] text-white rounded-xl transition-all duration-300 font-semibold text-xs sm:text-sm flex-shrink-0 shadow-md hover:shadow-lg hover:scale-105"
-    style={{ fontFamily: 'Metropolis, sans-serif' }}
-  >
-    <FileText size={16} className="sm:w-5 sm:h-5" />
-    View PDF
-  </a>
-)}
+                      {doc.hasPdf && (
+                        <a
+                          href={doc.pdfUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-gradient-to-r from-[#003366] to-[#004080] hover:from-[#004080] hover:to-[#003366] text-white rounded-xl transition-all duration-300 font-semibold text-xs sm:text-sm flex-shrink-0 shadow-md hover:shadow-lg hover:scale-105"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          <FileText size={16} className="sm:w-5 sm:h-5" />
+                          View PDF
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Enhanced Info Cards */}
-              
+
               {/* Formatting Guidelines - Yellow Theme */}
               <div className="bg-gradient-to-br from-[#F7D117]/10 to-[#F7D117]/20 border-l-4 border-[#B8860B] p-5 sm:p-6 md:p-7 rounded-xl mb-5 sm:mb-6 shadow-md hover:shadow-lg transition-all duration-300">
                 <div className="flex items-start gap-3 sm:gap-4 mb-4">

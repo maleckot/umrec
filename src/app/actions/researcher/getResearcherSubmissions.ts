@@ -5,12 +5,12 @@ import { createClient } from '@/utils/supabase/server';
 
 function formatDocumentTitle(documentType: string, submissionTitle: string): string {
   const typeFormatMap: Record<string, string> = {
+    'research_instrument': 'Research Instrument',
+    'endorsement_letter': 'Endorsement Letter',
+    'proposal_defense': 'Proposal Defense',
     'application_form': 'Application Form',
     'research_protocol': 'Research Protocol',
-    'informed_consent': 'Informed Consent Form',
-    'curriculum_vitae': 'Curriculum Vitae',
-    'data_collection_tools': 'Data Collection Tools',
-    'other_documents': 'Other Documents',
+    'consent_form': 'Consent Form',
     'consolidated_application': 'Consolidated Application',
   };
 
@@ -61,6 +61,16 @@ export async function getResearcherSubmissions() {
 
     const submissionList = submissions || [];
 
+    // ✅ FILTER: 6 original documents
+    const originalDocTypes = [
+      'application_form',
+      'consent_form',
+      'research_protocol',
+      'research_instrument',
+      'endorsement_letter',
+      'proposal_defense',
+    ];
+
     const submissionsWithDocuments = await Promise.all(
       submissionList.map(async (submission) => {
         const { data: documents } = await supabase
@@ -90,6 +100,12 @@ export async function getResearcherSubmissions() {
             doc => doc.document_type === 'consolidated_application'
           );
           console.log('After filter - filtered count:', filteredDocuments.length);
+        } else {
+          // ✅ NEW: For early statuses, show only 6 original docs
+          filteredDocuments = (documents || []).filter(
+            doc => originalDocTypes.includes(doc.document_type)
+          );
+          console.log('After original filter - filtered count:', filteredDocuments.length);
         }
         console.log('===================');
 
@@ -169,7 +185,7 @@ export async function getResearcherSubmissions() {
         ['under_review', 'pending', 'classified'].includes(s.status)
       ).length,
       needsRevision: submissionList.filter(s =>
-         ['needs_revision', 'under_revision'].includes(s.status)).length,
+        ['needs_revision', 'under_revision'].includes(s.status)).length,
     };
 
     const currentSubmission = submissionList[0] || null;

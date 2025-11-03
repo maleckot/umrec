@@ -7,7 +7,7 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 export default function HelpCenterPage() {
   return (
     <div className="flex flex-col h-screen">
-      <NavbarRoles role="researcher" />
+      <NavbarRoles /> {/* ← Remove role="researcher" - let it auto-detect! */}
       <div className="flex-1 overflow-hidden">
         <HelpCenterLayout />
       </div>

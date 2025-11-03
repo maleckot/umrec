@@ -147,7 +147,9 @@ export async function submitResearchApplication(
         project_leader_last_name: formData.step1?.projectLeaderLastName || '',
         project_leader_email: formData.step1?.projectLeaderEmail || user.email,
         project_leader_contact: formData.step1?.projectLeaderContact || '',
-        co_authors: safeString(formData.step1?.coAuthors),
+        co_authors: formData.step2?.coResearchers
+          ?.map((co: any) => co.name)
+          .join(', ') || null,
         organization: safeString(formData.step1?.organization),
         college: safeString(formData.step2?.college),
         type_of_study: formData.step2?.typeOfStudy || [],
@@ -663,25 +665,25 @@ export async function submitResearchApplication(
 
       // ✅ BUILD proper structure for consent PDF
       // MATCH the saveStep4 structure EXACTLY
-        const { data: consent } = await supabase
-          .from('consent_forms')
-          .select('*')
-          .eq('submission_id', submission.id)
-          .single();
+      const { data: consent } = await supabase
+        .from('consent_forms')
+        .select('*')
+        .eq('submission_id', submission.id)
+        .single();
 
-        // ✅ Build step4PdfData using the SPREAD pattern
-        const consentPdfData = {
-          step2: submission,
-          step4: {
-            ...(consent?.adult_consent || {}),        // ✅ Flatten adult
-            ...(consent?.minor_assent || {}),         // ✅ Flatten minor
-            consent_type: consent?.consent_type,
-            contact_person: consent?.contact_person,
-            contact_number: consent?.contact_number,
-            informed_consent_for: consent?.informed_consent_for,
-            consentType: consent?.consent_type,
-          },
-        };
+      // ✅ Build step4PdfData using the SPREAD pattern
+      const consentPdfData = {
+        step2: submission,
+        step4: {
+          ...(consent?.adult_consent || {}),        // ✅ Flatten adult
+          ...(consent?.minor_assent || {}),         // ✅ Flatten minor
+          consent_type: consent?.consent_type,
+          contact_person: consent?.contact_person,
+          contact_number: consent?.contact_number,
+          informed_consent_for: consent?.informed_consent_for,
+          consentType: consent?.consent_type,
+        },
+      };
 
       const consentPdf = await generateConsentFormPdf(consentPdfData);
 

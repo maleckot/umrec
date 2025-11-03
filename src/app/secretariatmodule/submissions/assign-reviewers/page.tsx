@@ -17,23 +17,23 @@ import { assignReviewers } from '@/app/actions/secretariat-staff/secretariat/ass
 import { Suspense } from 'react';
 
 // Success Modal Component
-function SuccessModal({ 
-  isOpen, 
-  onClose, 
-  reviewerCount 
-}: { 
-  isOpen: boolean; 
-  onClose: () => void; 
+function SuccessModal({
+  isOpen,
+  onClose,
+  reviewerCount
+}: {
+  isOpen: boolean;
+  onClose: () => void;
   reviewerCount: number;
 }) {
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100000] flex items-center justify-center p-4 bg-black/50 animate-fade-in"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -41,19 +41,19 @@ function SuccessModal({
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
-          
+
           <h3 className="text-xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Reviewers Assigned Successfully!
           </h3>
-          
+
           <p className="text-gray-600 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Successfully assigned <span className="font-bold text-green-600">{reviewerCount}</span> {reviewerCount === 1 ? 'reviewer' : 'reviewers'}!
           </p>
-          
+
           <p className="text-sm text-gray-500 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             Email notifications have been sent to all assigned reviewers.
           </p>
-          
+
           <button
             onClick={onClose}
             className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
@@ -71,7 +71,7 @@ function AssignReviewersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
-  
+
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [reviewers, setReviewers] = useState<any[]>([]);
@@ -90,7 +90,7 @@ function AssignReviewersContent() {
   const getSuggestedDueDate = (classificationType: string) => {
     const today = new Date();
     let daysToAdd = 14; // Default 2 weeks
-    
+
     switch (classificationType) {
       case 'Exempted':
         daysToAdd = 0; // No review needed
@@ -102,10 +102,10 @@ function AssignReviewersContent() {
         daysToAdd = 30; // 30 days
         break;
     }
-    
+
     const dueDate = new Date(today);
     dueDate.setDate(dueDate.getDate() + daysToAdd);
-    
+
     // Format as YYYY-MM-DD for input type="date"
     return dueDate.toISOString().split('T')[0];
   };
@@ -117,13 +117,13 @@ function AssignReviewersContent() {
     try {
       // Load submission details
       const submissionResult = await getClassificationDetails(submissionId);
-      
-      // Load reviewers from database
+
+      // ✅ Load ALL reviewers (your getReviewers returns all)
       const reviewersResult = await getReviewers();
 
       if (submissionResult.success) {
         setData(submissionResult);
-        
+
         // Set suggested due date based on classification
         const suggestedDate = getSuggestedDueDate(
           submissionResult.submission?.classificationType || 'Expedited'
@@ -136,7 +136,9 @@ function AssignReviewersContent() {
       }
 
       if (reviewersResult.success) {
+        // ✅ Set ALL reviewers
         setReviewers(reviewersResult.reviewers || []);
+        console.log(`Loaded ${reviewersResult.reviewers?.length || 0} reviewers`);
       } else {
         console.error('Failed to load reviewers:', reviewersResult.error);
       }
@@ -148,6 +150,7 @@ function AssignReviewersContent() {
       setLoading(false);
     }
   };
+
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'N/A';
@@ -173,15 +176,16 @@ function AssignReviewersContent() {
   const getMaxReviewers = () => {
     switch (category) {
       case 'Exempted':
-        return 0;
+        return 0; // ✅ No reviewers
       case 'Expedited':
-        return 3;
+        return 3; // ✅ Max 3 reviewers
       case 'Full Review':
-        return 5;
+        return reviewers.length; // ✅ ALL loaded reviewers
       default:
         return 3;
     }
   };
+
 
   // Helper functions for category styling
   const getCategoryColor = (cat: string) => {
@@ -226,16 +230,16 @@ function AssignReviewersContent() {
   const handleAssign = async (selectedReviewers: string[]) => {
     console.log('Assigning reviewers:', selectedReviewers);
     console.log('Review due date:', reviewDueDate);
-    
+
     // Validate due date
     if (!reviewDueDate && category !== 'Exempted') {
       alert('Please select a review due date');
       return;
     }
-    
+
     try {
       const result = await assignReviewers(submissionId!, selectedReviewers, reviewDueDate);
-      
+
       if (result.success) {
         setAssignedCount(result.assignmentCount || selectedReviewers.length);
         setShowSuccessModal(true);
@@ -306,9 +310,9 @@ function AssignReviewersContent() {
   return (
     <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
       {/* Success Modal */}
-      <SuccessModal 
-        isOpen={showSuccessModal} 
-        onClose={handleSuccessModalClose} 
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={handleSuccessModalClose}
         reviewerCount={assignedCount}
       />
 
@@ -375,7 +379,7 @@ function AssignReviewersContent() {
                   </p>
                 </div>
               )}
-              
+
               <ReviewerAssignment
                 category={category as any}
                 reviewers={reviewers}

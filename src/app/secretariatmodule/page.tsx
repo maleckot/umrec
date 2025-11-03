@@ -49,6 +49,9 @@ export default function SecretariatDashboard() {
       else if (submission.status === 'Approved') {
         router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
       } 
+      else if (submission.status === 'Needs Revision') {
+        router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
+      } 
       else {
         router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
       }

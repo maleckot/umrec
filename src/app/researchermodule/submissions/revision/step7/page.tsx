@@ -49,7 +49,7 @@ function RevisionStep7Content() {
   const submissionId = searchParams.get('id');
   const docId = searchParams.get('docId');
   const docType = searchParams.get('docType');
-
+  const [revisionCount, setRevisionCount] = useState<number>(0); // ✅ ADD THIS
   const isQuickRevision = !!docId && docType === 'endorsement_letter';
 
   const [file, setFile] = useState<File | null>(null);
@@ -59,67 +59,108 @@ function RevisionStep7Content() {
   const [isClient, setIsClient] = useState(false); // ✅ ADDED
   const supabase = createClient();
 
-  // ✅ --- START: REVISED useEffect ---
   useEffect(() => {
-    setIsClient(true); 
+    setIsClient(true);
 
-    // 1. Guard against missing submissionId
     if (!submissionId) {
       alert('No submission ID found. Redirecting to dashboard.');
       router.push('/researchermodule/submissions');
       return;
     }
-  
+
     const fetchCommentsAndData = async () => {
       setLoadingComments(true);
       try {
-        if (isQuickRevision) {
-          // 2a. QUICK REVISION flow
+        if (isQuickRevision && docId) {
+          // ✅ QUICK REVISION: Fetch verification feedback + revision count + submission comments
           console.log(`Quick Revision: Fetching comments for docId ${docId}`);
+
+          // 1. Get verification feedback
           const { data: verification } = await supabase
             .from('document_verifications')
             .select('feedback_comment')
-            .eq('document_id', docId) // docId is guaranteed to exist here
+            .eq('document_id', docId)
             .single();
-  
+
+          // 2. Get revision count from uploaded_documents
+          const { data: docData } = await supabase
+            .from('uploaded_documents')
+            .select('revision_count')
+            .eq('id', docId)
+            .single();
+
+          setRevisionCount(docData?.revision_count || 0); // ✅ SET REVISION COUNT
+
+          // 3. ✅ Fetch submission comments - BY SUBMISSION ID ONLY
+          const { data: submissionCommentsData } = await supabase
+            .from('submission_comments')
+            .select('comment_text, created_at')
+            .eq('submission_id', submissionId)
+            .eq('is_resolved', false) // ✅ Only fetch unresolved comments
+            .order('created_at', { ascending: true });
+
+          // 4. Combine comments
+          let combinedComments = '';
+
           if (verification?.feedback_comment) {
-            setRevisionComments(verification.feedback_comment);
+            combinedComments += `**Document Verification Feedback:**\n${verification.feedback_comment}\n\n`;
+          }
+
+          if (submissionCommentsData && submissionCommentsData.length > 0) {
+            combinedComments += submissionCommentsData
+              .map((comment, idx) => {
+                return `**UMREC Comment ${idx + 1}:**\n${comment.comment_text}`;
+              })
+              .join('\n\n---\n\n');
+          }
+
+          if (combinedComments) {
+            setRevisionComments(combinedComments);
           } else {
             setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
           }
+
         } else {
-          // 2b. FULL REVISION flow
+          // ✅ FULL REVISION: Fetch reviewer comments + submission comments
           console.log(`Full Revision: Fetching ALL comments for submissionId ${submissionId}`);
-          
+
+          // 1. Get reviewer feedback
           const { data: reviews } = await supabase
             .from('reviews')
-            .select(
-              `
-              protocol_recommendation,
-              protocol_disapproval_reasons,
-              protocol_ethics_recommendation,
-              protocol_technical_suggestions,
-              icf_recommendation,
-              icf_disapproval_reasons,
-              icf_ethics_recommendation,
-              icf_technical_suggestions
-              `
-            )
+            .select(`
+            protocol_recommendation,
+            protocol_disapproval_reasons,
+            protocol_ethics_recommendation,
+            protocol_technical_suggestions,
+            icf_recommendation,
+            icf_disapproval_reasons,
+            icf_ethics_recommendation,
+            icf_technical_suggestions
+          `)
             .eq('submission_id', submissionId)
             .eq('status', 'submitted');
-  
+
+          // 2. ✅ Fetch ALL submission comments - BY SUBMISSION ID ONLY
+          const { data: submissionCommentsData } = await supabase
+            .from('submission_comments')
+            .select('comment_text, created_at')
+            .eq('submission_id', submissionId)
+            .eq('is_resolved', false) // ✅ Only fetch unresolved comments
+            .order('created_at', { ascending: true });
+
+          let combinedComments = '';
+
+          // Add reviewer comments
           if (reviews && reviews.length > 0) {
-            const allComments = reviews
+            const reviewComments = reviews
               .map((review, index) => {
                 let text = `**Reviewer ${index + 1} Comments:**\n`;
-                
-                // Protocol Comments
+
                 if (review.protocol_recommendation) text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
                 if (review.protocol_disapproval_reasons) text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
                 if (review.protocol_ethics_recommendation) text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
                 if (review.protocol_technical_suggestions) text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
-                
-                // ICF Comments
+
                 if (review.icf_recommendation) text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
                 if (review.icf_disapproval_reasons) text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
                 if (review.icf_ethics_recommendation) text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
@@ -128,18 +169,22 @@ function RevisionStep7Content() {
                 return text;
               })
               .join('\n---\n');
-            setRevisionComments(allComments);
-          } else {
-            setRevisionComments('No reviewer comments available.');
+            combinedComments += reviewComments;
           }
 
-          // 3. Load from localStorage (for multi-step flow)
-          const saved = localStorage.getItem('revisionStep7Data');
-          if (saved) {
-            const parsedData = JSON.parse(saved);
-            if (parsedData.fileName) {
-              console.log('Previous file:', parsedData.fileName);
-            }
+          // Add submission comments
+          if (submissionCommentsData && submissionCommentsData.length > 0) {
+            if (combinedComments) combinedComments += '\n\n---\n\n';
+            combinedComments += '**UMREC Additional Comments:**\n\n';
+            combinedComments += submissionCommentsData
+              .map((comment, idx) => `**Comment ${idx + 1}:** ${comment.comment_text}`)
+              .join('\n\n');
+          }
+
+          if (combinedComments) {
+            setRevisionComments(combinedComments);
+          } else {
+            setRevisionComments('No reviewer comments available.');
           }
         }
       } catch (error) {
@@ -148,162 +193,342 @@ function RevisionStep7Content() {
       } finally {
         setLoadingComments(false);
       }
+
+      // Load from localStorage
+      if (!isQuickRevision) {
+        const saved = localStorage.getItem('revisionStep7Data');
+        if (saved) {
+          const parsedData = JSON.parse(saved);
+          if (parsedData.fileName) {
+            console.log('Previous file:', parsedData.fileName);
+          }
+        }
+      }
     };
-  
+
     fetchCommentsAndData();
-  
+
   }, [submissionId, docId, isQuickRevision, router, supabase]);
+  useEffect(() => {
+    setIsClient(true);
+
+    if (!submissionId) {
+      alert('No submission ID found. Redirecting to dashboard.');
+      router.push('/researchermodule/submissions');
+      return;
+    }
+
+    const fetchCommentsAndData = async () => {
+      setLoadingComments(true);
+      try {
+        if (isQuickRevision && docId) {
+          // ✅ QUICK REVISION: Fetch verification feedback + revision count + submission comments
+          console.log(`Quick Revision: Fetching comments for docId ${docId}`);
+
+          // 1. Get verification feedback
+          const { data: verification } = await supabase
+            .from('document_verifications')
+            .select('feedback_comment')
+            .eq('document_id', docId)
+            .single();
+
+          // 2. Get revision count from uploaded_documents
+          const { data: docData } = await supabase
+            .from('uploaded_documents')
+            .select('revision_count')
+            .eq('id', docId)
+            .single();
+
+          setRevisionCount(docData?.revision_count || 0); // ✅ SET REVISION COUNT
+
+          // 3. ✅ Fetch submission comments - BY SUBMISSION ID ONLY
+          const { data: submissionCommentsData } = await supabase
+            .from('submission_comments')
+            .select('comment_text, created_at')
+            .eq('submission_id', submissionId)
+            .order('created_at', { ascending: true });
+
+          // 4. Combine comments
+          let combinedComments = '';
+
+          if (verification?.feedback_comment) {
+            combinedComments += `**Document Verification Feedback:**\n${verification.feedback_comment}\n\n`;
+          }
+
+          if (submissionCommentsData && submissionCommentsData.length > 0) {
+            combinedComments += submissionCommentsData
+              .map((comment, idx) => {
+                return `**UMREC Comment ${idx + 1}:**\n${comment.comment_text}`;
+              })
+              .join('\n\n---\n\n');
+          }
+
+          if (combinedComments) {
+            setRevisionComments(combinedComments);
+          } else {
+            setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+          }
+
+        } else {
+          // ✅ FULL REVISION: Fetch reviewer comments + submission comments
+          console.log(`Full Revision: Fetching ALL comments for submissionId ${submissionId}`);
+
+          // 1. Get reviewer feedback
+          const { data: reviews } = await supabase
+            .from('reviews')
+            .select(`
+            protocol_recommendation,
+            protocol_disapproval_reasons,
+            protocol_ethics_recommendation,
+            protocol_technical_suggestions,
+            icf_recommendation,
+            icf_disapproval_reasons,
+            icf_ethics_recommendation,
+            icf_technical_suggestions
+          `)
+            .eq('submission_id', submissionId)
+            .eq('status', 'submitted');
+
+          // 2. ✅ Fetch ALL submission comments - BY SUBMISSION ID ONLY
+          const { data: submissionCommentsData } = await supabase
+            .from('submission_comments')
+            .select('comment_text, created_at')
+            .eq('submission_id', submissionId)
+            .order('created_at', { ascending: true });
+
+          let combinedComments = '';
+
+          // Add reviewer comments
+          if (reviews && reviews.length > 0) {
+            const reviewComments = reviews
+              .map((review, index) => {
+                let text = `**Reviewer ${index + 1} Comments:**\n`;
+
+                if (review.protocol_recommendation) text += `\n📋 **Protocol Recommendation:** ${review.protocol_recommendation}\n`;
+                if (review.protocol_disapproval_reasons) text += `❌ **Protocol Disapproval Reasons:** ${review.protocol_disapproval_reasons}\n`;
+                if (review.protocol_ethics_recommendation) text += `⚖️ **Protocol Ethics Recommendation:** ${review.protocol_ethics_recommendation}\n`;
+                if (review.protocol_technical_suggestions) text += `💡 **Protocol Technical Suggestions:** ${review.protocol_technical_suggestions}\n`;
+
+                if (review.icf_recommendation) text += `\n📋 **ICF Recommendation:** ${review.icf_recommendation}\n`;
+                if (review.icf_disapproval_reasons) text += `❌ **ICF Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
+                if (review.icf_ethics_recommendation) text += `⚖️ **ICF Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
+                if (review.icf_technical_suggestions) text += `💡 **ICF Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
+
+                return text;
+              })
+              .join('\n---\n');
+            combinedComments += reviewComments;
+          }
+
+          // Add submission comments
+          if (submissionCommentsData && submissionCommentsData.length > 0) {
+            if (combinedComments) combinedComments += '\n\n---\n\n';
+            combinedComments += '**UMREC Additional Comments:**\n\n';
+            combinedComments += submissionCommentsData
+              .map((comment, idx) => `**Comment ${idx + 1}:** ${comment.comment_text}`)
+              .join('\n\n');
+          }
+
+          if (combinedComments) {
+            setRevisionComments(combinedComments);
+          } else {
+            setRevisionComments('No reviewer comments available.');
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        setRevisionComments('Unable to load feedback comments.');
+      } finally {
+        setLoadingComments(false);
+      }
+
+      // Load from localStorage
+      if (!isQuickRevision) {
+        const saved = localStorage.getItem('revisionStep7Data');
+        if (saved) {
+          const parsedData = JSON.parse(saved);
+          if (parsedData.fileName) {
+            console.log('Previous file:', parsedData.fileName);
+          }
+        }
+      }
+    };
+
+    fetchCommentsAndData();
+
+  }, [submissionId, docId, isQuickRevision, router, supabase]);
+
   // ✅ --- END: REVISED useEffect ---
 
   // This function is correct as-is
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!file) {
-      alert('Please upload a valid endorsement letter document.');
-      return;
-    }
+  if (!file) {
+    alert('Please upload a valid endorsement letter document.');
+    return;
+  }
 
-    // ✅ QUICK REVISION: Upload directly and update database
-    if (isQuickRevision && submissionId && docId) {
-      setUploading(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          alert('Not authenticated');
-          setUploading(false);
-          return;
+  if (isQuickRevision && submissionId && docId) {
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Not authenticated');
+        setUploading(false);
+        return;
+      }
+
+      // Fetch old file URL and revision count
+      const { data: existingDoc } = await supabase
+        .from('uploaded_documents')
+        .select('file_url, revision_count')
+        .eq('id', docId)
+        .single();
+
+      // Delete old file
+      if (existingDoc?.file_url) {
+        try {
+          await supabase.storage
+            .from('research-documents')
+            .remove([existingDoc.file_url]);
+          console.log('✅ Deleted old endorsement letter file');
+        } catch (err) {
+          console.warn('⚠️ Could not delete old file:', err);
         }
+      }
 
-        // ✅ FETCH OLD FILE URL FIRST
-        const { data: existingDoc } = await supabase
-          .from('uploaded_documents')
-          .select('file_url')
-          .eq('id', docId)
-          .single();
+      // Upload new file
+      const filePath = `${user.id}/${submissionId}/endorsement_letter_${Date.now()}.pdf`;
+      const { error: uploadError } = await supabase.storage
+        .from('research-documents')
+        .upload(filePath, file);
 
-        // ✅ DELETE OLD FILE FROM STORAGE
-        if (existingDoc?.file_url) {
-          try {
-            await supabase.storage
-              .from('research-documents')
-              .remove([existingDoc.file_url]);
-            console.log('✅ Deleted old endorsement letter file');
-          } catch (err) {
-            console.warn('⚠️ Could not delete old file:', err);
-          }
-        }
+      if (uploadError) throw uploadError;
 
-        // ✅ UPLOAD NEW FILE
-        const filePath = `${user.id}/${submissionId}/endorsement_letter_${Date.now()}.pdf`;
-        const { error: uploadError } = await supabase.storage
-          .from('research-documents')
-          .upload(filePath, file);
+      // ✅ UPDATE DOCUMENT WITH INCREMENTED REVISION COUNT
+      const newRevisionCount = (existingDoc?.revision_count || 0) + 1;
 
-        if (uploadError) {
-          throw uploadError;
-        }
+      const { error: updateError } = await supabase
+        .from('uploaded_documents')
+        .update({
+          file_url: filePath,
+          file_name: file.name,
+          file_size: file.size,
+          uploaded_at: new Date().toISOString(),
+          revision_count: newRevisionCount,
+        })
+        .eq('id', docId);
 
-        // ✅ UPDATE DOCUMENT RECORD WITH NEW PATH
-        const { error: updateError } = await supabase
-          .from('uploaded_documents')
-          .update({
-            file_url: filePath,
-            file_name: file.name,
-            file_size: file.size,
-            uploaded_at: new Date().toISOString(),
-          })
-          .eq('id', docId);
+      if (updateError) throw updateError;
 
-        if (updateError) {
-          throw updateError;
-        }
+      console.log(`✅ Document revision count incremented to ${newRevisionCount}`);
 
-        // ✅ RESET VERIFICATION STATUS
-        const { error: verifyError } = await supabase
+      // Reset verification
+      const { error: verifyError } = await supabase
+        .from('document_verifications')
+        .update({
+          is_approved: null,
+          feedback_comment: null,
+          verified_at: null,
+        })
+        .eq('document_id', docId);
+
+      if (verifyError) {
+        console.error('Failed to reset verification:', verifyError);
+      }
+
+      // Check status and update
+      const { data: allDocs } = await supabase
+        .from('uploaded_documents')
+        .select('id')
+        .eq('submission_id', submissionId);
+
+      if (allDocs && allDocs.length > 0) {
+        const { data: allVerifications } = await supabase
           .from('document_verifications')
-          .update({
-            is_approved: null,
-            feedback_comment: null,
-            verified_at: null,
-          })
-          .eq('document_id', docId);
-
-        if (verifyError) {
-          console.error('Failed to reset verification:', verifyError);
-        }
-
-        // ✅ CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
-        console.log('🔍 Checking document verification status...');
-
-        const { data: allDocs } = await supabase
-          .from('uploaded_documents')
-          .select('id')
+          .select('is_approved')
           .eq('submission_id', submissionId);
 
-        if (allDocs && allDocs.length > 0) {
-          // Get all verification records for this submission
-          const { data: allVerifications } = await supabase
-            .from('document_verifications')
-            .select('is_approved')
-            .eq('submission_id', submissionId);
+        // ✅ Check if ALL verifications are null or approved (true)
+        const allAreNullOrApproved =
+          !allVerifications ||
+          allVerifications.every((v) => v.is_approved === null || v.is_approved === true);
 
-          // Check if ALL verifications are null/approved is null
-          const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+        const newStatus = allAreNullOrApproved ? 'pending' : 'needs_revision';
 
-          const newStatus = allAreNull ? 'pending' : 'needs_revision';
+        const { error: statusError } = await supabase
+          .from('research_submissions')
+          .update({
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', submissionId);
 
-          console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
-
-          // Update submission status
-          const { error: statusError } = await supabase
-            .from('research_submissions')
-            .update({
-              status: newStatus,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', submissionId);
-
-          if (statusError) {
-            console.error('Failed to update status:', statusError);
-          } else {
-            console.log(`✅ Submission status updated to: ${newStatus}`);
-          }
+        if (statusError) {
+          console.error('Failed to update status:', statusError);
+        } else {
+          console.log(`✅ Submission status updated to: ${newStatus}`);
         }
 
-        alert('✅ Endorsement Letter updated successfully! Your submission has been resubmitted for review.');
-        router.push(`/researchermodule`);
-      } catch (error) {
-        console.error('Error uploading:', error);
-        alert('Failed to upload document. Please try again.');
-      } finally {
-        setUploading(false);
-      }
-    }
-    // ✅ NORMAL MULTI-STEP FLOW
-    else {
-      setUploading(true); // Show loading state
-      const reader = new FileReader();
-      reader.onload = () => {
-        sessionStorage.setItem('revisionStep7File', reader.result as string);
+        // ✅ CONDITIONAL: Mark comments as resolved ONLY if all verifications are null or approved
+        if (allAreNullOrApproved) {
+          console.log('✅ All verifications passed. Marking submission comments as resolved...');
 
-        const dataToSave = {
-          fileName: file.name,
-          fileSize: file.size,
-          uploadedAt: new Date().toISOString(),
-        };
-        localStorage.setItem('revisionStep7Data', JSON.stringify(dataToSave));
-        console.log('💾 Revision Step 7 data saved');
-        setUploading(false); // Hide loading state
-        router.push(`/researchermodule/submissions/revision/step8?mode=revision&id=${submissionId}`);
-      };
-      reader.onerror = () => {
-        alert('Error reading file.');
-        setUploading(false);
-      };
-      reader.readAsDataURL(file);
+          const { error: commentError } = await supabase
+            .from('submission_comments')
+            .update({ is_resolved: true })
+            .eq('submission_id', submissionId)
+            .eq('is_resolved', false);
+
+          if (commentError) {
+            console.warn('⚠️ Could not mark comments as resolved:', commentError);
+          } else {
+            console.log('✅ All submission comments marked as resolved');
+          }
+        } else {
+          console.log(
+            '⚠️ Some verifications are still pending. Comments remain unresolved for next revision cycle.'
+          );
+        }
+      }
+
+      alert('✅ Endorsement Letter updated successfully! Your submission has been resubmitted for review.');
+      router.push(`/researchermodule`);
+    } catch (error) {
+      console.error('Error uploading:', error);
+      alert('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
     }
-  };
+  }
+  // ✅ NORMAL MULTI-STEP FLOW
+  else {
+    setUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      sessionStorage.setItem('revisionStep7File', reader.result as string);
+
+      const dataToSave = {
+        fileName: file.name,
+        fileSize: file.size,
+        uploadedAt: new Date().toISOString(),
+      };
+      localStorage.setItem('revisionStep7Data', JSON.stringify(dataToSave));
+      console.log('💾 Revision Step 7 data saved');
+      setUploading(false);
+      router.push(
+        `/researchermodule/submissions/revision/step8?mode=revision&id=${submissionId}`
+      );
+    };
+    reader.onerror = () => {
+      alert('Error reading file.');
+      setUploading(false);
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
 
   // This function is correct as-is
   const handleBack = () => {
@@ -522,11 +747,10 @@ function RevisionStep7Content() {
                 <button
                   type="submit"
                   disabled={uploading || !file}
-                  className={`group relative px-10 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden transition-all duration-300 ${
-                    !file || uploading
+                  className={`group relative px-10 sm:px-12 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-xl hover:shadow-2xl hover:scale-105 overflow-hidden transition-all duration-300 ${!file || uploading
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-gradient-to-r from-orange-500 to-orange-600 text-white hover:from-orange-600 hover:to-orange-700'
-                  }`}
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   aria-label={isQuickRevision ? "Submit revision" : "Save and continue"}
                 >
@@ -546,7 +770,7 @@ function RevisionStep7Content() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                         </svg>
                         {/* ✅ CONDITIONAL BUTTON TEXT */}
-                        {isQuickRevision ? 'Submit Revision' : 'Save & Continue'} 
+                        {isQuickRevision ? 'Submit Revision' : 'Save & Continue'}
                       </>
                     )}
                   </span>

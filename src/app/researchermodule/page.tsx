@@ -165,7 +165,7 @@ export default function ResearcherDashboard() {
       'research_protocol': 'Research Protocol',
       'consent_form': 'Consent Form',
     };
-    return typeMap[type] || type;
+    return typeMap[type] || type; 
   };
 
   const formatFileSize = (bytes: number) => {

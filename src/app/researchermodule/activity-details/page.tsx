@@ -23,6 +23,7 @@ interface Document {
   isApproved?: boolean | null;
   needsRevision?: boolean;
   revisionComment?: string | null;
+  revisionCount?: number; // ✅ ADD THIS LINE
 }
 
 interface Comment {
@@ -36,6 +37,7 @@ function ActivityDetailsContent() {
   const searchParams = useSearchParams();
   const activityId = searchParams.get('id');
   const docId = searchParams.get('docId');
+  const [submissionComments, setSubmissionComments] = useState<Comment[]>([]); // ✅ ADD THIS
 
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -75,7 +77,10 @@ function ActivityDetailsContent() {
         setDocuments(filteredDocs);
         const selected = filteredDocs[0] || null;
         setSelectedDocument(selected);
+
+        // ✅ Extract both comments
         setComments(result.comments || []);
+        setSubmissionComments(result.submissionComments || []); // ✅ ADD THIS
 
         setSubmissionData({
           title: result.submission.title,
@@ -98,6 +103,7 @@ function ActivityDetailsContent() {
       setLoading(false);
     }
   };
+
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -221,7 +227,6 @@ function ActivityDetailsContent() {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#DAE0E7' }}>
       <NavbarRoles role="researcher" />
@@ -229,7 +234,6 @@ function ActivityDetailsContent() {
       <div className="flex-grow py-8 px-6 md:px-12 lg:px-20 mt-24">
         <div className="max-w-7xl mx-auto">
           <Breadcrumbs items={breadcrumbItems} />
-
           <BackButton label="Activity Details" href="/researchermodule" />
 
           <div className="mb-6">
@@ -253,7 +257,7 @@ function ActivityDetailsContent() {
                 dateSubmitted={submissionData.dateSubmitted}
                 status={submissionData.status}
                 receivedForReview="UMREC Review Committee"
-                revisionCount={submissionData.revisionCount}
+                revisionCount={selectedDocument?.revisionCount || 0} // ✅ USE SELECTED DOC's COUNT
               />
             </div>
 
@@ -289,7 +293,6 @@ function ActivityDetailsContent() {
                         className="text-sm text-gray-500"
                         style={{ fontFamily: 'Metropolis, sans-serif' }}
                       >
-                        {selectedDocument.fileName} • {formatFileSize(selectedDocument.fileSize)}
                       </p>
                     </div>
                   </div>
@@ -311,139 +314,158 @@ function ActivityDetailsContent() {
               {selectedDocument &&
                 (selectedDocument.fileType === 'consolidated_application'
                   ? submissionData.rawStatus === 'under_revision' && (
-                      <div className="bg-white rounded-xl p-6 border-2 border-red-200">
-                        <div className="flex items-center gap-2 mb-4">
-                          <svg
-                            className="w-6 h-6 text-red-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                          </svg>
-                          <h3
-                            className="text-lg font-bold text-red-600"
-                            style={{ fontFamily: 'Metropolis, sans-serif' }}
-                          >
-                            Revision Required - Comments from UMREC
-                          </h3>
-                        </div>
-
-                        <p
-                          className="text-sm text-gray-600 mb-4"
+                    <div className="bg-white rounded-xl p-6 border-2 border-red-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg
+                          className="w-6 h-6 text-red-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <h3
+                          className="text-lg font-bold text-red-600"
                           style={{ fontFamily: 'Metropolis, sans-serif' }}
                         >
-                          Please review the feedback below and update the documents mentioned
-                        </p>
-
-                        <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
-                          <p
-                            className="text-sm text-blue-800 font-medium"
-                            style={{ fontFamily: 'Metropolis, sans-serif' }}
-                          >
-                            📝 Please address all feedback above and resubmit the required documents
-                            using the button below.
-                          </p>
-                        </div>
+                          Revision Required - Comments from UMREC
+                        </h3>
                       </div>
-                    )
-                  : selectedDocument.isApproved === false && (
-                      <div className="bg-white rounded-xl p-6 border-2 border-red-200">
-                        <div className="flex items-center gap-2 mb-4">
-                          <svg
-                            className="w-6 h-6 text-red-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            />
-                          </svg>
-                          <h3
-                            className="text-lg font-bold text-red-600"
-                            style={{ fontFamily: 'Metropolis, sans-serif' }}
-                          >
-                            Revision Required - Comments from UMREC
-                          </h3>
-                        </div>
 
-                        <p
-                          className="text-sm text-gray-600 mb-4"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
-                          Please review the feedback below and update the documents mentioned
-                        </p>
+                      <p
+                        className="text-sm text-gray-600 mb-4"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      >
+                        Please review the feedback below and update the documents mentioned
+                      </p>
 
-                        {selectedDocument?.revisionComment && (
-                          <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                <svg
-                                  className="w-5 h-5 text-white"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                  />
-                                </svg>
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex justify-between items-start mb-2">
-                                  <p
-                                    className="text-sm font-semibold text-red-800"
-                                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                                  >
-                                    UMREC Review Committee
-                                  </p>
-                                </div>
-                                <p
-                                  className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
-                                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                                >
-                                  {selectedDocument.revisionComment}
-                                </p>
-                              </div>
+                      {/* ✅ SHOW SUBMISSION COMMENTS */}
+                      {submissionComments && submissionComments.length > 0 ? (
+                        <div className="space-y-3 mb-4">
+                          {submissionComments.map((comment: Comment, idx: number) => (
+                            <div key={comment.id} className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
+                              <p
+                                className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
+                                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                              >
+                                {comment.commentText}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {formatCommentDate(comment.createdAt)}
+                              </p>
                             </div>
-                          </div>
-                        )}
-
-                        <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                          ))}
+                        </div>
+                      ) : selectedDocument?.revisionComment ? (
+                        <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600 mb-4">
                           <p
-                            className="text-sm text-blue-800 font-medium"
+                            className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
                             style={{ fontFamily: 'Metropolis, sans-serif' }}
                           >
-                            📝 Please address all feedback above and resubmit the required documents
-                            using the button below.
+                            {selectedDocument.revisionComment}
                           </p>
                         </div>
+                      ) : null}
+
+                      <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <p
+                          className="text-sm text-blue-800 font-medium"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          📝 Please address all feedback above and resubmit the required documents
+                          using the button below.
+                        </p>
                       </div>
-                    )
+                    </div>
+                  )
+                  : selectedDocument.isApproved === false && (
+                    <div className="bg-white rounded-xl p-6 border-2 border-red-200">
+                      <div className="flex items-center gap-2 mb-4">
+                        <svg
+                          className="w-6 h-6 text-red-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <h3
+                          className="text-lg font-bold text-red-600"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          Revision Required - Comments from UMREC
+                        </h3>
+                      </div>
+
+                      <p
+                        className="text-sm text-gray-600 mb-4"
+                        style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      >
+                        Please review the feedback below and update the documents mentioned
+                      </p>
+
+                      {/* ✅ SHOW SUBMISSION COMMENTS */}
+                      {submissionComments && submissionComments.length > 0 ? (
+                        <div className="space-y-3 mb-4">
+                          {submissionComments.map((comment: Comment, idx: number) => (
+                            <div key={comment.id} className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
+                              <p
+                                className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
+                                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                              >
+                                {comment.commentText}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-2">
+                                {formatCommentDate(comment.createdAt)}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : selectedDocument?.revisionComment ? (
+                        <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600 mb-4">
+                          <p
+                            className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium"
+                            style={{ fontFamily: 'Metropolis, sans-serif' }}
+                          >
+                            {selectedDocument.revisionComment}
+                          </p>
+                        </div>
+                      ) : null}
+
+                      <div className="mt-4 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                        <p
+                          className="text-sm text-blue-800 font-medium"
+                          style={{ fontFamily: 'Metropolis, sans-serif' }}
+                        >
+                          📝 Please address all feedback above and resubmit the required documents
+                          using the button below.
+                        </p>
+                      </div>
+                    </div>
+                  )
                 )
               }
+
 
               {/* Show resubmit button */}
               {selectedDocument &&
                 (selectedDocument.fileType === 'consolidated_application'
                   ? submissionData.rawStatus === 'under_revision' && (
-                      <ResubmitButton onClick={handleResubmit} />
-                    )
+                    <ResubmitButton onClick={handleResubmit} />
+                  )
                   : selectedDocument.needsRevision && (
-                      <ResubmitButton onClick={handleResubmit} />
-                    )
+                    <ResubmitButton onClick={handleResubmit} />
+                  )
                 )
               }
             </div>

@@ -2,9 +2,9 @@
 'use client';
 
 import { useState } from 'react';
-import PasswordVerificationModal from './EmailVerificationModal';
+import EmailVerificationModal from './EmailVerificationModal';
 import { updateReviewerProfile } from '@/app/actions/reviewer/updateReviewerProfile';
-import { verifyReviewerPassword } from '@/app/actions/reviewer/verifyPassword';
+import { sendVerificationCode } from '@/app/actions/reviewer/sendVerificationCode'; // Create this action
 
 interface PersonalInformationCardProps {
   profileData: {
@@ -23,10 +23,24 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
 
-  const handleEditClick = () => {
+  // ✅ Send code when Edit is clicked
+  const handleEditClick = async () => {
     if (!isVerified) {
-      setShowModal(true);
+      setSending(true);
+      try {
+        const result = await sendVerificationCode(profileData.email);
+        if (result.success) {
+          setShowModal(true);
+        } else {
+          alert('Failed to send verification code: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error sending code: ' + error);
+      } finally {
+        setSending(false);
+      }
     } else {
       setIsEditing(true);
     }
@@ -46,7 +60,8 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
       alert('Profile updated successfully!');
       setIsEditing(false);
       setOriginalData(formData);
-      onUpdate(); // Reload profile data
+      setIsVerified(false); // Reset verification for next edit
+      onUpdate();
     } else {
       alert('Failed to update profile: ' + result.error);
     }
@@ -69,10 +84,11 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
           {!isEditing && (
             <button
               onClick={handleEditClick}
-              className="px-6 py-2 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold"
+              disabled={sending}
+              className="px-6 py-2 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold disabled:opacity-50"
               style={{ fontFamily: 'Metropolis, sans-serif' }}
             >
-              Edit
+              {sending ? 'Sending...' : 'Edit'}
             </button>
           )}
         </div>
@@ -147,7 +163,7 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
           </div>
         </div>
 
-        {/* Save/Cancel Buttons - Only show when editing */}
+        {/* Save/Cancel Buttons */}
         {isEditing && (
           <div className="flex justify-end gap-3 mt-6">
             <button
@@ -170,13 +186,19 @@ export default function PersonalInformationCard({ profileData, onUpdate }: Perso
         )}
       </div>
 
-      {/* Password Verification Modal */}
-      <PasswordVerificationModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onVerify={handleVerify}
-        title="Verify Your Password"
-        email={profileData?.email || ''}
+      {/* Email Verification Modal */}
+        <EmailVerificationModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          onVerify={handleVerify}
+          title="Verify Your Email"
+          email={profileData?.email || ''}
+          onResendCode={
+            async () => {
+              await sendVerificationCode(profileData.email);
+              alert('Verification code resent to ' + profileData.email);
+            }
+          }
       />
     </>
   );

@@ -1,10 +1,12 @@
 // components/reviewer/profile/SecuritySettingsCard.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import PasswordVerificationModal from './EmailVerificationModal';
+import { createClient } from '@/utils/supabase/client';
+import { sendVerificationCode } from '@/app/actions/reviewer/sendVerificationCode'; // ✅ Add import
 
 interface SecuritySettingsCardProps {
   lastPasswordChange: string;
@@ -13,9 +15,37 @@ interface SecuritySettingsCardProps {
 export default function SecuritySettingsCard({ lastPasswordChange }: SecuritySettingsCardProps) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const [emailLoaded, setEmailLoaded] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false); // ✅ Track sending state
 
-  const handleChangePassword = () => {
-    setShowModal(true);
+  useEffect(() => {
+    const getEmail = async () => {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
+      setEmailLoaded(true);
+    };
+    getEmail();
+  }, []);
+
+  // ✅ Send OTP when button is clicked
+  const handleChangePassword = async () => {
+    setSendingOtp(true);
+    try {
+      const result = await sendVerificationCode(userEmail);
+      if (result.success) {
+        setShowModal(true);
+      } else {
+        alert(result.error || 'Failed to send verification code');
+      }
+    } catch (error) {
+      alert('Error sending verification code');
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   const handleVerify = () => {
@@ -47,21 +77,22 @@ export default function SecuritySettingsCard({ lastPasswordChange }: SecuritySet
 
           <button
             onClick={handleChangePassword}
-            className="w-full sm:w-auto px-6 py-2.5 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold"
+            disabled={!emailLoaded || sendingOtp}
+            className="w-full sm:w-auto px-6 py-2.5 bg-[#101C50] text-white rounded-lg hover:bg-[#0d1640] transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
-            Change Password
+            {sendingOtp ? 'Sending...' : 'Change Password'}
           </button>
         </div>
       </div>
 
-      {/* Password Verification Modal */}
+      {/* ✅ Remove auto-send - only show modal without sending */}
       <PasswordVerificationModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onVerify={handleVerify}
         title="Verify Your Password"
-        email=''
+        email={userEmail}
       />
     </>
   );

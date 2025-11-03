@@ -264,15 +264,36 @@ export async function handleRevisionSubmit(
 
     console.log('✅ All 3 PDFs regenerated successfully!');
 
-    // ✅ 7. RESET VERIFICATION ONLY FOR APPLICATION_FORM
-    console.log('🔄 Resetting application_form verification...');
+
+
+    
+    console.log('🔄 Incrementing revision count for application_form...');
 
     const { data: appFormDoc } = await supabase
       .from('uploaded_documents')
-      .select('id')
+      .select('id, revision_count')
       .eq('submission_id', submissionId)
       .eq('document_type', 'application_form')
       .single();
+
+    if (appFormDoc) {
+      // ✅ Increment revision_count
+      const newRevisionCount = (appFormDoc.revision_count || 0) + 1;
+      
+      const { error: revisionError } = await supabase
+        .from('uploaded_documents')
+        .update({
+          revision_count: newRevisionCount,
+        })
+        .eq('id', appFormDoc.id);
+
+      if (revisionError) {
+        throw new Error(`Failed to update revision count: ${revisionError.message}`);
+      }
+
+      console.log(`✅ Revision count incremented to: ${newRevisionCount}`);
+    }
+
 
     if (appFormDoc) {
       const { data: existingVerif } = await supabase
@@ -306,8 +327,7 @@ export async function handleRevisionSubmit(
         console.log('✅ New application form verification created');
       }
     }
-
-    // ✅ 8. CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+    // ✅ 8. CHECK STATUS: If all document verifications are null/approved → "pending", else → "needs_revision"
     console.log('🔍 Checking document verification status...');
 
     const { data: allDocs } = await supabase
@@ -322,12 +342,16 @@ export async function handleRevisionSubmit(
         .select('is_approved')
         .eq('submission_id', submissionId);
 
-      // Check if ALL verifications are null/approved is null
-      const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+      // ✅ Check if ALL verifications are null or approved (true)
+      const allAreNullOrApproved =
+        !allVerifications ||
+        allVerifications.every((v) => v.is_approved === null || v.is_approved === true);
 
-      const newStatus = allAreNull ? 'pending' : 'needs_revision';
+      const newStatus = allAreNullOrApproved ? 'pending' : 'needs_revision';
 
-      console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+      console.log(
+        `📊 Status update: ${newStatus} (${allAreNullOrApproved ? 'All verifications null/approved' : 'Some verifications exist'})`
+      );
 
       // Update submission status
       const { error: statusError } = await supabase
@@ -343,6 +367,27 @@ export async function handleRevisionSubmit(
       }
 
       console.log(`✅ Submission status updated to: ${newStatus}`);
+
+      // ✅ CONDITIONAL: Mark comments resolved ONLY if all verifications pass
+      if (allAreNullOrApproved) {
+        console.log('✅ All verifications passed. Marking submission comments as resolved...');
+
+        const { error: commentError } = await supabase
+          .from('submission_comments')
+          .update({ is_resolved: true })
+          .eq('submission_id', submissionId)
+          .eq('is_resolved', false);
+
+        if (commentError) {
+          console.warn('⚠️ Could not mark comments as resolved:', commentError);
+        } else {
+          console.log('✅ All submission comments marked as resolved');
+        }
+      } else {
+        console.log(
+          '⚠️ Some verifications are still pending. Comments remain unresolved for next revision cycle.'
+        );
+      }
     }
 
     return {

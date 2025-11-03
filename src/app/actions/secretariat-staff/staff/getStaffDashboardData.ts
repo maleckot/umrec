@@ -123,7 +123,7 @@ export async function getStaffDashboardData() {
 function formatStatus(status: string): string {
   const statusMap: { [key: string]: string } = {
     'new_submission': 'New Submission',
-    'pending_review': 'Review Pending',
+    'pending': 'Resubmission',
     'awaiting_classification': 'Under Classification',
     'under_review': 'Under Review',
     'classified': 'Classified',
@@ -139,7 +139,7 @@ function formatStatus(status: string): string {
 function getStatusColor(status: string): string {
   const colorMap: { [key: string]: string } = {
     'new_submission': 'bg-blue-50 text-blue-600',
-    'pending_review': 'bg-blue-50 text-blue-600',
+    'pending': 'bg-amber-50 text-amber-600',
     'awaiting_classification': 'bg-amber-50 text-amber-600',
     'under_review': 'bg-purple-50 text-purple-600',
     'classified': 'bg-amber-50 text-amber-600',

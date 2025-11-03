@@ -321,7 +321,7 @@ export default function ReviewerProfilePage() {
 
         </div>
       </div>
-
+            
       <Footer />
     </div>
   );

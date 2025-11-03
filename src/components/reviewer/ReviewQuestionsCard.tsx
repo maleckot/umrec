@@ -88,6 +88,44 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
   const handleNext = async () => {
     if (submitRef.current || isSubmitting) return;
 
+    // ✅ Only validate if THIS is a summary section (last steps)
+    if (isLastProtocolSection || isLastICFSection) {
+      const recommendationKey = isLastProtocolSection
+        ? 'protocol_recommendation'
+        : 'icf_recommendation';
+
+      // Check if recommendation exists
+      if (!answers[recommendationKey]?.trim()) {
+        alert('Please select a recommendation before proceeding');
+        return;
+      }
+
+      // Check disapproval reasons if needed
+      if (answers[recommendationKey] === 'Disapproved') {
+        const reasonsKey = isLastProtocolSection
+          ? 'protocol_disapproval_reasons'
+          : 'icf_disapproval_reasons';
+
+        if (!answers[reasonsKey]?.trim()) {
+          alert('Please provide reasons for disapproval');
+          return;
+        }
+      }
+
+      // Check ethics only if NOT "Approved with no revision"
+      if (answers[recommendationKey] !== 'Approved with no revision') {
+        const ethicsKey = isLastProtocolSection
+          ? 'protocol_ethics_recommendation'
+          : 'icf_ethics_recommendation';
+
+        if (!answers[ethicsKey]?.trim()) {
+          alert('Please provide ethics review recommendation');
+          return;
+        }
+      }
+    }
+
+    // ✅ Only set flags if ALL validations pass
     submitRef.current = true;
     setIsSubmitting(true);
 
@@ -95,11 +133,15 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
       if (onNext) {
         await onNext();
       }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('An error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);
       submitRef.current = false;
     }
   };
+
 
   // ✅ Handle back with debounce
   const handleBack = async () => {
@@ -235,6 +277,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             </div>
 
+            {/* Disapproval reason - only show if Disapproved */}
             {answers.protocol_recommendation === 'Disapproved' && (
               <div>
                 <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -253,9 +296,11 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             )}
 
+            {/* Ethics Review - ALWAYS show but toggle required */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Ethics Review Recommendation <span className="text-red-600 ml-1">*</span>
+                Ethics Review Recommendation
+                {answers.protocol_recommendation !== 'Approved with no revision' && <span className="text-red-600 ml-1">*</span>}
               </p>
               <textarea
                 value={answers.protocol_ethics_recommendation || ''}
@@ -264,11 +309,12 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 placeholder="Provide your ethics review recommendation..."
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
-                required
+                required={answers.protocol_recommendation !== 'Approved with no revision'}
                 disabled={isSubmitting}
               />
             </div>
 
+            {/* Technical Suggestions - ALWAYS show, always optional */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Technical Suggestions
@@ -283,10 +329,10 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 disabled={isSubmitting}
               />
             </div>
+
           </div>
         )}
 
-        {/* ICF Summary Section */}
         {isLastICFSection && (
           <div className="space-y-6 mt-6">
             <div>
@@ -317,6 +363,7 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             </div>
 
+            {/* Disapproval reason - only show if Disapproved */}
             {answers.icf_recommendation === 'Disapproved' && (
               <div>
                 <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -335,9 +382,11 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
               </div>
             )}
 
+            {/* Ethics Review - ALWAYS show but toggle required */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Ethics Review Recommendation <span className="text-red-600 ml-1">*</span>
+                Ethics Review Recommendation
+                {answers.icf_recommendation !== 'Approved with no revision' && <span className="text-red-600 ml-1">*</span>}
               </p>
               <textarea
                 value={answers.icf_ethics_recommendation || ''}
@@ -346,11 +395,12 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
                 placeholder="Provide your ethics review recommendation..."
                 className="w-full p-4 border-2 border-gray-300 rounded-xl focus:outline-none focus:border-[#101C50] resize-none text-gray-800"
                 style={{ fontFamily: 'Metropolis, sans-serif', backgroundColor: '#E8EAF6' }}
-                required
+                required={answers.icf_recommendation !== 'Approved with no revision'}
                 disabled={isSubmitting}
               />
             </div>
 
+            {/* Technical Suggestions - ALWAYS show, always optional */}
             <div>
               <p className="text-sm md:text-base text-[#101C50] mb-3 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Technical Suggestions
@@ -444,4 +494,3 @@ const ReviewQuestionsCard: React.FC<ReviewQuestionsCardProps> = ({
 };
 
 export default ReviewQuestionsCard;
-  

@@ -9,8 +9,49 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { updateReviewerAvailability, getReviewerAvailability } from '@/app/actions/reviewer/updateAvailability';
 import { createPortal } from 'react-dom';
-import { createClient } from '@/utils/supabase/client'; // ✅ ADDED
+import { createClient } from '@/utils/supabase/client'; 
+import { checkAuthStatus } from '@/app/actions/auth/checkAuthStatus'; 
 
+
+// ✅ FIX: Debug + ensure DB role is loaded
+export const useDetectedRole = () => {
+  const pathname = usePathname();
+  const [detectedRole, setDetectedRole] = useState<'researcher' | 'reviewer' | 'admin'>('researcher');
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+// ✅ FIXED: Add dependency array!
+useEffect(() => {
+  if (!isClient) return;
+
+  if (pathname?.includes('/reviewermodule')) {
+    console.log('✅ Detected REVIEWER from URL');
+    setDetectedRole('reviewer');
+    localStorage.setItem('userRole', 'reviewer');
+  } else if (pathname?.includes('/researchermodule')) {
+    console.log('✅ Detected RESEARCHER from URL');
+    setDetectedRole('researcher');
+    localStorage.setItem('userRole', 'researcher');
+  } else if (pathname?.includes('/adminmodule')) {
+    console.log('✅ Detected ADMIN from URL');
+    setDetectedRole('admin');
+    localStorage.setItem('userRole', 'admin');
+  } else {
+    const savedRole = (localStorage.getItem('userRole') as 'researcher' | 'reviewer' | 'admin') || 'researcher';
+    console.log('📍 Using saved role from localStorage:', savedRole);
+    setDetectedRole(savedRole);
+  }
+}, [pathname, isClient]); // ← ADD THIS!
+
+
+  return detectedRole;
+};
+
+
+  
 // ... (all your interfaces stay the same)
 interface NavLinkProps {
   href: string;
@@ -396,19 +437,40 @@ const AccountDropdown: React.FC<{ isOpen: boolean; onClose: () => void; role: ke
 };
 
 interface NavbarProps {
-  role: keyof typeof NAV_LINKS;
+  role?: keyof typeof NAV_LINKS; // ✅ Make optional
 }
 
-const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
+const NavbarRoles: React.FC<NavbarProps> = ({ role: propRole }) => {
+  const pathname = usePathname();
+  const detectedRole = useDetectedRole(); // ✅ Get auto-detected role
+  
+  // ✅ Use prop role if provided, otherwise use detected role
+  const role = (propRole || detectedRole) as keyof typeof NAV_LINKS;
+  
   const [isScrolled, setIsScrolled] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
   
   const { mainLinks, iconLinks } = NAV_LINKS[role] || NAV_LINKS.main;
   const isMainRole = role === 'main';
   
+    useEffect(() => {
+    const checkAuth = async () => {
+      if (isMainRole) {
+        const result = await checkAuthStatus();
+        setIsLoggedIn(result.isLoggedIn);
+        setFirstName(result.firstName);
+        setLoadingAuth(false);
+      }
+    };
+
+    checkAuth();
+  }, [isMainRole]);
+
   const isLinkActive = (href: string) => {
     if (href.includes('/submissions')) {
       return pathname?.startsWith('/researchermodule/submissions');
@@ -437,7 +499,7 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
     return 'bg-[#071139]/95 backdrop-blur-xl border-b border-[#F0E847]/10';
   };
   
-  return (
+return (
     <>
       <nav className={`${getBackgroundClass()} py-3 md:py-4 px-4 md:px-4 flex justify-between items-center shadow-lg fixed top-0 left-0 right-0 z-50 transition-all duration-300`}>
         <div className="flex items-center gap-3 md:gap-4">
@@ -468,16 +530,37 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
 
         <div className="hidden md:flex items-center space-x-6">
           <div className="flex space-x-4">
-            {mainLinks.map((link) => (
-              <NavButton 
-                key={link.href} 
-                href={link.href} 
-                text={link.text} 
-                icon={link.icon}
-                isActive={isLinkActive(link.href)}
-                showLine={true}
-              />
-            ))}
+            {/* ✅ UPDATED: Conditional rendering for Login vs First Name */}
+            {isMainRole && !loadingAuth ? (
+              isLoggedIn && firstName ? (
+                <Link
+                  href="/researchermodule"
+                  className="px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all hover:scale-105"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                >
+                  {firstName}
+                </Link>
+              ) : (
+                <NavButton 
+                  href="/login" 
+                  text="Login" 
+                  icon="user"
+                  isActive={isLinkActive('/login')}
+                  showLine={true}
+                />
+              )
+            ) : (
+              mainLinks.map((link) => (
+                <NavButton 
+                  key={link.href} 
+                  href={link.href} 
+                  text={link.text} 
+                  icon={link.icon}
+                  isActive={isLinkActive(link.href)}
+                  showLine={true}
+                />
+              ))
+            )}
           </div>
           
           {iconLinks.length > 0 && (
@@ -519,54 +602,26 @@ const NavbarRoles: React.FC<NavbarProps> = ({ role }) => {
 
         {isMainRole && (
           <div className="md:hidden flex items-center">
-            {mainLinks.map((link) => (
-              <NavButton 
-                key={link.href} 
-                href={link.href} 
-                text={link.text} 
-                icon={link.icon}
-                isActive={isLinkActive(link.href)}
-                showLine={false}
-              />
-            ))}
-          </div>
-        )}
-
-        {!isMainRole && (
-          <div className="md:hidden flex items-center space-x-2">
-            {iconLinks.length > 0 && (
-              <>
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setNotificationOpen(!notificationOpen);
-                      setAccountOpen(false);
-                    }}
-                    className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300 relative"
-                    aria-label="Notifications"
-                  >
-                    <Bell size={20} />
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#F0E847] rounded-full animate-pulse"></span>
-                  </button>
-                  
-                  <NotificationDropdown isOpen={notificationOpen} />
-                </div>
-                
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setAccountOpen(!accountOpen);
-                      setNotificationOpen(false);
-                    }}
-                    className="text-white hover:text-[#F0E847] hover:bg-[#F0E847]/10 p-2 rounded-lg transition-all duration-300"
-                    aria-label="Account"
-                  >
-                    <User size={20} />
-                  </button>
-                  
-                  <AccountDropdown isOpen={accountOpen} onClose={() => setAccountOpen(false)} role={role} />
-                </div>
-              </>
+            {/* ✅ UPDATED: Mobile version */}
+            {!loadingAuth && isLoggedIn && firstName ? (
+              <Link
+                href="/researchermodule"
+                className="px-3 py-2 rounded-lg bg-gradient-to-r from-[#F0E847] to-[#D3CC50] text-[#050B24] text-sm font-semibold"
+                style={{ fontFamily: 'Metropolis, sans-serif' }}
+              >
+                {firstName}
+              </Link>
+            ) : (
+              mainLinks.map((link) => (
+                <NavButton 
+                  key={link.href} 
+                  href={link.href} 
+                  text={link.text} 
+                  icon={link.icon}
+                  isActive={isLinkActive(link.href)}
+                  showLine={false}
+                />
+              ))
             )}
           </div>
         )}

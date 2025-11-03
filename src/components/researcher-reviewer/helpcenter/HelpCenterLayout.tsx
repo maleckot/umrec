@@ -4,7 +4,8 @@
 import { useState, ReactNode, useEffect, useRef } from 'react';
 import { Search, Bot, FileText, ClipboardList, HelpCircle, Send, MessageSquare, X, Download, LucideIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-
+import { usePathname } from 'next/navigation';
+import { checkAuthStatus } from '@/app/actions/auth/checkAuthStatus';
 
 
 // Custom Modern Menu Icon Component
@@ -29,6 +30,7 @@ interface DocumentTemplate {
   fileName: string;
   fileUrl: string;
   fileSize: string;
+  status?: string;
 }
 
 interface RoleConfig {
@@ -49,54 +51,51 @@ interface HelpCenterLayoutProps {
 const DEFAULT_RESEARCHER_TEMPLATES: DocumentTemplate[] = [
   {
     id: '1',
-    title: 'Application Form Ethics Review',
-    description: 'Required form for submitting ethics review application',
-    fileName: 'Application_Form_Ethics_Review.pdf',
-    fileUrl: '/templates/application-form-ethics-review.pdf',
-    fileSize: '2.5 MB'
+    title: 'FORM-0033 Research Protocol',
+    description: 'Official research protocol submission form',
+    fileName: 'FORM-0033_RESEARCH-PROTOCOL.pdf',
+    fileUrl: '/forms/UMREC Form No. 0033.pdf',
+    fileSize: '201 KB',
+    status: 'U'
   },
   {
     id: '2',
-    title: 'Research Protocol Template',
-    description: 'Standard template for research protocol submission',
-    fileName: 'Research_Protocol_Template.docx',
-    fileUrl: '/templates/research-protocol-template.docx',
-    fileSize: '1.8 MB'
+    title: 'Informed Consent Form',
+    description: 'Participant informed consent documentation',
+    fileName: 'Informed_Consent_Form.pdf',
+    fileUrl: '/forms/Informed Consent Form.pdf',
+    fileSize: '185 KB',
+    status: 'U'
   },
   {
     id: '3',
-    title: 'Informed Consent Form',
-    description: 'Template for participant informed consent documentation',
-    fileName: 'Informed_Consent_Form.docx',
-    fileUrl: '/templates/informed-consent-form.docx',
-    fileSize: '950 KB'
+    title: 'UMREC Form No. 0013',
+    description: 'UMREC evaluation form template',
+    fileName: 'UMREC_Form_No_0013-1.pdf',
+    fileUrl: '/forms/UMREC Form No. 0013-1.pdf',
+    fileSize: '201 KB',
+    status: 'U'
   },
   {
     id: '4',
-    title: 'Research Instrument Template',
-    description: 'Template for validated research instruments',
-    fileName: 'Research_Instrument_Template.docx',
-    fileUrl: '/templates/research-instrument-template.docx',
-    fileSize: '1.2 MB'
+    title: 'Informed Consent Form',
+    description: 'Participant informed consent documentation',
+    fileName: 'Informed_Consent_Form.pdf',
+    fileUrl: '/forms/Informed Consent Form.pdf',
+    fileSize: '185 KB',
+    status: 'U'
   },
-  {
-    id: '5',
-    title: 'Endorsement Letter Template',
-    description: 'Format for research endorsement letters',
-    fileName: 'Endorsement_Letter_Template.docx',
-    fileUrl: '/templates/endorsement-letter-template.docx',
-    fileSize: '780 KB'
-  }
 ];
+
 
 const ROLE_CONFIGS: Record<string, RoleConfig> = {
   researcher: {
     title: 'UMREC Smart Help',
     menuItems: [
-      { icon: ClipboardList, label: 'Submission Guidelines', href: '#guidelines' },
+      { icon: ClipboardList, label: 'Chat with UMREC Smart Help', href: '#guidelines' },
       { icon: FileText, label: 'Document Templates', href: '#templates' },
-      { icon: MessageSquare, label: 'Review Process', href: '#process' },
-      { icon: HelpCircle, label: 'Common Questions', href: '#faq' }
+      // { icon: MessageSquare, label: 'Review Process', href: '#process' },
+      // { icon: HelpCircle, label: 'Common Questions', href: '#faq' }
     ],
     initialMessage: "Hello! I'm your UMREC Smart Help. How can I help you today?",
     primaryColor: '#071139', // ← Changed to match navbar
@@ -119,13 +118,37 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
 
 export default function HelpCenterLayout({
   children,
-  role = 'researcher',
+  role: propRole,
   customConfig
 }: HelpCenterLayoutProps) {
+  const [dbRole, setDbRole] = useState<'researcher' | 'reviewer' | 'admin'>('researcher');
+
+  // ✅ Get role from localStorage
+  useEffect(() => {
+    try {
+      console.log('🔄 Checking localStorage for userRole...');
+      const storedRole = localStorage.getItem('userRole');
+      console.log('📦 Found in localStorage:', storedRole);
+      
+      if (storedRole && ['researcher', 'reviewer', 'admin'].includes(storedRole)) {
+        setDbRole(storedRole as 'researcher' | 'reviewer' | 'admin');
+        console.log('✅ HelpCenter role set to:', storedRole);
+      } else {
+        console.warn('⚠️ No valid userRole in localStorage');
+      }
+    } catch (error) {
+      console.error('❌ localStorage error:', error);
+    }
+  }, []);
+
+  // ✅ Use localStorage role > prop role
+  const role = (dbRole || propRole) as 'researcher' | 'reviewer' | 'admin';
+
   const config = {
     ...ROLE_CONFIGS[role],
     ...customConfig
   };
+
 
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,7 +244,7 @@ export default function HelpCenterLayout({
   };
 
 
-  const handleDownload = async (fileUrl: string, fileName: string) => {
+const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
       const response = await fetch(fileUrl);
       const blob = await response.blob();

@@ -364,43 +364,85 @@ function RevisionStep2Content() {
     return null;
   };
 
-  // ✅ FETCH DATA - with reviewer comments for both modes
-  useEffect(() => {
-    if (!submissionId) {
-      alert('No submission ID found');
-      router.push('/researchermodule/submissions');
-      return;
-    }
+  // ✅ FETCH DATA - with conditional reviewer comments (Quick vs Full Revision)
+useEffect(() => {
+  if (!submissionId) {
+    alert('No submission ID found');
+    router.push('/researchermodule/submissions');
+    return;
+  }
 
-    const fetchSubmissionData = async () => {
-      const supabase = createClient();
-      setLoadingComments(true);
+  const fetchSubmissionData = async () => {
+    const supabase = createClient();
+    setLoadingComments(true);
 
+    try {
+      const { data, error } = await supabase
+        .from('research_submissions')
+        .select('*')
+        .eq('id', submissionId)
+        .single();
+
+      if (error) throw error;
+
+      // ✅ FETCH REVIEWER COMMENTS - Conditional based on docId
       try {
-        const { data, error } = await supabase
-          .from('research_submissions')
-          .select('*')
-          .eq('id', submissionId)
-          .single();
-
-        if (error) throw error;
-
-        // ✅ FETCH REVIEWER COMMENTS
         if (docId) {
-          // Quick revision - get from document_verifications
-          const { data: verification } = await supabase
-            .from('document_verifications')
-            .select('feedback_comment')
-            .eq('document_id', docId)
-            .single();
+          // ✅ QUICK REVISION: Try document_verifications first, then fall back to submission_comments
+          console.log(`Quick Revision Mode: Fetching feedback for ${submissionId}`);
+          
+          let feedbackFound = false;
 
-          if (verification?.feedback_comment) {
-            setRevisionComments(verification.feedback_comment);
-          } else {
-            setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+          // Try to get from document_verifications first
+          try {
+            const { data: verification } = await supabase
+              .from('document_verifications')
+              .select('feedback_comment')
+              .eq('document_id', docId)
+              .single();
+
+            if (verification?.feedback_comment) {
+              console.log('✅ Found feedback in document_verifications');
+              setRevisionComments(verification.feedback_comment);
+              feedbackFound = true;
+            }
+          } catch (err) {
+            console.warn('⚠️ No verification feedback found for docId:', docId);
+          }
+
+          // If no document_verifications feedback, try submission_comments
+          if (!feedbackFound) {
+            try {
+              const { data: unresolved_comments, error } = await supabase
+                .from('submission_comments')
+                .select('comment_text, created_at')
+                .eq('submission_id', submissionId)
+                .eq('is_resolved', false)
+                .order('created_at', { ascending: false });
+
+              if (error) {
+                console.warn('⚠️ No unresolved comments found:', error);
+                setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+              } else if (unresolved_comments && unresolved_comments.length > 0) {
+                console.log(`📝 Found ${unresolved_comments.length} unresolved submission comments`);
+                const allComments = unresolved_comments
+                  .map((comment, index) => {
+                    return `**Comment ${index + 1}:**\n${comment.comment_text}\n`;
+                  })
+                  .join('\n---\n');
+                setRevisionComments(allComments);
+              } else {
+                setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+              }
+            } catch (err) {
+              console.error('Error fetching submission comments:', err);
+              setRevisionComments('Unable to load reviewer feedback.');
+            }
           }
         } else {
-          // Regular revision - get from reviews table
+          // ✅ FULL REVISION: Get comments from reviews table
+          console.log(`Full Revision Mode: Fetching reviews for ${submissionId}`);
+          
           const { data: reviews } = await supabase
             .from('reviews')
             .select(
@@ -458,124 +500,129 @@ function RevisionStep2Content() {
             setRevisionComments('No reviewer comments available. Please check back later or contact the review board.');
           }
         }
+      } catch (err) {
+        console.warn('Error fetching comments:', err);
+        setRevisionComments('Unable to load reviewer comments.');
+      }
 
-        // ✅ REST OF EXISTING FETCH CODE
-        const { data: technicalReviewDoc } = await supabase
-          .from('uploaded_documents')
-          .select('file_url, file_name, file_size')
+      // ✅ REST OF EXISTING FETCH CODE
+      const { data: technicalReviewDoc } = await supabase
+        .from('uploaded_documents')
+        .select('file_url, file_name, file_size')
+        .eq('submission_id', submissionId)
+        .eq('document_type', 'technical_review')
+        .single();
+
+      let institutionAddressFromForm = '';
+      let studySiteTypeFromForm = '';
+      let collegeFromForm = '';
+      let numParticipantsFromForm = '';
+      let technicalReviewFromForm = '';
+      let documentChecklist: DocumentChecklist = {};
+
+      if (data) {
+        const { data: appFormData, error: appFormError } = await supabase
+          .from('application_forms')
+          .select('*')
           .eq('submission_id', submissionId)
-          .eq('document_type', 'technical_review')
           .single();
 
-        let institutionAddressFromForm = '';
-        let studySiteTypeFromForm = '';
-        let collegeFromForm = '';
-        let numParticipantsFromForm = '';
-        let technicalReviewFromForm = '';
-        let documentChecklist: DocumentChecklist = {};
+        if (!appFormError && appFormData) {
+          institutionAddressFromForm = appFormData.institution_address || '';
+          studySiteTypeFromForm = appFormData.study_site_type || '';
+          collegeFromForm = appFormData.college || '';
+          numParticipantsFromForm = String(appFormData.num_participants || '');
+          technicalReviewFromForm = (appFormData.technical_review || 'no').toLowerCase();
+          documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
 
-        if (data) {
-          const { data: appFormData, error: appFormError } = await supabase
-            .from('application_forms')
-            .select('*')
-            .eq('submission_id', submissionId)
-            .single();
+          if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
+            setCoResearchers(
+              appFormData.co_researcher.map((co: any) => ({
+                name: co.fullName || co.name || '',
+                contact: co.contactNumber || co.contact || '',
+                email: co.emailAddress || co.email || '',
+              }))
+            );
+          }
 
-          if (!appFormError && appFormData) {
-            institutionAddressFromForm = appFormData.institution_address || '';
-            studySiteTypeFromForm = appFormData.study_site_type || '';
-            collegeFromForm = appFormData.college || '';
-            numParticipantsFromForm = String(appFormData.num_participants || '');
-            technicalReviewFromForm = (appFormData.technical_review || 'no').toLowerCase();
-            documentChecklist = (appFormData.document_checklist as DocumentChecklist) || {};
+          if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
+            setTechnicalAdvisers(
+              appFormData.technical_advisers.map((ad: any) => ({
+                name: ad.fullName || ad.name || '',
+                contact: ad.contactNumber || ad.contact || '',
+                email: ad.emailAddress || ad.email || '',
+              }))
+            );
+          }
 
-            if (appFormData.co_researcher && Array.isArray(appFormData.co_researcher)) {
-              setCoResearchers(
-                appFormData.co_researcher.map((co: any) => ({
-                  name: co.fullName || co.name || '',
-                  contact: co.contactNumber || co.contact || '',
-                  email: co.emailAddress || co.email || '',
-                }))
-              );
-            }
-
-            if (appFormData.technical_advisers && Array.isArray(appFormData.technical_advisers)) {
-              setTechnicalAdvisers(
-                appFormData.technical_advisers.map((ad: any) => ({
-                  name: ad.fullName || ad.name || '',
-                  contact: ad.contactNumber || ad.contact || '',
-                  email: ad.emailAddress || ad.email || '',
-                }))
-              );
-            }
-
-            setFormData((prev) => ({
-              ...prev,
-              title: data.title || '',
-              studySiteType: studySiteTypeFromForm,
-              studySite: appFormData.study_site || '',
-              researcherFirstName: appFormData.researcher_first_name || '',
-              researcherMiddleName: appFormData.researcher_middle_name || '',
-              researcherLastName: appFormData.researcher_last_name || '',
-              project_leader_email: data.project_leader_email || '', // ✅ FIXED            
-              faxNo: appFormData.contact_info?.fax_no || 'N/A',
-              telNo: appFormData.contact_info?.tel_no || '',
-              project_leader_contact: data.project_leader_contact || '', // ✅ FIXED            
-              college: collegeFromForm,
-              institution: appFormData.institution || 'University of Makati',
-              institutionAddress: institutionAddressFromForm,
-              typeOfStudy: mapStoredValuesToOptions(appFormData.type_of_study, typeOfStudyMap) || [],
-              typeOfStudyOthers: appFormData.type_of_study_others || '',
-              sourceOfFunding: mapStoredValuesToOptions(appFormData.source_of_funding, sourceOfFundingMap) || [],
-              pharmaceuticalSponsor: appFormData.pharmaceutical_sponsor || '',
-              fundingOthers: appFormData.funding_others || '',
-              startDate: appFormData.study_duration?.start_date || '',
-              endDate: appFormData.study_duration?.end_date || '',
-              numParticipants: numParticipantsFromForm,
-              technicalReview: technicalReviewFromForm,
-              submittedToOther: appFormData.submitted_to_other || '',
-              hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
-              hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
-              hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
-              hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
-              informedConsentOthers: documentChecklist.informedConsentOthers || '',
-              hasAssentForm: documentChecklist.hasAssentForm ?? false,
-              hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
-              assentFormOthers: documentChecklist.assentFormOthers || '',
-              hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
-              hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
-              hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
-              hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
-              hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
-              hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
-              hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
-              hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
-              specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
-              hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
-              otherDocsDetails: documentChecklist.otherDocsDetails || '',
-              technicalReviewFile: technicalReviewDoc
-                ? {
+          setFormData((prev) => ({
+            ...prev,
+            title: data.title || '',
+            studySiteType: studySiteTypeFromForm,
+            studySite: appFormData.study_site || '',
+            researcherFirstName: appFormData.researcher_first_name || '',
+            researcherMiddleName: appFormData.researcher_middle_name || '',
+            researcherLastName: appFormData.researcher_last_name || '',
+            project_leader_email: data.project_leader_email || '',
+            faxNo: appFormData.contact_info?.fax_no || 'N/A',
+            telNo: appFormData.contact_info?.tel_no || '',
+            project_leader_contact: data.project_leader_contact || '',
+            college: collegeFromForm,
+            institution: appFormData.institution || 'University of Makati',
+            institutionAddress: institutionAddressFromForm,
+            typeOfStudy: mapStoredValuesToOptions(appFormData.type_of_study, typeOfStudyMap) || [],
+            typeOfStudyOthers: appFormData.type_of_study_others || '',
+            sourceOfFunding: mapStoredValuesToOptions(appFormData.source_of_funding, sourceOfFundingMap) || [],
+            pharmaceuticalSponsor: appFormData.pharmaceutical_sponsor || '',
+            fundingOthers: appFormData.funding_others || '',
+            startDate: appFormData.study_duration?.start_date || '',
+            endDate: appFormData.study_duration?.end_date || '',
+            numParticipants: numParticipantsFromForm,
+            technicalReview: technicalReviewFromForm,
+            submittedToOther: appFormData.submitted_to_other || '',
+            hasApplicationForm: documentChecklist.hasApplicationForm ?? true,
+            hasResearchProtocol: documentChecklist.hasResearchProtocol ?? false,
+            hasInformedConsent: documentChecklist.hasInformedConsent ?? false,
+            hasInformedConsentOthers: documentChecklist.hasInformedConsentOthers ?? false,
+            informedConsentOthers: documentChecklist.informedConsentOthers || '',
+            hasAssentForm: documentChecklist.hasAssentForm ?? false,
+            hasAssentFormOthers: documentChecklist.hasAssentFormOthers ?? false,
+            assentFormOthers: documentChecklist.assentFormOthers || '',
+            hasEndorsementLetter: documentChecklist.hasEndorsementLetter ?? false,
+            hasQuestionnaire: documentChecklist.hasQuestionnaire ?? false,
+            hasTechnicalReview: documentChecklist.hasTechnicalReview ?? false,
+            hasDataCollectionForms: documentChecklist.hasDataCollectionForms ?? false,
+            hasProductBrochure: documentChecklist.hasProductBrochure ?? false,
+            hasFDAAuthorization: documentChecklist.hasFDAAuthorization ?? false,
+            hasCompanyPermit: documentChecklist.hasCompanyPermit ?? false,
+            hasSpecialPopulationPermit: documentChecklist.hasSpecialPopulationPermit ?? false,
+            specialPopulationPermitDetails: documentChecklist.specialPopulationPermitDetails || '',
+            hasOtherDocs: documentChecklist.hasOtherDocs ?? false,
+            otherDocsDetails: documentChecklist.otherDocsDetails || '',
+            technicalReviewFile: technicalReviewDoc
+              ? {
                   name: technicalReviewDoc.file_name,
                   url: technicalReviewDoc.file_url,
                   size: technicalReviewDoc.file_size,
                 }
-                : null,
-            }));
-          }
+              : null,
+          }));
         }
-      } catch (error) {
-        console.error('Error fetching submission data:', error);
-        alert('Failed to load submission data');
-      } finally {
-        setLoading(false);
-        setIsClient(true);
-        isInitialMount.current = false;
-        setLoadingComments(false);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching submission data:', error);
+      alert('Failed to load submission data');
+    } finally {
+      setLoading(false);
+      setIsClient(true);
+      isInitialMount.current = false;
+      setLoadingComments(false);
+    }
+  };
 
-    fetchSubmissionData();
-  }, [submissionId, docId, router]);
+  fetchSubmissionData();
+}, [submissionId, docId, router]);
+
 
   useEffect(() => {
     if (isInitialMount.current || !isClient) return;

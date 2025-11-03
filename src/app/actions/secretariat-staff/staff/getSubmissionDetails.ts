@@ -22,10 +22,21 @@ export async function getSubmissionDetails(submissionId: string) {
       return { success: false, error: 'Submission not found' };
     }
 
+    // ✅ FILTER: Only 6 original documents
+    const originalDocTypes = [
+      'application_form',
+      'consent_form',
+      'research_protocol',
+      'research_instrument',
+      'endorsement_letter',
+      'proposal_defense',
+    ];
+
     const { data: documents } = await supabase
       .from('uploaded_documents')
       .select('*')
       .eq('submission_id', submission.id)
+      .in('document_type', originalDocTypes) // ✅ Filter by type
       .order('uploaded_at', { ascending: true });
 
     const { data: verifications } = await supabase

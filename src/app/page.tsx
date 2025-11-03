@@ -18,7 +18,7 @@ export default function Home() {
       (entries) => {
         if (entries[0].isIntersecting && !hasAnimated) {
           setHasAnimated(true);
-          
+
           // Animate first counter to 628 (slower)
           let current1 = 0;
           const target1 = 628;
@@ -70,6 +70,7 @@ export default function Home() {
     {
       title: "Application Form Ethics Review",
       formNumber: "UMREC Form No. 0013-1",
+      filePath: "/forms/UMREC Form No. 0013-1.pdf",  // ✅ Exact filename
       icon: (
         <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -79,6 +80,7 @@ export default function Home() {
     {
       title: "Research Protocol",
       formNumber: "UMREC Form No. 0033",
+      filePath: "/forms/UMREC Form No. 0033.pdf",  // ✅ Exact filename
       icon: (
         <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
@@ -88,6 +90,7 @@ export default function Home() {
     {
       title: "Informed Consent Form",
       formNumber: "Sample for legal-age respondents",
+      filePath: "/forms/Informed Consent Form.pdf",  // ✅ Exact filename
       icon: (
         <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -97,6 +100,7 @@ export default function Home() {
     {
       title: "Informed Consent Form",
       formNumber: "Sample for minor respondents",
+      filePath: "/forms/Informed Consent Form.pdf",  // ✅ Same file (or create separate if needed)
       icon: (
         <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -105,15 +109,16 @@ export default function Home() {
     }
   ];
 
+
   return (
     <div className="overflow-x-hidden">
       <NavbarRoles role="main" />
-      
+
       {/* Hero Section with Background Image */}
       <div className="relative h-[60vh] sm:h-[70vh] md:min-h-screen flex flex-col justify-center px-4 sm:px-6 md:px-10">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image 
+          <Image
             src="/img/landingimg.png"
             alt="Background"
             fill
@@ -135,7 +140,7 @@ export default function Home() {
           <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold" style={{ fontFamily: 'Marcellus, serif' }}>
             <span className="inline-flex flex-wrap justify-center bg-gradient-to-r from-[#FFFFFF] to-[#F0E847] bg-clip-text text-transparent drop-shadow-elegant">
               {'UMRE'.split('').map((letter, index) => (
-                <span 
+                <span
                   key={index}
                   className="animate-letter-glow-white"
                   style={{
@@ -146,7 +151,7 @@ export default function Home() {
                 </span>
               ))}
               {'Connect'.split('').map((letter, index) => (
-                <span 
+                <span
                   key={index + 4}
                   className="animate-letter-glow-yellow"
                   style={{
@@ -160,27 +165,27 @@ export default function Home() {
           </h1>
 
           {/* UMREC Acronym - Always One Line, Extra Small on Mobile */}
-<div className="flex flex-nowrap justify-center items-center gap-x-0.5 sm:gap-x-1.5 md:gap-x-3 px-1 py-3 overflow-x-auto scrollbar-hide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-  <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-    <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">U</span>nbiased
-  </span>
-  <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-  <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-    <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">M</span>orally Responsible
-  </span>
-  <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-  <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-    <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">R</span>espect For Human Rights
-  </span>
-  <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-  <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-    <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">E</span>quitable
-  </span>
-  <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-  <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-    <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">C</span>redible
-  </span>
-</div>
+          <div className="flex flex-nowrap justify-center items-center gap-x-0.5 sm:gap-x-1.5 md:gap-x-3 px-1 py-3 overflow-x-auto scrollbar-hide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
+              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">U</span>nbiased
+            </span>
+            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
+              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">M</span>orally Responsible
+            </span>
+            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
+              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">R</span>espect For Human Rights
+            </span>
+            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
+              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">E</span>quitable
+            </span>
+            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
+              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">C</span>redible
+            </span>
+          </div>
         </div>
         {/* Elegant Separator Line at bottom of image */}
         <div className="absolute bottom-0 left-0 right-0 z-10">
@@ -216,22 +221,20 @@ export default function Home() {
               <div className="inline-flex w-full sm:w-auto rounded-lg bg-white/5 p-1 backdrop-blur-sm border border-white/10">
                 <button
                   onClick={() => setActiveTab('mission')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${
-                    activeTab === 'mission'
+                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === 'mission'
                       ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg shadow-yellow-500/50 scale-105'
                       : 'text-white hover:bg-white/10'
-                  }`}
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   Mission
                 </button>
                 <button
                   onClick={() => setActiveTab('vision')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${
-                    activeTab === 'vision'
+                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === 'vision'
                       ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg shadow-yellow-500/50 scale-105'
                       : 'text-white hover:bg-white/10'
-                  }`}
+                    }`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   Vision
@@ -243,11 +246,10 @@ export default function Home() {
             <div className="relative" style={{ minHeight: '280px' }}>
               {/* Mission Content */}
               <div
-                className={`absolute inset-0 transition-all duration-500 ${
-                  activeTab === 'mission'
+                className={`absolute inset-0 transition-all duration-500 ${activeTab === 'mission'
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 -translate-x-full pointer-events-none'
-                }`}
+                  }`}
               >
                 <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-10 border border-white/10 shadow-2xl hover-lift">
                   <div className="flex items-start gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3 md:mb-4">
@@ -268,11 +270,10 @@ export default function Home() {
 
               {/* Vision Content */}
               <div
-                className={`absolute inset-0 transition-all duration-500 ${
-                  activeTab === 'vision'
+                className={`absolute inset-0 transition-all duration-500 ${activeTab === 'vision'
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 translate-x-full pointer-events-none'
-                }`}
+                  }`}
               >
                 <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-10 border border-white/10 shadow-2xl hover-lift">
                   <div className="flex items-start gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3 md:mb-4">
@@ -297,12 +298,12 @@ export default function Home() {
       </div>
 
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
-      
+
       {/* Statistics Section - Transparent Cards with Hover */}
       <div className="relative h-[50vh] sm:h-[60vh] md:h-auto md:py-20 flex items-center px-4 sm:px-8 md:px-20 lg:px-40" ref={statsRef}>
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image 
+          <Image
             src="/img/landingimg1.png"
             alt="Statistics Background"
             fill
@@ -362,9 +363,9 @@ export default function Home() {
 
               <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-justify hover-lift" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.8' }}>
                 To access the specific forms, detailed requirements, and the complete submission process, please{' '}
-                <Link 
-                  href="/login" 
-                  className="inline-flex items-center gap-2 font-bold hover:underline transition-all duration-300 hover:gap-3 group" 
+                <Link
+                  href="/login"
+                  className="inline-flex items-center gap-2 font-bold hover:underline transition-all duration-300 hover:gap-3 group"
                   style={{ color: '#F0E847' }}
                 >
                   log in to your account
@@ -404,7 +405,7 @@ export default function Home() {
             {/* Download Cards Grid - Uniform Sizing */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
               {downloadableFiles.map((file, index) => (
-                <div 
+                <div
                   key={index}
                   className="download-card bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border-2 border-[#101C50]/10 shadow-lg hover-lift group flex flex-col"
                 >
@@ -424,12 +425,17 @@ export default function Home() {
                   </p>
 
                   {/* Download Button - Uniform Size */}
-                  <button className="download-btn w-full bg-gradient-to-r from-[#101C50] to-[#050B24] text-white py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-xl transition-all duration-300 group-hover:from-[#D3CC50] group-hover:to-[#F0E847] group-hover:text-[#050B24] mt-auto" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <a
+                    href={file.filePath}
+                    download
+                    className="download-btn w-full bg-gradient-to-r from-[#101C50] to-[#050B24] text-white py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-xl transition-all duration-300 group-hover:from-[#D3CC50] group-hover:to-[#F0E847] group-hover:text-[#050B24] mt-auto"
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Download
-                  </button>
+                  </a>
                 </div>
               ))}
             </div>
@@ -444,7 +450,7 @@ export default function Home() {
         </div>
       </div>
 
-     
+
       <Footer />
 
       {/* Elegant Animations and Effects */}

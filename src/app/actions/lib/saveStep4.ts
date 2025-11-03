@@ -37,18 +37,12 @@ export async function saveStep4Data({
             introductionTagalog: formData.introductionTagalog || '',
             purposeEnglish: formData.purposeEnglish || '',
             purposeTagalog: formData.purposeTagalog || '',
-            researchInterventionEnglish:
-              formData.researchInterventionEnglish || '',
-            researchInterventionTagalog:
-              formData.researchInterventionTagalog || '',
-            participantSelectionEnglish:
-              formData.participantSelectionEnglish || '',
-            participantSelectionTagalog:
-              formData.participantSelectionTagalog || '',
-            voluntaryParticipationEnglish:
-              formData.voluntaryParticipationEnglish || '',
-            voluntaryParticipationTagalog:
-              formData.voluntaryParticipationTagalog || '',
+            researchInterventionEnglish: formData.researchInterventionEnglish || '',
+            researchInterventionTagalog: formData.researchInterventionTagalog || '',
+            participantSelectionEnglish: formData.participantSelectionEnglish || '',
+            participantSelectionTagalog: formData.participantSelectionTagalog || '',
+            voluntaryParticipationEnglish: formData.voluntaryParticipationEnglish || '',
+            voluntaryParticipationTagalog: formData.voluntaryParticipationTagalog || '',
             proceduresEnglish: formData.proceduresEnglish || '',
             proceduresTagalog: formData.proceduresTagalog || '',
             durationEnglish: formData.durationEnglish || '',
@@ -75,30 +69,22 @@ export async function saveStep4Data({
       formData.consentType === 'minor' || formData.consentType === 'both'
         ? {
             minorLanguage: formData.minorLanguage || 'english',
-            introductionMinorEnglish:
-              formData.introductionMinorEnglish || '',
-            introductionMinorTagalog:
-              formData.introductionMinorTagalog || '',
+            introductionMinorEnglish: formData.introductionMinorEnglish || '',
+            introductionMinorTagalog: formData.introductionMinorTagalog || '',
             purposeMinorEnglish: formData.purposeMinorEnglish || '',
             purposeMinorTagalog: formData.purposeMinorTagalog || '',
-            choiceOfParticipantsEnglish:
-              formData.choiceOfParticipantsEnglish || '',
-            choiceOfParticipantsTagalog:
-              formData.choiceOfParticipantsTagalog || '',
-            voluntarinessMinorEnglish:
-              formData.voluntarinessMinorEnglish || '',
-            voluntarinessMinorTagalog:
-              formData.voluntarinessMinorTagalog || '',
+            choiceOfParticipantsEnglish: formData.choiceOfParticipantsEnglish || '',
+            choiceOfParticipantsTagalog: formData.choiceOfParticipantsTagalog || '',
+            voluntarinessMinorEnglish: formData.voluntarinessMinorEnglish || '',
+            voluntarinessMinorTagalog: formData.voluntarinessMinorTagalog || '',
             proceduresMinorEnglish: formData.proceduresMinorEnglish || '',
             proceduresMinorTagalog: formData.proceduresMinorTagalog || '',
             risksMinorEnglish: formData.risksMinorEnglish || '',
             risksMinorTagalog: formData.risksMinorTagalog || '',
             benefitsMinorEnglish: formData.benefitsMinorEnglish || '',
             benefitsMinorTagalog: formData.benefitsMinorTagalog || '',
-            confidentialityMinorEnglish:
-              formData.confidentialityMinorEnglish || '',
-            confidentialityMinorTagalog:
-              formData.confidentialityMinorTagalog || '',
+            confidentialityMinorEnglish: formData.confidentialityMinorEnglish || '',
+            confidentialityMinorTagalog: formData.confidentialityMinorTagalog || '',
             sharingFindingsEnglish: formData.sharingFindingsEnglish || '',
             sharingFindingsTagalog: formData.sharingFindingsTagalog || '',
           }
@@ -224,16 +210,39 @@ export async function saveStep4Data({
     console.log('✅ All 3 PDFs regenerated successfully!');
 
     // ✅ RESET VERIFICATION ONLY FOR CONSENT_FORM
-    console.log('🔄 Resetting consent_form verification...');
+    console.log('🔄 Incrementing consent_form revision count...');
 
     const { data: consentDoc } = await supabase
       .from('uploaded_documents')
-      .select('id')
+      .select('id, revision_count')
       .eq('submission_id', submissionId)
       .eq('document_type', 'consent_form')
       .single();
 
     if (consentDoc) {
+      console.log(
+        `📝 Found consent doc: ${consentDoc.id}, current revision: ${consentDoc.revision_count}`
+      );
+
+      // ✅ Increment revision count
+      const currentRevisionCount = consentDoc.revision_count || 0;
+
+      const { error: incrementError } = await supabase
+        .from('uploaded_documents')
+        .update({
+          revision_count: currentRevisionCount + 1,
+        })
+        .eq('id', consentDoc.id);
+
+      if (incrementError) {
+        console.error('❌ Error incrementing revision count:', incrementError);
+      } else {
+        console.log(
+          `✅ Consent form revision count incremented to ${currentRevisionCount + 1}`
+        );
+      }
+
+      // ✅ Reset verification
       const { data: existingVerif } = await supabase
         .from('document_verifications')
         .select('id')
@@ -264,9 +273,11 @@ export async function saveStep4Data({
 
         console.log('✅ New consent form verification created');
       }
+    } else {
+      console.warn('⚠️ No consent form document found for this submission');
     }
 
-    // ✅ CHECK STATUS: If all document verifications are null → "pending", else → "needs_revision"
+    // ✅ CHECK STATUS: If all document verifications are null or approved → "pending", else → "needs_revision"
     console.log('🔍 Checking document verification status...');
 
     const { data: allDocs } = await supabase
@@ -281,12 +292,16 @@ export async function saveStep4Data({
         .select('is_approved')
         .eq('submission_id', submissionId);
 
-      // Check if ALL verifications are null/approved is null
-      const allAreNull = !allVerifications || allVerifications.every(v => v.is_approved === null);
+      // ✅ Check if ALL verifications are null or approved (true)
+      const allAreNullOrApproved =
+        !allVerifications ||
+        allVerifications.every((v) => v.is_approved === null || v.is_approved === true);
 
-      const newStatus = allAreNull ? 'pending' : 'needs_revision';
+      const newStatus = allAreNullOrApproved ? 'pending' : 'needs_revision';
 
-      console.log(`📊 Status update: ${newStatus} (${allAreNull ? 'All verifications null' : 'Some verifications exist'})`);
+      console.log(
+        `📊 Status update: ${newStatus} (${allAreNullOrApproved ? 'All verifications null/approved' : 'Some verifications exist'})`
+      );
 
       // Update submission status
       const { error: statusError } = await supabase
@@ -302,6 +317,27 @@ export async function saveStep4Data({
       }
 
       console.log(`✅ Submission status updated to: ${newStatus}`);
+
+      // ✅ CONDITIONAL: Mark comments as resolved ONLY if all verifications are null or approved
+      if (allAreNullOrApproved) {
+        console.log('✅ All verifications passed. Marking submission comments as resolved...');
+
+        const { error: commentError } = await supabase
+          .from('submission_comments')
+          .update({ is_resolved: true })
+          .eq('submission_id', submissionId)
+          .eq('is_resolved', false);
+
+        if (commentError) {
+          console.warn('⚠️ Could not mark comments as resolved:', commentError);
+        } else {
+          console.log('✅ All submission comments marked as resolved');
+        }
+      } else {
+        console.log(
+          '⚠️ Some verifications are still pending. Comments remain unresolved for next revision cycle.'
+        );
+      }
     }
 
     console.log('✅ Step 4 saved successfully!');
@@ -310,8 +346,7 @@ export async function saveStep4Data({
     console.error('❌ Save error:', error);
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

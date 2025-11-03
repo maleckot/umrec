@@ -376,181 +376,221 @@ function RevisionStep4Content() {
   };
 
   // ✅ FULLY REVISED useEffect
-  useEffect(() => {
-    setIsClient(true);
+useEffect(() => {
+  setIsClient(true);
 
-    if (!submissionId) {
-      alert('No submission ID found. Redirecting to dashboard.');
-      router.push('/researchermodule/submissions');
-      return;
-    }
+  if (!submissionId) {
+    alert('No submission ID found. Redirecting to dashboard.');
+    router.push('/researchermodule/submissions');
+    return;
+  }
 
-    const fetchData = async () => {
-      setLoading(true);
-      setLoadingComments(true);
-      const supabase = createClient();
+  const fetchData = async () => {
+    setLoading(true);
+    setLoadingComments(true);
+    const supabase = createClient();
 
-      try {
-        // --- 1. FETCH COMMENTS (branched logic) ---
-        if (isQuickRevision) {
-          // ✅ QUICK REVISION: Get comments from document_verifications
-          console.log(`Quick Revision Mode: Fetching comments for docId ${docId}`);
-          const { data: verification } = await supabase
-            .from('document_verifications')
-            .select('feedback_comment')
-            .eq('document_id', docId) // Use the docId from URL
-            .single();
-
-          if (verification?.feedback_comment) {
-            setRevisionComments(verification.feedback_comment);
-          } else {
-            setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
-          }
-        } else {
-          // ✅ FULL REVISION: Get comments from the main 'reviews' table
-          console.log(`Full Revision Mode: Fetching comments for submissionId ${submissionId}`);
-          const { data: reviews } = await supabase
-            .from('reviews')
-            .select(
-              'icf_recommendation, icf_disapproval_reasons, icf_ethics_recommendation, icf_technical_suggestions'
-            )
-            .eq('submission_id', submissionId)
-            .eq('status', 'submitted');
-
-          if (reviews && reviews.length > 0) {
-            const allComments = reviews
-              .map((review, index) => {
-                let text = `**Reviewer ${index + 1} (Informed Consent Form):**\n`;
-                if (review.icf_recommendation) text += `\n📋 **Recommendation:** ${review.icf_recommendation}\n`;
-                if (review.icf_disapproval_reasons) text += `❌ **Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
-                if (review.icf_ethics_recommendation) text += `⚖️ **Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
-                if (review.icf_technical_suggestions) text += `💡 **Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
-                return text;
-              })
-              .join('\n---\n');
-            setRevisionComments(allComments);
-          } else {
-            setRevisionComments('No reviewer comments available for the consent form.');
-          }
-        }
-        setLoadingComments(false);
-
-        // --- 2. FETCH ALL FORM DATA FROM DATABASE ---
+    try {
+      // --- 1. FETCH COMMENTS (branched logic) ---
+      if (isQuickRevision) {
+        // ✅ QUICK REVISION: Try document_verifications FIRST, then fall back to submission_comments
+        console.log(`Quick Revision Mode: Fetching feedback for ${submissionId}`);
         
-        // Fetch Step 2 Data (from application_forms for details)
-        const { data: step2DataRaw } = await supabase
-          .from('application_forms') 
-          .select('title, researcher_first_name, researcher_last_name, project_leader_email, institution, college')
-          .eq('submission_id', submissionId)
-          .single();
+        let feedbackFound = false;
 
-        if (step2DataRaw) {
-          setStep2Info({
-            title: step2DataRaw.title || 'Not provided',
-            projectLeader: `${step2DataRaw.researcher_first_name || ''} ${step2DataRaw.researcher_last_name || ''}`.trim(),
-            email: step2DataRaw.project_leader_email || '',
-            organization: step2DataRaw.institution || 'N/A',
-            college: step2DataRaw.college || 'N/A',
-          });
-        }
-        
-        // Fetch Step 3 Data (Signatures)
-        const { data: step3DataRaw } = await supabase
-            .from('researcher_declarations')
-            .select('signatures')
-            .eq('submission_id', submissionId)
-            .single();
+        // Try to get from document_verifications first (if docId available)
+        if (docId) {
+          try {
+            const { data: verification } = await supabase
+              .from('document_verifications')
+              .select('feedback_comment')
+              .eq('document_id', docId)
+              .single();
 
-        if (step3DataRaw) {
-            setStep3Data(step3DataRaw);
+            if (verification?.feedback_comment) {
+              console.log('✅ Found feedback in document_verifications');
+              setRevisionComments(verification.feedback_comment);
+              feedbackFound = true;
+            }
+          } catch (err) {
+            console.warn('⚠️ No verification feedback found for docId:', docId);
+          }
         }
 
-        // Fetch Step 4 Data (Consent Form)
-        const { data: consentData } = await supabase
-          .from('consent_forms')
-          .select('*')
+        // If no document_verifications feedback, try submission_comments
+        if (!feedbackFound) {
+          try {
+            const { data: unresolved_comments, error } = await supabase
+              .from('submission_comments')
+              .select('comment_text, created_at')
+              .eq('submission_id', submissionId)
+              .eq('is_resolved', false)
+              .order('created_at', { ascending: false });
+
+            if (error) {
+              console.warn('⚠️ No unresolved comments found:', error);
+              setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+            } else if (unresolved_comments && unresolved_comments.length > 0) {
+              console.log(`📝 Found ${unresolved_comments.length} unresolved submission comments`);
+              const allComments = unresolved_comments
+                .map((comment, index) => {
+                  return `**Comment ${index + 1}:**\n${comment.comment_text}\n`;
+                })
+                .join('\n---\n');
+              setRevisionComments(allComments);
+            } else {
+              setRevisionComments('No specific feedback provided. Please review the document for any general improvements.');
+            }
+          } catch (err) {
+            console.error('Error fetching submission comments:', err);
+            setRevisionComments('Unable to load reviewer feedback.');
+          }
+        }
+      } else {
+        // ✅ FULL REVISION: Get comments from the main 'reviews' table
+        console.log(`Full Revision Mode: Fetching comments for submissionId ${submissionId}`);
+        const { data: reviews } = await supabase
+          .from('reviews')
+          .select(
+            'icf_recommendation, icf_disapproval_reasons, icf_ethics_recommendation, icf_technical_suggestions'
+          )
           .eq('submission_id', submissionId)
-          .single();
+          .eq('status', 'submitted');
 
-        if (consentData) {
-          console.log('📋 Loaded consent form:', consentData);
-          setConsentType(consentData.consent_type || 'adult');
-          if (consentData.adult_consent?.adultLanguage) {
-            setAdultLanguage(consentData.adult_consent.adultLanguage);
-          }
-          if (consentData.minor_assent?.minorLanguage) {
-            setMinorLanguage(consentData.minor_assent.minorLanguage);
-          }
-
-          setFormData(prev => ({
-            ...prev,
-            participantGroupIdentity: consentData.informed_consent_for || '',
-            contactPerson: consentData.contact_person || '',
-            contactNumber: consentData.contact_number || '',
-
-            ...(consentData.adult_consent && {
-              introductionEnglish: consentData.adult_consent.introductionEnglish || '',
-              introductionTagalog: consentData.adult_consent.introductionTagalog || '',
-              purposeEnglish: consentData.adult_consent.purposeEnglish || '',
-              purposeTagalog: consentData.adult_consent.purposeTagalog || '',
-              researchInterventionEnglish: consentData.adult_consent.researchInterventionEnglish || '',
-              researchInterventionTagalog: consentData.adult_consent.researchInterventionTagalog || '',
-              participantSelectionEnglish: consentData.adult_consent.participantSelectionEnglish || '',
-              participantSelectionTagalog: consentData.adult_consent.participantSelectionTagalog || '',
-              voluntaryParticipationEnglish: consentData.adult_consent.voluntaryParticipationEnglish || '',
-              voluntaryParticipationTagalog: consentData.adult_consent.voluntaryParticipationTagalog || '',
-              proceduresEnglish: consentData.adult_consent.proceduresEnglish || '',
-              proceduresTagalog: consentData.adult_consent.proceduresTagalog || '',
-              durationEnglish: consentData.adult_consent.durationEnglish || '',
-              durationTagalog: consentData.adult_consent.durationTagalog || '',
-              risksEnglish: consentData.adult_consent.risksEnglish || '',
-              risksTagalog: consentData.adult_consent.risksTagalog || '',
-              benefitsEnglish: consentData.adult_consent.benefitsEnglish || '',
-              benefitsTagalog: consentData.adult_consent.benefitsTagalog || '',
-              reimbursementsEnglish: consentData.adult_consent.reimbursementsEnglish || '',
-              reimbursementsTagalog: consentData.adult_consent.reimbursementsTagalog || '',
-              confidentialityEnglish: consentData.adult_consent.confidentialityEnglish || '',
-              confidentialityTagalog: consentData.adult_consent.confidentialityTagalog || '',
-              sharingResultsEnglish: consentData.adult_consent.sharingResultsEnglish || '',
-              sharingResultsTagalog: consentData.adult_consent.sharingResultsTagalog || '',
-              rightToRefuseEnglish: consentData.adult_consent.rightToRefuseEnglish || '',
-              rightToRefuseTagalog: consentData.adult_consent.rightToRefuseTagalog || '',
-              whoToContactEnglish: consentData.adult_consent.whoToContactEnglish || '',
-              whoToContactTagalog: consentData.adult_consent.whoToContactTagalog || '',
-            }),
-
-            ...(consentData.minor_assent && {
-              introductionMinorEnglish: consentData.minor_assent.introductionMinorEnglish || '',
-              introductionMinorTagalog: consentData.minor_assent.introductionMinorTagalog || '',
-              purposeMinorEnglish: consentData.minor_assent.purposeMinorEnglish || '',
-              purposeMinorTagalog: consentData.minor_assent.purposeMinorTagalog || '',
-              choiceOfParticipantsEnglish: consentData.minor_assent.choiceOfParticipantsEnglish || '',
-              choiceOfParticipantsTagalog: consentData.minor_assent.choiceOfParticipantsTagalog || '',
-              voluntarinessMinorEnglish: consentData.minor_assent.voluntarinessMinorEnglish || '',
-              voluntarinessMinorTagalog: consentData.minor_assent.voluntarinessMinorTagalog || '',
-              proceduresMinorEnglish: consentData.minor_assent.proceduresMinorEnglish || '',
-              proceduresMinorTagalog: consentData.minor_assent.proceduresMinorTagalog || '',
-              risksMinorEnglish: consentData.minor_assent.risksMinorEnglish || '',
-              risksMinorTagalog: consentData.minor_assent.risksMinorTagalog || '',
-              benefitsMinorEnglish: consentData.minor_assent.benefitsMinorEnglish || '',
-              benefitsMinorTagalog: consentData.minor_assent.benefitsMinorTagalog || '',
-              confidentialityMinorEnglish: consentData.minor_assent.confidentialityMinorEnglish || '',
-              confidentialityMinorTagalog: consentData.minor_assent.confidentialityMinorTagalog || '',
-              sharingFindingsEnglish: consentData.minor_assent.sharingFindingsEnglish || '',
-              sharingFindingsTagalog: consentData.minor_assent.sharingFindingsTagalog || '',
+        if (reviews && reviews.length > 0) {
+          const allComments = reviews
+            .map((review, index) => {
+              let text = `**Reviewer ${index + 1} (Informed Consent Form):**\n`;
+              if (review.icf_recommendation) text += `\n📋 **Recommendation:** ${review.icf_recommendation}\n`;
+              if (review.icf_disapproval_reasons) text += `❌ **Disapproval Reasons:** ${review.icf_disapproval_reasons}\n`;
+              if (review.icf_ethics_recommendation) text += `⚖️ **Ethics Recommendation:** ${review.icf_ethics_recommendation}\n`;
+              if (review.icf_technical_suggestions) text += `💡 **Technical Suggestions:** ${review.icf_technical_suggestions}\n`;
+              return text;
             })
-          }));
+            .join('\n---\n');
+          setRevisionComments(allComments);
+        } else {
+          setRevisionComments('No reviewer comments available for the consent form.');
         }
-      } catch (err) {
-        console.error('Error fetching submission data:', err);
-        alert('Failed to load submission data.');
-      } finally {
-        setLoading(false);
       }
-    };
+      setLoadingComments(false);
 
-    fetchData();
-  }, [submissionId, docId, isQuickRevision, router]);
+      // --- 2. FETCH ALL FORM DATA FROM DATABASE ---
+      
+      // Fetch Step 2 Data (from application_forms for details)
+      const { data: step2DataRaw } = await supabase
+        .from('application_forms') 
+        .select('title, researcher_first_name, researcher_last_name, project_leader_email, institution, college')
+        .eq('submission_id', submissionId)
+        .single();
+
+      if (step2DataRaw) {
+        setStep2Info({
+          title: step2DataRaw.title || 'Not provided',
+          projectLeader: `${step2DataRaw.researcher_first_name || ''} ${step2DataRaw.researcher_last_name || ''}`.trim(),
+          email: step2DataRaw.project_leader_email || '',
+          organization: step2DataRaw.institution || 'N/A',
+          college: step2DataRaw.college || 'N/A',
+        });
+      }
+      
+      // Fetch Step 3 Data (Signatures)
+      const { data: step3DataRaw } = await supabase
+          .from('researcher_declarations')
+          .select('signatures')
+          .eq('submission_id', submissionId)
+          .single();
+
+      if (step3DataRaw) {
+          setStep3Data(step3DataRaw);
+      }
+
+      // Fetch Step 4 Data (Consent Form)
+      const { data: consentData } = await supabase
+        .from('consent_forms')
+        .select('*')
+        .eq('submission_id', submissionId)
+        .single();
+
+      if (consentData) {
+        console.log('📋 Loaded consent form:', consentData);
+        setConsentType(consentData.consent_type || 'adult');
+        if (consentData.adult_consent?.adultLanguage) {
+          setAdultLanguage(consentData.adult_consent.adultLanguage);
+        }
+        if (consentData.minor_assent?.minorLanguage) {
+          setMinorLanguage(consentData.minor_assent.minorLanguage);
+        }
+
+        setFormData(prev => ({
+          ...prev,
+          participantGroupIdentity: consentData.informed_consent_for || '',
+          contactPerson: consentData.contact_person || '',
+          contactNumber: consentData.contact_number || '',
+
+          ...(consentData.adult_consent && {
+            introductionEnglish: consentData.adult_consent.introductionEnglish || '',
+            introductionTagalog: consentData.adult_consent.introductionTagalog || '',
+            purposeEnglish: consentData.adult_consent.purposeEnglish || '',
+            purposeTagalog: consentData.adult_consent.purposeTagalog || '',
+            researchInterventionEnglish: consentData.adult_consent.researchInterventionEnglish || '',
+            researchInterventionTagalog: consentData.adult_consent.researchInterventionTagalog || '',
+            participantSelectionEnglish: consentData.adult_consent.participantSelectionEnglish || '',
+            participantSelectionTagalog: consentData.adult_consent.participantSelectionTagalog || '',
+            voluntaryParticipationEnglish: consentData.adult_consent.voluntaryParticipationEnglish || '',
+            voluntaryParticipationTagalog: consentData.adult_consent.voluntaryParticipationTagalog || '',
+            proceduresEnglish: consentData.adult_consent.proceduresEnglish || '',
+            proceduresTagalog: consentData.adult_consent.proceduresTagalog || '',
+            durationEnglish: consentData.adult_consent.durationEnglish || '',
+            durationTagalog: consentData.adult_consent.durationTagalog || '',
+            risksEnglish: consentData.adult_consent.risksEnglish || '',
+            risksTagalog: consentData.adult_consent.risksTagalog || '',
+            benefitsEnglish: consentData.adult_consent.benefitsEnglish || '',
+            benefitsTagalog: consentData.adult_consent.benefitsTagalog || '',
+            reimbursementsEnglish: consentData.adult_consent.reimbursementsEnglish || '',
+            reimbursementsTagalog: consentData.adult_consent.reimbursementsTagalog || '',
+            confidentialityEnglish: consentData.adult_consent.confidentialityEnglish || '',
+            confidentialityTagalog: consentData.adult_consent.confidentialityTagalog || '',
+            sharingResultsEnglish: consentData.adult_consent.sharingResultsEnglish || '',
+            sharingResultsTagalog: consentData.adult_consent.sharingResultsTagalog || '',
+            rightToRefuseEnglish: consentData.adult_consent.rightToRefuseEnglish || '',
+            rightToRefuseTagalog: consentData.adult_consent.rightToRefuseTagalog || '',
+            whoToContactEnglish: consentData.adult_consent.whoToContactEnglish || '',
+            whoToContactTagalog: consentData.adult_consent.whoToContactTagalog || '',
+          }),
+
+          ...(consentData.minor_assent && {
+            introductionMinorEnglish: consentData.minor_assent.introductionMinorEnglish || '',
+            introductionMinorTagalog: consentData.minor_assent.introductionMinorTagalog || '',
+            purposeMinorEnglish: consentData.minor_assent.purposeMinorEnglish || '',
+            purposeMinorTagalog: consentData.minor_assent.purposeMinorTagalog || '',
+            choiceOfParticipantsEnglish: consentData.minor_assent.choiceOfParticipantsEnglish || '',
+            choiceOfParticipantsTagalog: consentData.minor_assent.choiceOfParticipantsTagalog || '',
+            voluntarinessMinorEnglish: consentData.minor_assent.voluntarinessMinorEnglish || '',
+            voluntarinessMinorTagalog: consentData.minor_assent.voluntarinessMinorTagalog || '',
+            proceduresMinorEnglish: consentData.minor_assent.proceduresMinorEnglish || '',
+            proceduresMinorTagalog: consentData.minor_assent.proceduresMinorTagalog || '',
+            risksMinorEnglish: consentData.minor_assent.risksMinorEnglish || '',
+            risksMinorTagalog: consentData.minor_assent.risksMinorTagalog || '',
+            benefitsMinorEnglish: consentData.minor_assent.benefitsMinorEnglish || '',
+            benefitsMinorTagalog: consentData.minor_assent.benefitsMinorTagalog || '',
+            confidentialityMinorEnglish: consentData.minor_assent.confidentialityMinorEnglish || '',
+            confidentialityMinorTagalog: consentData.minor_assent.confidentialityMinorTagalog || '',
+            sharingFindingsEnglish: consentData.minor_assent.sharingFindingsEnglish || '',
+            sharingFindingsTagalog: consentData.minor_assent.sharingFindingsTagalog || '',
+          })
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching submission data:', err);
+      alert('Failed to load submission data.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [submissionId, docId, isQuickRevision, router]);
 
 
   // ✅ UNIFIED SUBMIT HANDLER
