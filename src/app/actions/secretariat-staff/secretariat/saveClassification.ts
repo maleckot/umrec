@@ -4,73 +4,128 @@ import { createClient } from '@/utils/supabase/server';
 import { generateApprovalDocuments } from '@/utils/pdf/generateApprovalDocs';
 import { generateConsolidatedReviewerPdf } from '@/app/actions/generatePdfFromDatabase';
 
-// ✅ HELPER: Generate and upload consolidated PDF once
-// ✅ HELPER: Generate and upload consolidated PDF once
+// ✅ FIX: Add in-memory lock to prevent concurrent generation
+const generationLocks = new Map<string, Promise<void>>();
+
+// ✅ FIXED HELPER: Use lock + transaction-like check to prevent duplication
 async function generateAndUploadConsolidatedReview(
   supabase: any,
   submissionId: string,
   submissionData: any
 ) {
-  console.log('📄 Generating Consolidated Document for Reviewer...');
+  // ✅ Check if generation is already in progress for this submission
+  if (generationLocks.has(submissionId)) {
+    console.log(`⏳ Consolidated review generation already in progress for ${submissionId}, skipping...`);
+    await generationLocks.get(submissionId); // Wait for it to complete
+    return;
+  }
+
+  // ✅ Create a lock promise for this submission
+  let resolveLock: () => void;
+  const lockPromise = new Promise<void>((resolve) => {
+    resolveLock = resolve;
+  });
+  generationLocks.set(submissionId, lockPromise);
+
   try {
-    const pdfResult = await generateConsolidatedReviewerPdf(submissionData);
+    console.log('📄 Generating Consolidated Document for Reviewer...');
+
+    // ✅ CHECK: Get existing consolidated_review documents with FOR UPDATE-like behavior
+    const { data: existingDocs, error: fetchError } = await supabase
+      .from('uploaded_documents')
+      .select('id, file_url, uploaded_at')
+      .eq('submission_id', submissionId)
+      .eq('document_type', 'consolidated_review')
+      .order('uploaded_at', { ascending: false });
+
+    if (fetchError) {
+      console.error('❌ Error fetching existing docs:', fetchError);
+      return;
+    }
+
+    const existingCount = existingDocs?.length || 0;
+    
+    // ✅ If already exists, skip generation entirely
+    if (existingCount > 0) {
+      console.log(`✅ Consolidated review already exists (${existingCount} found). Skipping generation.`);
+      return;
+    }
+
+    console.log('🔨 No existing consolidated review found. Generating new one...');
+
+    const pdfData = {
+      ...submissionData,
+      submissionId: submissionId  
+    };
+    
+    const pdfResult = await generateConsolidatedReviewerPdf(pdfData);
 
     if (pdfResult.success && pdfResult.pdfData) {
       const base64Data = pdfResult.pdfData.split(',')[1] || pdfResult.pdfData;
       const buffer = Buffer.from(base64Data, 'base64');
 
-      const fileName = `consolidated_review_${submissionId}.pdf`;
+      // ✅ Upload NEW file with unique timestamp
+      const timestamp = Date.now();
+      const fileName = `consolidated_review_${submissionId}_${timestamp}.pdf`;
       const filePath = `consolidated/${fileName}`;
 
-      // ✅ Check if existing consolidated_review exists
-      const { data: existingDoc } = await supabase
-        .from('uploaded_documents')
-        .select('id')
-        .eq('submission_id', submissionId)
-        .eq('document_type', 'consolidated_review')
-        .maybeSingle();
-
-      // ✅ If exists, delete the old one from database
-      if (existingDoc) {
-        console.log('🔄 Existing consolidated review found. Deleting old record...');
-        await supabase
-          .from('uploaded_documents')
-          .delete()
-          .eq('id', existingDoc.id);
-      }
-
-      // Upload to storage (upsert handles overwrite)
       const { error: uploadError } = await supabase.storage
         .from('research-documents')
         .upload(filePath, buffer, {
           contentType: 'application/pdf',
-          upsert: true  // ✅ This overwrites the file if it exists
+          upsert: false
         });
 
-      if (!uploadError) {
-        // ✅ Insert new record
-        const { error: docError } = await supabase
-          .from('uploaded_documents')
-          .insert({
-            submission_id: submissionId,
-            document_type: 'consolidated_review',
-            file_name: fileName,
-            file_url: filePath,
-            file_size: buffer.length,
-            uploaded_at: new Date().toISOString()
-          });
-
-        if (docError) {
-          console.warn('⚠️ Failed to save document reference:', docError);
-        } else {
-          console.log('✅ Consolidated Document for Reviewer generated and saved');
-        }
-      } else {
-        console.warn('⚠️ Failed to upload consolidated review:', uploadError);
+      if (uploadError) {
+        console.error('❌ Failed to upload consolidated review:', uploadError);
+        return;
       }
+
+      // ✅ Double-check one more time before inserting
+      const { data: recheckDocs } = await supabase
+        .from('uploaded_documents')
+        .select('id')
+        .eq('submission_id', submissionId)
+        .eq('document_type', 'consolidated_review');
+
+      if (recheckDocs && recheckDocs.length > 0) {
+        console.warn('⚠️ Race condition detected! Document was created by another process. Deleting uploaded file...');
+        await supabase.storage
+          .from('research-documents')
+          .remove([filePath]);
+        return;
+      }
+
+      // ✅ Insert document reference
+      const { error: docError } = await supabase
+        .from('uploaded_documents')
+        .insert({
+          submission_id: submissionId,
+          document_type: 'consolidated_review',
+          file_name: fileName,
+          file_url: filePath,
+          file_size: buffer.length,
+          uploaded_at: new Date().toISOString()
+        });
+
+      if (docError) {
+        console.error('❌ Failed to save document reference:', docError);
+        // Clean up uploaded file
+        await supabase.storage
+          .from('research-documents')
+          .remove([filePath]);
+      } else {
+        console.log('✅ Consolidated Document for Reviewer generated and saved successfully');
+      }
+    } else {
+      console.error('❌ PDF generation failed:', pdfResult.error);
     }
   } catch (error) {
-    console.warn('⚠️ Failed to generate consolidated review:', error);
+    console.error('❌ Error in generateAndUploadConsolidatedReview:', error);
+  } finally {
+    // ✅ Release the lock
+    generationLocks.delete(submissionId);
+    resolveLock!();
   }
 }
 
@@ -86,6 +141,24 @@ export async function saveClassification(
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return { success: false, error: 'Not authenticated' };
+    }
+
+    // ✅ Check if already classified to prevent re-running
+    const { data: existingSubmission } = await supabase
+      .from('research_submissions')
+      .select('status, classification_type, classified_at')
+      .eq('id', submissionId)
+      .single();
+
+    if (existingSubmission?.classified_at && existingSubmission?.classification_type === category) {
+      console.log('⚠️ Submission already classified. Skipping...');
+      return {
+        success: true,
+        classification: category,
+        status: existingSubmission.status,
+        message: 'Submission was already classified',
+        alreadyClassified: true
+      };
     }
 
     const reviewersRequired = {
@@ -168,7 +241,7 @@ export async function saveClassification(
       },
     };
 
-    // ✅ GENERATE CONSOLIDATED PDF ONCE (Before classification logic)
+    // ✅ GENERATE CONSOLIDATED PDF ONCE (with lock protection)
     await generateAndUploadConsolidatedReview(supabase, submissionId, submissionData);
 
     // ✅ CONDITIONAL: If Exempted, mark as approved and generate cert; else mark as classified
