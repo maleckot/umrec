@@ -1,4 +1,3 @@
-// components/staff-secretariat-admin/reports/SubmissionStatisticsReport.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -36,10 +35,8 @@ export default function SubmissionStatisticsReport({ dateRange }: SubmissionStat
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Loading reports...
-          </p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#101C50] mx-auto mb-4"></div>
+          <p className="text-gray-500 font-medium text-sm tracking-wide">LOADING DATA...</p>
         </div>
       </div>
     );
@@ -47,10 +44,8 @@ export default function SubmissionStatisticsReport({ dateRange }: SubmissionStat
 
   if (!data) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-          No data available
-        </p>
+      <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
+        <p className="text-gray-500 font-medium">No data available for this period.</p>
       </div>
     );
   }
@@ -59,86 +54,91 @@ export default function SubmissionStatisticsReport({ dateRange }: SubmissionStat
 
   // Map classification data with colors
   const classificationChartData = classificationData.map((item: any, index: number) => {
-    const colors = ['#003366', '#87CEEB', '#F7D117', '#E0C8A0', '#B8860B'];
-    return {
-      ...item,
-      color: colors[index % colors.length],
-    };
+    const colors = ['#101C50', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+    return { ...item, color: colors[index % colors.length] };
   });
 
   // Map college data with colors
   const collegeChartData = collegeData.slice(0, 5).map((item: any, index: number) => {
-    const colors = ['#003366', '#87CEEB', '#F7D117', '#E0C8A0', '#B8860B'];
-    return {
-      ...item,
-      color: colors[index % colors.length],
-    };
+    const colors = ['#101C50', '#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'];
+    return { ...item, color: colors[index % colors.length] };
   });
 
-  // Add "Others" if there are more than 5 colleges
   if (collegeData.length > 5) {
     const othersCount = collegeData.slice(5).reduce((sum: number, item: any) => sum + item.value, 0);
-    collegeChartData.push({
-      name: 'Others',
-      value: othersCount,
-      color: '#C9E4F5',
-    });
+    collegeChartData.push({ name: 'Others', value: othersCount, color: '#E5E7EB' });
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <StatCard
           label="Total Submissions"
           value={submissionStats.total}
-          bgColor="bg-[#C9E4F5]"
-          textColor="text-[#003366]"
+          bgColor="bg-blue-50"
+          textColor="text-blue-900"
         />
         <StatCard
           label="Approved"
           value={submissionStats.approved}
-          bgColor="bg-[#87CEEB]"
-          textColor="text-[#003366]"
+          bgColor="bg-emerald-50"
+          textColor="text-emerald-900"
         />
         <StatCard
           label="Under Revision"
           value={submissionStats.underRevision}
-          bgColor="bg-[#F7D117]"
-          textColor="text-[#003366]"
+          bgColor="bg-amber-50"
+          textColor="text-amber-900"
         />
         <StatCard
           label="In Review"
           value={submissionStats.inReview}
-          bgColor="bg-[#E0C8A0]"
-          textColor="text-[#003366]"
+          bgColor="bg-indigo-50"
+          textColor="text-indigo-900"
         />
       </div>
 
-      {/* Pie Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Pie Charts Section */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {classificationChartData.length > 0 && (
-          <AnimatedPieChart
-            title="Submissions by Classification"
-            description="Distribution of submissions across research classifications"
-            data={classificationChartData}
-          />
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+             <AnimatedPieChart
+              title="Submissions by Classification"
+              description="Distribution of submissions across research classifications"
+              data={classificationChartData}
+            />
+          </div>
         )}
         {collegeChartData.length > 0 && (
-          <AnimatedPieChart
-            title="Submissions by College"
-            description="Top colleges submitting research proposals"
-            data={collegeChartData}
-          />
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <AnimatedPieChart
+              title="Submissions by College"
+              description="Top colleges submitting research proposals"
+              data={collegeChartData}
+            />
+          </div>
         )}
       </div>
 
-      {/* Reviewer Highlights & Performance */}
+      {/* Reviewer Performance Section */}
       {reviewerPerformance.length > 0 && (
-        <>
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 py-2">
+            <div className="h-px bg-gray-200 flex-1"></div>
+            <span className="text-sm font-bold text-gray-400 uppercase tracking-widest">Reviewer Performance</span>
+            <div className="h-px bg-gray-200 flex-1"></div>
+          </div>
+          
           <ReviewerHighlightCards reviewers={reviewerPerformance} />
-          <ReviewerPerformanceTable reviewers={reviewerPerformance} />
-        </>
+          
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+             <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+               <h3 className="text-base font-bold text-[#101C50]">Detailed Performance Metrics</h3>
+             </div>
+             <ReviewerPerformanceTable reviewers={reviewerPerformance} />
+          </div>
+        </div>
       )}
     </div>
   );

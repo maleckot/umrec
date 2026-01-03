@@ -1,8 +1,7 @@
-// components/staff-secretariat-admin/reports/ReportHeader.tsx
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Calendar, Download, Printer } from 'lucide-react';
 
 interface ReportHeaderProps {
   dateRange: string;
@@ -33,59 +32,70 @@ export default function ReportHeader({ dateRange, onDateRangeChange }: ReportHea
   }, []);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <h1 
-        className="text-2xl sm:text-3xl font-bold text-[#003366]" 
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      >
-        Reports
-      </h1>
+    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+          Analytics & Reports
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Track system performance and submission statistics over time.
+        </p>
+      </div>
 
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative" ref={dropdownRef}>
+      <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+        {/* Date Range Dropdown */}
+        <div className="relative w-full sm:w-auto" ref={dropdownRef}>
           <button 
             onClick={() => setIsOpen(!isOpen)}
-            className="px-4 py-2 border border-gray-300 rounded-lg flex items-center gap-2 bg-white hover:bg-gray-50 transition-colors text-sm w-full sm:w-auto justify-between"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
+            className="w-full sm:w-[220px] px-4 py-2.5 border border-gray-200 rounded-xl flex items-center justify-between bg-white hover:border-blue-300 hover:shadow-sm transition-all text-sm font-medium text-gray-700"
           >
-            <span className="text-gray-700">Date Range: {dateRange}</span>
-            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            <div className="flex items-center gap-2">
+              <Calendar size={16} className="text-gray-400" />
+              <span>{dateRange}</span>
+            </div>
+            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
           </button>
 
           {isOpen && (
-            <div className="absolute top-full mt-2 w-full sm:w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-              {dateRanges.map((range) => (
-                <button
-                  key={range}
-                  onClick={() => {
-                    onDateRangeChange(range);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                    dateRange === range ? 'bg-[#87CEEB] text-[#003366] font-semibold' : 'text-gray-700'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  {range}
-                </button>
-              ))}
+            <div className="absolute top-full right-0 mt-2 w-full sm:w-[220px] bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <div className="py-1">
+                {dateRanges.map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => {
+                      onDateRangeChange(range);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full px-4 py-2.5 text-left text-sm transition-colors ${
+                      dateRange === range 
+                        ? 'bg-blue-50 text-blue-700 font-bold' 
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    }`}
+                  >
+                    {range}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
         
-        <button 
-          className="px-4 py-2 bg-[#003366] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          Export Data
-        </button>
-        
-        <button 
-          className="px-4 py-2 bg-[#003366] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium"
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          Print Report
-        </button>
+        {/* Action Buttons */}
+        <div className="flex gap-3 w-full sm:w-auto">
+          <button 
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all text-sm font-bold shadow-sm"
+          >
+            <Printer size={16} />
+            <span className="hidden sm:inline">Print</span>
+          </button>
+          
+          <button 
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101C50] text-white rounded-xl hover:bg-opacity-90 hover:shadow-md transition-all text-sm font-bold shadow-sm"
+          >
+            <Download size={16} />
+            <span>Export</span>
+          </button>
+        </div>
       </div>
     </div>
   );

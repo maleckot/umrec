@@ -1,4 +1,3 @@
-// app/secretariatmodule/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,27 +33,14 @@ export default function SecretariatDashboard() {
   };
 
   const handleSubmissionClick = (submission: any) => {
-      if (submission.status === 'Under Classification') {
-        router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
-      }       
-      else if (submission.status === 'Resubmit') {
-        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
-      } 
-      else if (submission.status === 'Classified') {
-        router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
-      } 
-      else if (submission.status === 'Under Review') {
-        router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
-      } 
-      else if (submission.status === 'Approved') {
-        router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
-      } 
-      else if (submission.status === 'Needs Revision') {
-        router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
-      } 
-      else {
-        router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
-      }
+      // ... (keep existing routing logic)
+      if (submission.status === 'Under Classification') router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
+      else if (submission.status === 'Resubmit') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+      else if (submission.status === 'Classified') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+      else if (submission.status === 'Under Review') router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
+      else if (submission.status === 'Approved') router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
+      else if (submission.status === 'Needs Revision') router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
+      else router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
   };
 
   const stats = [
@@ -124,9 +110,7 @@ export default function SecretariatDashboard() {
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading dashboard data...
-            </p>
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>Loading dashboard data...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -144,13 +128,13 @@ export default function SecretariatDashboard() {
 
       {/* Pending Classification Table */}
       {pendingClassification.length > 0 && (
-        <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8">
+        <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8 w-full">
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div>
-              <h2 className="text-lg lg:text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+              <h2 className="text-lg lg:text-xl font-bold break-words" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
                 Pending Classification
               </h2>
-              <p className="text-sm text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <p className="text-sm text-gray-600 mt-1 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Submissions ready for classification
               </p>
             </div>
@@ -161,40 +145,24 @@ export default function SecretariatDashboard() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    TITLE
-                  </th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    SUBMITTED BY
-                  </th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    DATE
-                  </th>
-                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    ACTION
-                  </th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>SUBMITTED BY</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DATE</th>
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {pendingClassification.map((submission: any) => (
                   <tr key={submission.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="py-4 px-4 text-left">
-                      <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {submission.title}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        ID: {submission.submissionId}
-                      </p>
+                      <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.title}</p>
+                      <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ID: {submission.submissionId}</p>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {submission.submittedBy}
-                      </p>
+                      <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.submittedBy}</p>
                     </td>
                     <td className="py-4 px-4 text-center">
-                      <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {submission.date}
-                      </p>
+                      <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p>
                     </td>
                     <td className="py-4 px-4 text-center">
                       <button
@@ -211,29 +179,30 @@ export default function SecretariatDashboard() {
             </table>
           </div>
 
-          {/* Mobile Card View */}
+          {/* Mobile Card View - FIXED: Added break-all and whitespace-normal to force wrapping */}
           <div className="md:hidden space-y-4">
             {pendingClassification.map((submission: any) => (
-              <div key={submission.id} className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              <div key={submission.id} className="bg-gray-50 rounded-lg p-4 w-full">
+                {/* Title wraps nicely now */}
+                <p className="text-sm font-semibold text-gray-800 mb-2 break-words whitespace-normal leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   {submission.title}
                 </p>
-                <p className="text-xs text-gray-500 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                <p className="text-xs text-gray-500 mb-3 break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   ID: {submission.submissionId}
                 </p>
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      By: {submission.submittedBy}
-                    </p>
-                    <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {submission.date}
-                    </p>
-                  </div>
+                
+                <div className="flex flex-col gap-2 mb-3">
+                  <p className="text-xs text-gray-600 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    By: {submission.submittedBy}
+                  </p>
+                  <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {submission.date}
+                  </p>
                 </div>
+                
                 <button
                   onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors"
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                 >
                   Classify
@@ -245,14 +214,14 @@ export default function SecretariatDashboard() {
       )}
 
       {/* Recent Submissions */}
-      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8">
+      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8 w-full">
         <div className="flex items-center justify-between mb-4 lg:mb-6">
-          <h2 className="text-lg lg:text-xl font-bold" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
+          <h2 className="text-lg lg:text-xl font-bold break-words" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
             Recent Submissions
           </h2>
           <button
             onClick={() => router.push('/secretariatmodule/submissions')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer"
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium cursor-pointer whitespace-nowrap ml-2"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
             View All
@@ -261,9 +230,7 @@ export default function SecretariatDashboard() {
 
         {recentSubmissions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-        No papers to classify yet           
-          </p>
+            <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>No papers to classify yet</p>
           </div>
         ) : (
           <>
@@ -272,15 +239,9 @@ export default function SecretariatDashboard() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      TITLE
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      DATE
-                    </th>
-                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      STATUS
-                    </th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DATE</th>
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>STATUS</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -291,17 +252,11 @@ export default function SecretariatDashboard() {
                       onClick={() => handleSubmissionClick(submission)}
                     >
                       <td className="py-4 px-4 text-left">
-                        <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {submission.title}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          ID: {submission.submissionId}
-                        </p>
+                        <p className="text-sm text-gray-800 truncate max-w-md" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.title}</p>
+                        <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ID: {submission.submissionId}</p>
                       </td>
                       <td className="py-4 px-4 text-center">
-                        <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                          {submission.date}
-                        </p>
+                        <p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -314,25 +269,27 @@ export default function SecretariatDashboard() {
               </table>
             </div>
 
-            {/* Mobile Card View */}
+            {/* Mobile Card View - FIXED: Text wrapping logic */}
             <div className="md:hidden space-y-4">
               {recentSubmissions.map((submission: any) => (
                 <div
                   key={submission.id}
-                  className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors"
+                  className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors w-full"
                   onClick={() => handleSubmissionClick(submission)}
                 >
-                  <p className="text-sm font-semibold text-gray-800 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <p className="text-sm font-semibold text-gray-800 mb-2 break-words whitespace-normal" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {submission.title}
                   </p>
-                  <p className="text-xs text-gray-500 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <p className="text-xs text-gray-500 mb-3 break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     ID: {submission.submissionId}
                   </p>
-                  <div className="flex items-center justify-between">
+                  
+                  {/* Changed to flex-col for better fit on very small screens, or flex-wrap */}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {submission.date}
                     </p>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       {submission.status}
                     </span>
                   </div>
@@ -344,7 +301,7 @@ export default function SecretariatDashboard() {
       </div>
 
       {/* Needs Attention */}
-      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100">
+      <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 w-full">
         <h2 className="text-lg lg:text-xl font-bold mb-4 lg:mb-6" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
           Needs Attention
         </h2>

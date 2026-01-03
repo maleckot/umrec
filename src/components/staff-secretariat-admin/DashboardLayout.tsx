@@ -1,7 +1,6 @@
-// components/DashboardLayout.tsx
 'use client';
 
-import { ReactNode, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Sidebar from '@/components/staff-secretariat-admin/Sidebar';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { Bell, X } from 'lucide-react';
@@ -13,8 +12,6 @@ interface DashboardLayoutProps {
   children: React.ReactNode;
   activeNav?: 'dashboard' | 'submissions' | 'reviewers' | 'researchers' | 'settings' | 'reports';  
 }
-
-
 
 interface Notification {
   id: number;
@@ -66,12 +63,10 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
   const notificationRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  // Fix hydration error
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Close notification dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
@@ -125,7 +120,6 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
     }
   };
 
-  // Prevent hydration mismatch
   if (!isMounted) {
     return (
       <div className="flex" style={{ backgroundColor: '#E8EEF3', minHeight: '100vh' }}>
@@ -139,17 +133,28 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
   }
 
   return (
-    <div className="flex" style={{ backgroundColor: '#E8EEF3', minHeight: '100vh' }}>
+    <div className="flex relative bg-[#E8EEF3] min-h-screen">
+      {/* 
+        The Sidebar handles its own fixed-position burger button.
+        We do NOT render another button here.
+      */}
       <Sidebar role={role} roleTitle={roleTitle} activeNav={activeNav} />
-
-      <div className="flex-1 lg:ml-80 flex flex-col" style={{ minHeight: '100vh' }}>
-        <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
-          <h1 className="text-xl lg:text-2xl font-bold ml-12 lg:ml-0" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}>
-            {pageTitle}
-          </h1>
+      
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 w-full lg:ml-80 transition-all duration-300">
+        <div className="bg-white border-b border-gray-200 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20 shadow-sm min-h-[5rem]">
+          <div className="flex items-center gap-3 overflow-hidden w-full">
+            
+            {/* 
+               FIX: Added pl-20 sm:pl-24 (Padding Left) to push the text to the right.
+               This clears the space for the fixed Sidebar button (which is top-4 left-4).
+            */}
+            <h1 className="text-lg lg:text-2xl font-bold truncate text-[#101C50] pl-20 sm:pl-24 lg:pl-0 w-full" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              {pageTitle}
+            </h1>
+          </div>
           
-          {/* Notification Button */}
-          <div className="relative" ref={notificationRef}>
+          <div className="relative flex-shrink-0" ref={notificationRef}>
             <button 
               onClick={() => setIsNotificationOpen(!isNotificationOpen)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer relative"
@@ -162,12 +167,10 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
               )}
             </button>
 
-            {/* Notification Dropdown */}
             {isNotificationOpen && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-[80vh] sm:max-h-none">
-                {/* Header */}
+              <div className="absolute right-0 mt-2 w-[85vw] sm:w-96 max-w-[350px] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-[#101C50] sticky top-0 z-10">
-                  <h3 className="text-base sm:text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <h3 className="text-base font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     Notifications
                   </h3>
                   {unreadCount > 0 && (
@@ -181,23 +184,22 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
                   )}
                 </div>
 
-                {/* Notifications List */}
-                <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
+                <div className="max-h-[60vh] overflow-y-auto">
                   {notifications.length > 0 ? (
                     notifications.map((notification) => (
                       <div
                         key={notification.id}
-                        className={`px-3 sm:px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                        className={`px-3 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                           !notification.isRead ? 'bg-blue-50' : ''
                         }`}
                       >
-                        <div className="flex items-start gap-2 sm:gap-3">
+                        <div className="flex items-start gap-3">
                           <div className="flex-shrink-0 mt-1">
                             {getNotificationIcon(notification.type)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                              <p className={`text-xs sm:text-sm font-semibold ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              <p className={`text-sm font-semibold break-words ${!notification.isRead ? 'text-gray-900' : 'text-gray-700'}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {notification.title}
                               </p>
                               <button
@@ -214,15 +216,6 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
                               <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                 {notification.time}
                               </p>
-                              {!notification.isRead && (
-                                <button
-                                  onClick={() => markAsRead(notification.id)}
-                                  className="text-xs text-blue-600 hover:text-blue-700 font-medium cursor-pointer whitespace-nowrap"
-                                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                                >
-                                  Mark as read
-                                </button>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -230,28 +223,19 @@ export default function DashboardLayout({ role, roleTitle, pageTitle, children, 
                     ))
                   ) : (
                     <div className="px-4 py-8 text-center">
-                      <Bell size={48} className="text-gray-300 mx-auto mb-3" />
                       <p className="text-sm text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                         No notifications
                       </p>
                     </div>
                   )}
                 </div>
-
-                {/* Footer */}
-                {notifications.length > 0 && (
-                  <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 sticky bottom-0">
-                    <button className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium w-full text-center cursor-pointer" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      View all notifications
-                    </button>
-                  </div>
-                )}
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex-1 p-4 lg:p-8">
+        {/* Content Wrapper */}
+        <div className="flex-1 p-4 lg:p-8 w-full max-w-full overflow-x-hidden">
           {children}
         </div>
 
