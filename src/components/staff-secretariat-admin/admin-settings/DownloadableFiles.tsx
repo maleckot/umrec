@@ -1,9 +1,7 @@
-// components/staff-secretariat-admin/admin-settings/DownloadableFiles.tsx
 'use client';
 
 import { useState } from 'react';
-import { FileText, Upload, Eye, Trash2, X, Plus, Edit2 } from 'lucide-react';
-import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
+import { FileText, Upload, Eye, Trash2, X, Plus, Edit2, Download } from 'lucide-react';
 
 interface File {
   id: string;
@@ -58,16 +56,10 @@ export default function DownloadableFiles() {
     }
   ]);
 
+  // Modal States
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [showAddQuestionnaireModal, setShowAddQuestionnaireModal] = useState(false);
-  const [showEditQuestionModal, setShowEditQuestionModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<{ type: 'file' | 'question' | 'questionnaire', id: string, parentId?: string } | null>(null);
-  const [newFileName, setNewFileName] = useState('');
-  const [newQuestionnaire, setNewQuestionnaire] = useState({ title: '', targetAudience: 'Reviewer' });
-  const [editingQuestion, setEditingQuestion] = useState<{ questionnaireId: string, question: Question } | null>(null);
 
   const handleDeleteConfirm = (type: 'file' | 'question' | 'questionnaire', id: string, parentId?: string) => {
     setDeleteTarget({ type, id, parentId });
@@ -89,526 +81,158 @@ export default function DownloadableFiles() {
     } else if (deleteTarget.type === 'questionnaire') {
       setQuestionnaires(questionnaires.filter(q => q.id !== deleteTarget.id));
     }
-
     setShowDeleteConfirm(false);
     setDeleteTarget(null);
   };
 
-  const handleView = (file: File) => {
-    setSelectedFile(file);
-    setShowViewModal(true);
-  };
-
-  const handleUpload = () => {
-    setShowUploadModal(false);
-    setNewFileName('');
-    alert('File uploaded successfully!');
-  };
-
-  const handleAddQuestionnaire = () => {
-    const newId = (questionnaires.length + 1).toString();
-    setQuestionnaires([...questionnaires, {
-      id: newId,
-      title: newQuestionnaire.title,
-      questions: []
-    }]);
-    setShowAddQuestionnaireModal(false);
-    setNewQuestionnaire({ title: '', targetAudience: 'Reviewer' });
-  };
-
-  const handleEditQuestion = (questionnaireId: string, question: Question) => {
-    setEditingQuestion({ questionnaireId, question });
-    setShowEditQuestionModal(true);
-  };
-
-  const handleSaveEditQuestion = () => {
-    if (!editingQuestion) return;
-    
-    setQuestionnaires(questionnaires.map(q => {
-      if (q.id === editingQuestion.questionnaireId) {
-        return {
-          ...q,
-          questions: q.questions.map(quest => 
-            quest.id === editingQuestion.question.id ? editingQuestion.question : quest
-          )
-        };
-      }
-      return q;
-    }));
-    
-    setShowEditQuestionModal(false);
-    setEditingQuestion(null);
-  };
-
-  const handleAddQuestion = (questionnaireId: string) => {
-    const newQuestionId = (questionnaires.find(q => q.id === questionnaireId)?.questions.length || 0) + 1;
-    setQuestionnaires(questionnaires.map(q => {
-      if (q.id === questionnaireId) {
-        return {
-          ...q,
-          questions: [...q.questions, {
-            id: newQuestionId.toString(),
-            question: 'New question',
-            type: 'Yes/No' as const
-          }]
-        };
-      }
-      return q;
-    }));
-  };
-
   return (
-    <div className="space-y-4 sm:space-y-6">
-      {/* Available Files Section */}
-      <div className="bg-white rounded-xl p-3 sm:p-4 md:p-6 border-2 border-gray-200">
-        <h2 
-          className="text-base sm:text-lg md:text-xl font-bold text-[#003366] mb-2" 
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          Downloadable Files
-        </h2>
-        <p 
-          className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6" 
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          Manage files available to researchers
-        </p>
-
-        <div className="mb-3 sm:mb-4">
-          <h3 
-            className="text-xs sm:text-sm font-semibold text-[#003366] mb-2 sm:mb-3" 
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            Available Files
-          </h3>
+    <div className="space-y-8">
+      {/* Downloadable Files Section */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+           <div>
+             <h2 className="text-lg font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+               Downloadable Files
+             </h2>
+             <p className="text-sm text-gray-500 mt-1">Manage files available for researchers</p>
+           </div>
+           <button
+             onClick={() => setShowUploadModal(true)}
+             className="flex items-center justify-center gap-2 px-4 py-2 bg-[#101C50] text-white rounded-lg hover:bg-blue-900 transition-colors text-sm font-semibold whitespace-nowrap"
+           >
+             <Upload size={16} />
+             Upload File
+           </button>
         </div>
 
-        {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-[#003366]">
-              <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-white rounded-tl-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  File Name
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Type
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Size
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Uploaded
-                </th>
-                <th className="px-4 py-3 text-center text-sm font-semibold text-white rounded-tr-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {files.map((file, index) => (
-                <tr key={file.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                  <td className="px-4 py-3 text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.name}
-                  </td>
-                  <td className="px-4 py-3 text-center text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.type}
-                  </td>
-                  <td className="px-4 py-3 text-center text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.size}
-                  </td>
-                  <td className="px-4 py-3 text-center text-sm font-medium text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.uploadedDate}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center justify-center gap-2">
-                      <button 
-                        onClick={() => handleView(file)}
-                        className="p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors" 
-                        title="View"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteConfirm('file', file.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {files.map((file) => (
+              <div key={file.id} className="group p-4 rounded-xl border border-gray-200 hover:border-blue-200 hover:bg-blue-50/30 transition-all flex items-start gap-3 sm:gap-4">
+                 <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center text-red-500 flex-shrink-0">
+                    <FileText size={20} />
+                 </div>
+                 <div className="flex-1 min-w-0">
+                    {/* Responsive Font Size: text-sm on mobile, text-base on larger screens */}
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate leading-tight mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {file.name}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                       <span className="font-medium text-gray-700">{file.type}</span>
+                       <span className="text-gray-300">•</span>
+                       <span>{file.size}</span>
+                       <span className="text-gray-300">•</span>
+                       <span>{file.uploadedDate}</span>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                 </div>
+                 <div className="flex gap-1">
+                    <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-white rounded-lg transition-colors">
+                       <Eye size={18} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteConfirm('file', file.id)}
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors"
+                    >
+                       <Trash2 size={18} />
+                    </button>
+                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Questionnaires Section */}
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+           <div>
+             <h2 className="text-lg font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+               Reviewer Questionnaires
+             </h2>
+             <p className="text-sm text-gray-500 mt-1">Manage checklists and forms for reviewers</p>
+           </div>
+           <button
+             className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm font-semibold whitespace-nowrap"
+           >
+             <Plus size={16} />
+             Add Questionnaire
+           </button>
         </div>
 
-        {/* Mobile Cards */}
-        <div className="md:hidden space-y-2 sm:space-y-3">
-          {files.map((file) => (
-            <div key={file.id} className="border-2 border-gray-200 rounded-lg p-3">
-              <div className="flex items-start justify-between mb-2">
-                <div className="flex-1 min-w-0 pr-2">
-                  <p className="font-semibold text-[#003366] text-xs leading-tight break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.name}
-                  </p>
-                  <p className="text-[10px] text-gray-700 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {file.type} • {file.size}
-                  </p>
-                  <p className="text-[10px] text-gray-700 mt-0.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Uploaded: {file.uploadedDate}
-                  </p>
-                </div>
-                <div className="flex gap-1">
-                  <button 
-                    onClick={() => handleView(file)}
-                    className="p-1.5 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors" 
-                    title="View"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => handleDeleteConfirm('file', file.id)}
-                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+        <div className="divide-y divide-gray-100">
+          {questionnaires.map((questionnaire) => (
+            <div key={questionnaire.id} className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                 <h3 className="text-base font-bold text-gray-800 leading-snug" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {questionnaire.title}
+                 </h3>
+                 <div className="flex gap-2 flex-shrink-0">
+                    <button className="text-blue-600 hover:text-blue-800 text-sm font-semibold flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg">
+                       <Edit2 size={14} /> Edit
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteConfirm('questionnaire', questionnaire.id)}
+                      className="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center gap-1 bg-red-50 px-3 py-1.5 rounded-lg"
+                    >
+                       <Trash2 size={14} /> Delete
+                    </button>
+                 </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <ul className="space-y-3">
+                  {questionnaire.questions.map((q, index) => (
+                    <li key={q.id} className="flex items-start gap-3 text-sm">
+                      <span className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500 flex-shrink-0 shadow-sm mt-0.5">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                         <p className="text-gray-800 font-medium break-words">{q.question}</p>
+                         <span className="inline-block mt-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded font-semibold border border-blue-200">
+                            {q.type}
+                         </span>
+                      </div>
+                      <button 
+                        onClick={() => handleDeleteConfirm('question', q.id, questionnaire.id)}
+                        className="text-gray-400 hover:text-red-500 p-1 hover:bg-red-50 rounded"
+                      >
+                         <X size={16} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button className="mt-4 w-full py-2.5 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all text-sm font-bold flex items-center justify-center gap-2">
+                   <Plus size={16} /> Add Question
+                </button>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Upload New File Button */}
-      <button
-        onClick={() => setShowUploadModal(true)}
-        className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-[#003366] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity text-xs sm:text-sm flex items-center justify-center gap-2"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      >
-        <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        Upload New File
-      </button>
-
-      {/* Questionnaires Section */}
-      {questionnaires.map((questionnaire) => (
-        <div key={questionnaire.id} className="bg-white rounded-xl p-3 sm:p-4 md:p-6 border-2 border-gray-200">
-          <div className="flex flex-col gap-2 sm:gap-3 mb-3 sm:mb-4">
-            <div className="bg-[#003366] rounded-lg p-3 sm:p-4">
-              <h3 className="text-xs sm:text-sm md:text-base font-bold text-white leading-tight" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {questionnaire.title}
-              </h3>
-            </div>
-            <button
-              onClick={() => handleDeleteConfirm('questionnaire', questionnaire.id)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-2.5 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:opacity-90 flex items-center justify-center gap-2"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
-              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm">Delete Questionnaire</span>
-            </button>
-          </div>
-
-          <div className="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
-            {questionnaire.questions.map((question) => (
-              <div key={question.id} className="flex flex-col p-3 sm:p-4 border-2 border-gray-200 rounded-lg gap-2 sm:gap-3">
-                <p className="text-xs sm:text-sm font-medium text-[#003366] leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {question.id}. {question.question}
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#003366] text-white rounded-lg text-[10px] sm:text-xs font-semibold whitespace-nowrap" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {question.type}
-                  </span>
-                  <div className="flex gap-1 sm:gap-2">
-                    <button 
-                      onClick={() => handleEditQuestion(questionnaire.id, question)}
-                      className="p-1.5 sm:p-2 text-[#003366] hover:bg-gray-100 rounded-lg transition-colors" 
-                      title="Edit"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteConfirm('question', question.id, questionnaire.id)}
-                      className="p-1.5 sm:p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-            <button
-              onClick={() => handleAddQuestion(questionnaire.id)}
-              className="w-full sm:flex-1 px-3 sm:px-4 py-2 sm:py-2.5 bg-green-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:opacity-90 flex items-center justify-center gap-2"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span>Add Question</span>
-            </button>
-
-            <button 
-              className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-2.5 md:py-3 bg-[#003366] text-white font-semibold rounded-lg hover:opacity-90 transition-opacity text-xs sm:text-sm" 
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
-              Save Changes
-            </button>
-          </div>
-        </div>
-      ))}
-
-      {/* Add New Questionnaire Button */}
-      <button
-        onClick={() => setShowAddQuestionnaireModal(true)}
-        className="w-full sm:w-auto px-4 sm:px-6 py-2.5 sm:py-3 bg-green-600 text-white font-semibold rounded-lg hover:opacity-90 transition-opacity text-xs sm:text-sm flex items-center justify-center gap-2"
-        style={{ fontFamily: 'Metropolis, sans-serif' }}
-      >
-        <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-        Add New Questionnaire
-      </button>
-
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full">
-            <h3 className="text-base sm:text-lg font-bold text-[#003366] mb-3 sm:mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Confirm Delete
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-[#101C50] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Confirm Deletion
             </h3>
-            <p className="text-xs sm:text-sm text-gray-700 mb-4 sm:mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Are you sure you want to delete this {deleteTarget?.type}? This action cannot be undone.
+            <p className="text-sm text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Are you sure you want to delete this item? This action cannot be undone.
             </p>
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteTarget(null);
-                }}
-                className="flex-1 px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold text-xs sm:text-sm"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleDelete}
-                className="flex-1 px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg font-semibold text-xs sm:text-sm"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors"
               >
                 Delete
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Document Viewer Modal */}
-      {showViewModal && selectedFile && (
-        <DocumentViewerModal
-          isOpen={showViewModal}
-          onClose={() => {
-            setShowViewModal(false);
-            setSelectedFile(null);
-          }}
-          documentUrl={selectedFile.url || ''}
-          documentName={selectedFile.name}
-        />
-      )}
-
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-bold text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Upload New File
-              </h3>
-              <button onClick={() => setShowUploadModal(false)}>
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  File Name
-                </label>
-                <input
-                  type="text"
-                  value={newFileName}
-                  onChange={(e) => setNewFileName(e.target.value)}
-                  placeholder="Enter file name"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003366] text-xs sm:text-sm text-[#003366]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                />
-              </div>
-
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 sm:p-8 text-center">
-                <FileText className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400 mx-auto mb-2 sm:mb-3" />
-                <p className="text-xs sm:text-sm text-gray-700 mb-1 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Drag and drop or click to upload
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  PDF file only
-                </p>
-                <p className="text-[10px] sm:text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Maximum file size: 50MB
-                </p>
-              </div>
-
-              <div className="flex gap-2 sm:gap-3">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleUpload}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-[#003366] text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Upload File
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Questionnaire Modal */}
-      {showAddQuestionnaireModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-bold text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Add New Questionnaire
-              </h3>
-              <button onClick={() => setShowAddQuestionnaireModal(false)}>
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Questionnaire Title
-                </label>
-                <input
-                  type="text"
-                  value={newQuestionnaire.title}
-                  onChange={(e) => setNewQuestionnaire({ ...newQuestionnaire, title: e.target.value })}
-                  placeholder="e.g., Research Ethics Assessment for Reviewer"
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003366] text-xs sm:text-sm text-[#003366]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Target Audience
-                </label>
-                <select
-                  value={newQuestionnaire.targetAudience}
-                  onChange={(e) => setNewQuestionnaire({ ...newQuestionnaire, targetAudience: e.target.value })}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003366] text-xs sm:text-sm font-medium text-[#003366]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  <option>Reviewer</option>
-                  <option>Researcher</option>
-                  <option>Staff</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2 sm:gap-3 pt-4">
-                <button
-                  onClick={() => setShowAddQuestionnaireModal(false)}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddQuestionnaire}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-[#003366] text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Add
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Question Modal */}
-      {showEditQuestionModal && editingQuestion && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md w-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base sm:text-lg font-bold text-[#003366]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Edit Question
-              </h3>
-              <button onClick={() => setShowEditQuestionModal(false)}>
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Question
-                </label>
-                <textarea
-                  value={editingQuestion.question.question}
-                  onChange={(e) => setEditingQuestion({
-                    ...editingQuestion,
-                    question: { ...editingQuestion.question, question: e.target.value }
-                  })}
-                  rows={3}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003366] text-xs sm:text-sm text-[#003366]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-[#003366] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Response Type
-                </label>
-                <select
-                  value={editingQuestion.question.type}
-                  onChange={(e) => setEditingQuestion({
-                    ...editingQuestion,
-                    question: { ...editingQuestion.question, type: e.target.value as 'Yes/No' | 'Comment' }
-                  })}
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#003366] text-xs sm:text-sm font-medium text-[#003366]"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  <option>Yes/No</option>
-                  <option>Comment</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2 sm:gap-3 pt-4">
-                <button
-                  onClick={() => setShowEditQuestionModal(false)}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEditQuestion}
-                  className="flex-1 px-3 sm:px-4 py-2 bg-[#003366] text-white rounded-lg font-semibold text-xs sm:text-sm"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Save
-                </button>
-              </div>
             </div>
           </div>
         </div>

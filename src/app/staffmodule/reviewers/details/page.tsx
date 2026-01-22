@@ -1,9 +1,8 @@
-// app/staffmodule/reviewers/details/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, User, Phone, Mail, Building2, Edit2, Award, FileText, ExternalLink, Download } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Building2, Edit2, Award, FileText, ExternalLink, Download, ChevronDown } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import ReviewerStatsCards from '@/components/staff-secretariat-admin/reviewers/ReviewerStatsCards';
 import ReviewerReviewsTable from '@/components/staff-secretariat-admin/reviewers/ReviewerReviewsTable';
@@ -12,10 +11,10 @@ import { getReviewerDetails } from '@/app/actions/secretariat-staff/getReviewerD
 import { updateReviewerCode } from '@/app/actions/secretariat-staff/updateReviewerCode';
 import { updateReviewerExpertise } from '@/app/actions/secretariat-staff/updateReviewerExpertise';
 
-import{ Suspense } from 'react';
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
+
 function ReviewerDetailsContent() {
-   const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const reviewerId = searchParams.get('id');
 
@@ -32,12 +31,11 @@ function ReviewerDetailsContent() {
   const [showDocumentViewer, setShowDocumentViewer] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; url: string } | null>(null);
 
-    useEffect(() => {
-      if (reviewerId) {  // ✅ Add this check
-        loadReviewerDetails();
-      }
-    }, [reviewerId]);
-
+  useEffect(() => {
+    if (reviewerId) {
+      loadReviewerDetails();
+    }
+  }, [reviewerId]);
 
   const loadReviewerDetails = async () => {
     if (!reviewerId) return;
@@ -49,7 +47,6 @@ function ReviewerDetailsContent() {
       setReviewerData(result);
       setReviewerCode(result.reviewer?.code || '');
       
-      // Safely access expertise fields that might not exist in the type
       const reviewerAny = result.reviewer as any;
       const areasString = reviewerAny?.areasOfExpertise || reviewerAny?.expertiseAreas || '';
       const areasArray = areasString ? 
@@ -89,23 +86,23 @@ function ReviewerDetailsContent() {
     setExpertiseAreas(expertiseAreas.filter((_, i) => i !== index));
   };
 
-const handleSaveExpertise = async () => {
-  if (!reviewerId) {  // ✅ Add this check
-    alert('Reviewer ID not found');
-    return;
-  }
+  const handleSaveExpertise = async () => {
+    if (!reviewerId) {
+      alert('Reviewer ID not found');
+      return;
+    }
 
-  const expertiseString = expertiseAreas.join(', ');
-  const result = await updateReviewerExpertise(reviewerId, expertiseString);
-  
-  if (result.success) {
-    console.log('✅ Expertise updated');
-    setIsEditingExpertise(false);
-    loadReviewerDetails();  // Reload data
-  } else {
-    alert('Failed to update expertise: ' + result.error);
-  }
-};
+    const expertiseString = expertiseAreas.join(', ');
+    const result = await updateReviewerExpertise(reviewerId, expertiseString);
+    
+    if (result.success) {
+      console.log('✅ Expertise updated');
+      setIsEditingExpertise(false);
+      loadReviewerDetails();
+    } else {
+      alert('Failed to update expertise: ' + result.error);
+    }
+  };
 
   const handleReviewClick = (id: string) => {
     router.push(`/staffmodule/submissions/details?id=${id}`);
@@ -157,7 +154,6 @@ const handleSaveExpertise = async () => {
 
   const { reviewer, currentReviews, reviewHistory } = reviewerData;
 
-  // Mock certificates data - replace with actual data from API
   const certificates = [
     {
       id: '1',
@@ -288,10 +284,33 @@ const handleSaveExpertise = async () => {
         </div>
       </div>
 
-      {/* Reviews Section with Tabs */}
+      {/* Reviews Section with Responsive Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        {/* Tabs */}
-        <div className="border-b border-gray-200 overflow-x-auto">
+        
+        {/* Mobile Dropdown for Tabs */}
+        <div className="md:hidden p-4 border-b border-gray-100">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+            View Section
+          </label>
+          <div className="relative">
+            <select
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value as TabType)}
+              className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-3 pr-10 font-bold"
+            >
+              <option value="current">Current Reviews ({currentReviews.length})</option>
+              <option value="history">Review History ({reviewHistory.length})</option>
+              <option value="expertise">Expertise</option>
+              <option value="certificates">Certificates ({certificates.length})</option>
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+              <ChevronDown size={16} />
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Tabs */}
+        <div className="hidden md:block border-b border-gray-200 overflow-x-auto">
           <div className="flex min-w-max">
             <button
               onClick={() => setActiveTab('current')}
@@ -438,7 +457,6 @@ const handleSaveExpertise = async () => {
                     </button>
                     <button
                       onClick={() => {
-                        // Safely access expertise fields
                         const reviewerAny = reviewer as any;
                         const areasString = reviewerAny?.areasOfExpertise || reviewerAny?.expertiseAreas || '';
                         const areasArray = areasString ? 
@@ -577,4 +595,4 @@ export default function ReviewerDetailsPage() {
       <ReviewerDetailsContent />
     </Suspense>
   );
-} 
+}

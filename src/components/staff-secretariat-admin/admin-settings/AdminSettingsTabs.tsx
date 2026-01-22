@@ -1,5 +1,6 @@
-// components/staff-secretariat-admin/admin-settings/AdminSettingsTabs.tsx
 'use client';
+
+import { ChevronDown } from 'lucide-react';
 
 interface AdminSettingsTabsProps {
   activeTab: 'downloadable' | 'reviewing' | 'users';
@@ -16,39 +17,45 @@ export default function AdminSettingsTabs({ activeTab, onTabChange }: AdminSetti
   return (
     <div className="w-full">
       {/* Mobile: Dropdown */}
-      <div className="sm:hidden">
-        <select
-          value={activeTab}
-          onChange={(e) => onTabChange(e.target.value as 'downloadable' | 'reviewing' | 'users')}
-          className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-lg text-sm font-semibold text-[#003366] focus:outline-none focus:ring-2 focus:ring-[#003366]"
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          {tabs.map((tab) => (
-            <option key={tab.id} value={tab.id}>
-              {tab.fullLabel}
-            </option>
-          ))}
-        </select>
+      <div className="sm:hidden mb-6">
+        <div className="relative">
+          <select
+            value={activeTab}
+            onChange={(e) => onTabChange(e.target.value as 'downloadable' | 'reviewing' | 'users')}
+            className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-[#101C50] focus:border-[#101C50] block p-3 pr-10 font-bold shadow-sm"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            {tabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>
+                {tab.fullLabel}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+            <ChevronDown size={16} />
+          </div>
+        </div>
       </div>
 
       {/* Desktop/Tablet: Tabs */}
-      <div className="hidden sm:block bg-white rounded-xl border-b border-gray-200 overflow-x-auto">
-        <div className="flex min-w-max">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => onTabChange(tab.id)}
-              className={`px-4 md:px-6 py-3 md:py-4 text-xs md:text-sm font-semibold transition-colors whitespace-nowrap border-b-2 ${
-                activeTab === tab.id
-                  ? 'text-[#003366] border-[#003366]'
-                  : 'text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-50'
-              }`}
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
-              {tab.fullLabel}
-            </button>
-          ))}
-        </div>
+      <div className="hidden sm:flex border-b border-gray-100">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
+            className={`px-6 py-4 text-sm font-bold transition-all relative ${
+              activeTab === tab.id
+                ? 'text-[#101C50]'
+                : 'text-gray-400 hover:text-gray-600'
+            }`}
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            {tab.fullLabel}
+            {activeTab === tab.id && (
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-[#101C50] rounded-t-full"></div>
+            )}
+          </button>
+        ))}
       </div>
     </div>
   );
