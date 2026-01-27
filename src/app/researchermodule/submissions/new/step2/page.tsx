@@ -1,4 +1,3 @@
-// app/researchermodule/submissions/new/step2/page.tsx
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -7,7 +6,7 @@ import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { ArrowLeft, User, Mail, Phone, Users, Building, AlertCircle, X, Info, Plus, Trash2, Calendar, FileText, CheckSquare } from 'lucide-react';
 
-// Error Modal Component (same as Step 1)
+// Error Modal Component
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: string[] }> = ({ isOpen, onClose, errors }) => {
   if (!isOpen) return null;
 
@@ -64,7 +63,7 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; errors: strin
   );
 };
 
-// Fixed Tooltip Component with aria-label
+// Tooltip Component
 const Tooltip: React.FC<{ text: string; children: React.ReactNode }> = ({ text, children }) => {
   const [show, setShow] = useState(false);
 
@@ -132,8 +131,8 @@ export default function Step2ApplicationForm() {
     numParticipants: '',
     technicalReview: '',
     technicalReviewFile: null as File | null,
-    technicalReviewFileName: '',        // ✅ ADD THIS
-    technicalReviewFileSize: 0,         // ✅ ADD THIS
+    technicalReviewFileName: '',
+    technicalReviewFileSize: 0,
     submittedToOther: '',
     hasApplicationForm: true,
     hasResearchProtocol: false,
@@ -143,30 +142,45 @@ export default function Step2ApplicationForm() {
     hasAssentForm: false,
     hasAssentFormOthers: false,
     assentFormOthers: '',
+
+    // --- UPDATED STATE FOR FILES ---
     hasEndorsementLetter: false,
+    endorsementLetterFile: null as File | null,
+    
     hasQuestionnaire: false,
+    questionnaireFile: null as File | null,
+    
     hasTechnicalReview: false,
+    checklistTechnicalReviewFile: null as File | null,
+    
     hasDataCollectionForms: false,
+    dataCollectionFormsFile: null as File | null,
+    
     hasProductBrochure: false,
+    productBrochureFile: null as File | null,
+    
     hasFDAAuthorization: false,
+    fdaAuthorizationFile: null as File | null,
+    
     hasCompanyPermit: false,
+    companyPermitFile: null as File | null,
+    
     hasSpecialPopulationPermit: false,
     specialPopulationPermitDetails: '',
+    specialPopulationPermitFile: null as File | null,
+    
     hasOtherDocs: false,
     otherDocsDetails: '',
+    otherDocsFile: null as File | null,
   });
 
-  // Update state at the beginning
   const [coResearchers, setCoResearchers] = useState<Array<{ name: string; contact: string; email: string }>>([
     { name: '', contact: '', email: '' }
   ]);
 
-
-  // Update state
   const [technicalAdvisers, setTechnicalAdvisers] = useState<Array<{ name: string; contact: string; email: string }>>([
     { name: '', contact: '', email: '' }
   ]);
-
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -198,7 +212,6 @@ export default function Step2ApplicationForm() {
   const isUMak = formData.institution.toLowerCase().includes('umak') ||
     formData.institution.toLowerCase().includes('university of makati');
 
-  // Validation function
   const validateInput = (value: string, fieldName: string): string | null => {
     const trimmedValue = value.trim().toLowerCase();
 
@@ -233,7 +246,6 @@ export default function Step2ApplicationForm() {
     const saved = localStorage.getItem('step2Data');
     const step1Raw = localStorage.getItem('step1Data');
 
-    // ✅ Load co-researchers and technical advisers
     const savedCoResearchers = localStorage.getItem('step2CoResearchers');
     const savedTechnicalAdvisers = localStorage.getItem('step2TechnicalAdvisers');
 
@@ -307,6 +319,16 @@ export default function Step2ApplicationForm() {
     saveTimeoutRef.current = setTimeout(() => {
       const dataToSave = { ...formData };
       delete (dataToSave as any).technicalReviewFile;
+      delete (dataToSave as any).endorsementLetterFile;
+      delete (dataToSave as any).questionnaireFile;
+      delete (dataToSave as any).checklistTechnicalReviewFile;
+      delete (dataToSave as any).dataCollectionFormsFile;
+      delete (dataToSave as any).productBrochureFile;
+      delete (dataToSave as any).fdaAuthorizationFile;
+      delete (dataToSave as any).companyPermitFile;
+      delete (dataToSave as any).specialPopulationPermitFile;
+      delete (dataToSave as any).otherDocsFile;
+
       localStorage.setItem('step2Data', JSON.stringify(dataToSave));
       localStorage.setItem('step2CoResearchers', JSON.stringify(coResearchers));
       localStorage.setItem('step2TechnicalAdvisers', JSON.stringify(technicalAdvisers));
@@ -323,7 +345,6 @@ export default function Step2ApplicationForm() {
   const handleNext = () => {
     const newErrors: Record<string, string> = {};
 
-    // Validate required fields
     const titleError = validateInput(formData.title, 'Title');
     if (titleError) newErrors.title = titleError;
 
@@ -346,9 +367,17 @@ export default function Step2ApplicationForm() {
       return;
     }
 
-
     const dataToSave = { ...formData };
     delete (dataToSave as any).technicalReviewFile;
+    delete (dataToSave as any).endorsementLetterFile;
+    delete (dataToSave as any).questionnaireFile;
+    delete (dataToSave as any).checklistTechnicalReviewFile;
+    delete (dataToSave as any).dataCollectionFormsFile;
+    delete (dataToSave as any).productBrochureFile;
+    delete (dataToSave as any).fdaAuthorizationFile;
+    delete (dataToSave as any).companyPermitFile;
+    delete (dataToSave as any).specialPopulationPermitFile;
+    delete (dataToSave as any).otherDocsFile;
 
     if (formData.technicalReviewFile) {
       dataToSave.technicalReviewFileName = formData.technicalReviewFile.name;
@@ -371,7 +400,6 @@ export default function Step2ApplicationForm() {
     }
   };
 
-  // Check All functionality for supplementary docs
   const handleCheckAll = () => {
     setFormData({
       ...formData,
@@ -404,6 +432,52 @@ export default function Step2ApplicationForm() {
       hasSpecialPopulationPermit: false,
       hasOtherDocs: false,
     });
+  };
+
+  const renderPDFUpload = (
+    key: string, 
+    fileState: File | null, 
+    setFile: (f: File | null) => void
+  ) => {
+    return (
+      <div className="ml-11 mt-2 mb-2 w-[calc(100%-2.75rem)] animate-fade-in">
+        <div className="flex items-center gap-3">
+            <input
+                type="file"
+                accept=".pdf"
+                className="block w-full text-sm text-[#071139]
+                  file:mr-4 file:py-2 file:px-4
+                  file:rounded-lg file:border-0
+                  file:text-xs file:font-semibold
+                  file:bg-[#071139]/10 file:text-[#071139]
+                  hover:file:bg-[#071139]/20
+                  file:cursor-pointer cursor-pointer"
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                        if (file.type !== "application/pdf") {
+                            alert("Only PDF files are allowed.");
+                            e.target.value = '';
+                            return;
+                        }
+                        setFile(file);
+                    }
+                }}
+            />
+            {fileState && (
+                <button
+                    type="button" 
+                    onClick={() => setFile(null)}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Remove File"
+                >
+                    <Trash2 size={16} />
+                </button>
+            )}
+        </div>
+        {fileState && <p className="text-xs text-green-600 mt-1">File selected: {fileState.name}</p>}
+      </div>
+    );
   };
 
   if (!isClient) {
@@ -475,7 +549,7 @@ export default function Step2ApplicationForm() {
                 </p>
               </div>
 
-              {/* Title - Pre-filled */}
+              {/* Title */}
               <div>
                 <label htmlFor="title" className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -488,8 +562,7 @@ export default function Step2ApplicationForm() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
-                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'
-                    }`}
+                  className={`w-full px-4 sm:px-5 py-3 sm:py-4 border-2 rounded-xl focus:ring-2 focus:outline-none text-[#071139] transition-all duration-300 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-gray-300 focus:border-[#071139] focus:ring-[#071139]/20 hover:border-gray-400'}`}
                   style={{ fontFamily: 'Metropolis, sans-serif' }}
                   required
                 />
@@ -519,7 +592,7 @@ export default function Step2ApplicationForm() {
                 />
               </div>
 
-              {/* Name of Researcher - WITH VISIBLE LABELS */}
+              {/* Name of Researcher */}
               <div>
                 <div className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -587,11 +660,17 @@ export default function Step2ApplicationForm() {
                   <input
                     id="mobileNo"
                     type="tel"
+                    placeholder="09123456789"
+                    maxLength={11}
                     value={formData.mobileNo}
-                    onChange={(e) => handleInputChange('mobileNo', e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '');
+                      if (value.length <= 11) {
+                        handleInputChange('mobileNo', value);
+                      }
+                    }}
                     className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500"
                     style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139', fontWeight: 500 }}
-
                     required
                   />
                 </div>
@@ -614,7 +693,7 @@ export default function Step2ApplicationForm() {
                 </div>
               </div>
 
-              {/* Co-Researchers with Contact and Email */}
+              {/* Co-Researchers */}
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <label className="flex items-center gap-2 text-sm sm:text-base font-bold text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
@@ -678,12 +757,16 @@ export default function Step2ApplicationForm() {
                         <input
                           id={`coResearcherContact-${index}`}
                           type="tel"
-                          placeholder="+63 912 345 6789"
+                          placeholder="09123456789"
+                          maxLength={11}
                           value={coResearcher.contact}
                           onChange={(e) => {
-                            const updated = [...coResearchers];
-                            updated[index].contact = e.target.value;
-                            setCoResearchers(updated);
+                            const value = e.target.value.replace(/\D/g, '');
+                            if (value.length <= 11) {
+                              const updated = [...coResearchers];
+                              updated[index].contact = value;
+                              setCoResearchers(updated);
+                            }
                           }}
                           className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
                           style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -712,8 +795,6 @@ export default function Step2ApplicationForm() {
                   </div>
                 ))}
               </div>
-
-
 
               {/* Technical/Content Advisers */}
               <div>
@@ -779,12 +860,16 @@ export default function Step2ApplicationForm() {
                         <input
                           id={`adviserContact-${index}`}
                           type="tel"
-                          placeholder="+63 912 345 6789"
+                          placeholder="09123456789"
+                          maxLength={11}
                           value={adviser.contact}
                           onChange={(e) => {
-                            const updated = [...technicalAdvisers];
-                            updated[index].contact = e.target.value;
-                            setTechnicalAdvisers(updated);
+                            const value = e.target.value.replace(/\D/g, '');
+                            if (value.length <= 11) {
+                              const updated = [...technicalAdvisers];
+                              updated[index].contact = value;
+                              setTechnicalAdvisers(updated);
+                            }
                           }}
                           className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139]"
                           style={{ fontFamily: 'Metropolis, sans-serif' }}
@@ -813,7 +898,6 @@ export default function Step2ApplicationForm() {
                   </div>
                 ))}
               </div>
-
 
               {/* Institution */}
               <div>
@@ -900,7 +984,7 @@ export default function Step2ApplicationForm() {
                 />
               </div>
 
-              {/* Type of Study - FIXED with nested input */}
+              {/* Type of Study */}
               <div>
                 <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md flex-shrink-0">
@@ -942,7 +1026,6 @@ export default function Step2ApplicationForm() {
                         </span>
                       </label>
 
-                      {/* MOVED INSIDE: Conditional input appears right below the checkbox when selected */}
                       {option.value === 'others' && formData.typeOfStudy.includes('others') && (
                         <div className="ml-11 mr-3 mb-2">
                           <input
@@ -961,8 +1044,7 @@ export default function Step2ApplicationForm() {
                 </div>
               </div>
 
-
-              {/* Study Site Type - FIXED */}
+              {/* Study Site Type */}
               <div>
                 <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md flex-shrink-0">
@@ -997,7 +1079,7 @@ export default function Step2ApplicationForm() {
               </div>
 
 
-              {/* Source of Funding - FIXED */}
+              {/* Source of Funding */}
               <div>
                 <label className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md flex-shrink-0">
@@ -1036,7 +1118,6 @@ export default function Step2ApplicationForm() {
                         </span>
                       </label>
 
-                      {/* MOVED INSIDE: Pharmaceutical Company input appears right below its checkbox */}
                       {option.value === 'pharmaceutical' && formData.sourceOfFunding.includes('pharmaceutical') && (
                         <div className="ml-11 mr-3 mb-2">
                           <input
@@ -1051,7 +1132,6 @@ export default function Step2ApplicationForm() {
                         </div>
                       )}
 
-                      {/* MOVED INSIDE: Others input appears right below its checkbox */}
                       {option.value === 'others' && formData.sourceOfFunding.includes('others') && (
                         <div className="ml-11 mr-3 mb-2">
                           <input
@@ -1070,9 +1150,7 @@ export default function Step2ApplicationForm() {
                 </div>
               </div>
 
-
-
-              {/* Duration of the Study - WITH PROPER LABELS */}
+              {/* Duration of the Study */}
               <div>
                 <div className="flex items-center gap-2 text-sm sm:text-base font-bold mb-3 text-[#071139]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#071139] to-[#003366] flex items-center justify-center shadow-md">
@@ -1118,7 +1196,6 @@ export default function Step2ApplicationForm() {
                   </div>
                 </div>
               </div>
-
 
               {/* Number of Participants */}
               <div>
@@ -1197,7 +1274,7 @@ export default function Step2ApplicationForm() {
                               return;
                             }
 
-                            // ✅ Convert to base64 and save to sessionStorage
+                            // Convert to base64 and save to sessionStorage
                             const reader = new FileReader();
                             reader.onloadend = () => {
                               const base64 = reader.result as string;
@@ -1219,7 +1296,6 @@ export default function Step2ApplicationForm() {
                         id="technicalReviewFile"
                         required
                       />
-
                       <label
                         htmlFor="technicalReviewFile"
                         className="flex items-center justify-center gap-3 px-6 py-4 bg-white border-2 border-dashed border-[#071139] rounded-xl cursor-pointer hover:bg-gray-50 transition-all duration-300 group"
@@ -1232,7 +1308,7 @@ export default function Step2ApplicationForm() {
                             {formData.technicalReviewFile ? formData.technicalReviewFile.name : 'Click to upload file'}
                           </p>
                           <p className="text-xs text-gray-600 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            PDF, DOC, DOCX (max 10MB)
+                            PDF (max 10MB)
                           </p>
                         </div>
                       </label>
@@ -1271,7 +1347,6 @@ export default function Step2ApplicationForm() {
                   </div>
                 )}
               </div>
-
 
               {/* Submitted to Another UMREC */}
               <div>
@@ -1341,8 +1416,7 @@ export default function Step2ApplicationForm() {
                 </div>
               </div>
 
-
-              {/* Basic Requirements - WITH FIELDSET */}
+              {/* Basic Requirements */}
               <fieldset>
                 <legend className="font-semibold text-[#071139] text-lg mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Basic Requirements:
@@ -1442,7 +1516,6 @@ export default function Step2ApplicationForm() {
                           <Info size={18} className="text-gray-400 cursor-help" />
                         </Tooltip>
                       </label>
-
                       {formData.hasAssentForm && (
                         <div className="ml-8 sm:ml-11 space-y-2">
                           <label className="flex items-center gap-3 cursor-pointer p-2 hover:bg-gray-50 rounded-lg transition-colors">
@@ -1472,118 +1545,140 @@ export default function Step2ApplicationForm() {
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasEndorsementLetter}
-                      onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
-                      className="w-5 h-5 rounded"
-                    />
-                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Endorsement Letter
-                    </span>
-                    <Tooltip text="Official letter from your institution or adviser supporting your research">
-                      <Info size={18} className="text-gray-400 cursor-help" />
-                    </Tooltip>
-                  </label>
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                        <input
+                        type="checkbox"
+                        checked={formData.hasEndorsementLetter}
+                        onChange={(e) => setFormData({ ...formData, hasEndorsementLetter: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                        />
+                        <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Endorsement Letter
+                        </span>
+                        <Tooltip text="Official letter from your institution or adviser supporting your research">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                        </Tooltip>
+                    </label>
+                    {formData.hasEndorsementLetter && renderPDFUpload('endorsement', formData.endorsementLetterFile, (f) => setFormData({...formData, endorsementLetterFile: f}))}
+                  </div>
 
-                  <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={formData.hasQuestionnaire}
-                      onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
-                      className="w-5 h-5 rounded"
-                    />
-                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Questionnaire (if applicable)
-                    </span>
-                    <Tooltip text="Survey instrument or interview guide for data collection">
-                      <Info size={18} className="text-gray-400 cursor-help" />
-                    </Tooltip>
-                  </label>
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                        <input
+                        type="checkbox"
+                        checked={formData.hasQuestionnaire}
+                        onChange={(e) => setFormData({ ...formData, hasQuestionnaire: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                        />
+                        <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Questionnaire (if applicable)
+                        </span>
+                        <Tooltip text="Survey instrument or interview guide for data collection">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                        </Tooltip>
+                    </label>
+                    {formData.hasQuestionnaire && renderPDFUpload('questionnaire', formData.questionnaireFile, (f) => setFormData({...formData, questionnaireFile: f}))}
+                  </div>
+
                 </div>
               </fieldset>
 
-              {/* Supplementary Documents - UPDATED LIST */}
+              {/* Supplementary Documents */}
               <div className="space-y-4">
                 <h5 className="font-semibold text-[#071139] text-lg" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Supplementary Documents:
                 </h5>
 
-                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasTechnicalReview}
-                    onChange={(e) => setFormData({ ...formData, hasTechnicalReview: e.target.checked })}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Technical review/pre-oral defense (Any documentary proof)
-                  </span>
-                  <Tooltip text="Evidence of technical evaluation or preliminary defense of your research proposal">
-                    <Info size={18} className="text-gray-400 cursor-help" />
-                  </Tooltip>
-                </label>
+                <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={formData.hasTechnicalReview}
+                        onChange={(e) => setFormData({ ...formData, hasTechnicalReview: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Technical review/pre-oral defense (Any documentary proof)
+                    </span>
+                    <Tooltip text="Evidence of technical evaluation or preliminary defense of your research proposal">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                    </label>
+                    {formData.hasTechnicalReview && renderPDFUpload('checklistTechnicalReview', formData.checklistTechnicalReviewFile, (f) => setFormData({...formData, checklistTechnicalReviewFile: f}))}
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasDataCollectionForms}
-                    onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Data Collection Forms (if applicable)
-                  </span>
-                  <Tooltip text="Forms used to systematically gather research data from participants">
-                    <Info size={18} className="text-gray-400 cursor-help" />
-                  </Tooltip>
-                </label>
+                <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={formData.hasDataCollectionForms}
+                        onChange={(e) => setFormData({ ...formData, hasDataCollectionForms: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Data Collection Forms (if applicable)
+                    </span>
+                    <Tooltip text="Forms used to systematically gather research data from participants">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                    </label>
+                    {formData.hasDataCollectionForms && renderPDFUpload('dataCollection', formData.dataCollectionFormsFile, (f) => setFormData({...formData, dataCollectionFormsFile: f}))}
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasProductBrochure}
-                    onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Product Brochure (if applicable)
-                  </span>
-                  <Tooltip text="Informational materials about products being studied in the research">
-                    <Info size={18} className="text-gray-400 cursor-help" />
-                  </Tooltip>
-                </label>
+                <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={formData.hasProductBrochure}
+                        onChange={(e) => setFormData({ ...formData, hasProductBrochure: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Product Brochure (if applicable)
+                    </span>
+                    <Tooltip text="Informational materials about products being studied in the research">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                    </label>
+                    {formData.hasProductBrochure && renderPDFUpload('productBrochure', formData.productBrochureFile, (f) => setFormData({...formData, productBrochureFile: f}))}
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasFDAAuthorization}
-                    onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Philippine FDA Marketing Authorization or Import License (if applicable)
-                  </span>
-                  <Tooltip text="Official permit from FDA for pharmaceutical or medical products used in research">
-                    <Info size={18} className="text-gray-400 cursor-help" />
-                  </Tooltip>
-                </label>
+                <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={formData.hasFDAAuthorization}
+                        onChange={(e) => setFormData({ ...formData, hasFDAAuthorization: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Philippine FDA Marketing Authorization or Import License (if applicable)
+                    </span>
+                    <Tooltip text="Official permit from FDA for pharmaceutical or medical products used in research">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                    </label>
+                    {formData.hasFDAAuthorization && renderPDFUpload('fdaAuthorization', formData.fdaAuthorizationFile, (f) => setFormData({...formData, fdaAuthorizationFile: f}))}
+                </div>
 
-                <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={formData.hasCompanyPermit}
-                    onChange={(e) => setFormData({ ...formData, hasCompanyPermit: e.target.checked })}
-                    className="w-5 h-5 rounded"
-                  />
-                  <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Permit/s for the use of company name
-                  </span>
-                  <Tooltip text="Authorization to reference or use a company's name in your research">
-                    <Info size={18} className="text-gray-400 cursor-help" />
-                  </Tooltip>
-                </label>
+                <div>
+                    <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                    <input
+                        type="checkbox"
+                        checked={formData.hasCompanyPermit}
+                        onChange={(e) => setFormData({ ...formData, hasCompanyPermit: e.target.checked })}
+                        className="w-5 h-5 rounded"
+                    />
+                    <span className="text-sm text-[#071139] flex-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Permit/s for the use of company name
+                    </span>
+                    <Tooltip text="Authorization to reference or use a company's name in your research">
+                        <Info size={18} className="text-gray-400 cursor-help" />
+                    </Tooltip>
+                    </label>
+                    {formData.hasCompanyPermit && renderPDFUpload('companyPermit', formData.companyPermitFile, (f) => setFormData({...formData, companyPermitFile: f}))}
+                </div>
 
                 <div className="space-y-2">
                   <label className="flex items-center gap-3 cursor-pointer p-3 hover:bg-gray-50 rounded-lg transition-colors">
@@ -1601,14 +1696,17 @@ export default function Step2ApplicationForm() {
                     </Tooltip>
                   </label>
                   {formData.hasSpecialPopulationPermit && (
-                    <input
-                      type="text"
-                      placeholder="Specify special population details"
-                      value={formData.specialPopulationPermitDetails}
-                      onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
-                      className="ml-11 w-[calc(100%-2.75rem)] px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none"
-                      style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139' }}
-                    />
+                    <div className="animate-fade-in">
+                        <input
+                        type="text"
+                        placeholder="Specify special population details"
+                        value={formData.specialPopulationPermitDetails}
+                        onChange={(e) => setFormData({ ...formData, specialPopulationPermitDetails: e.target.value })}
+                        className="ml-11 w-[calc(100%-2.75rem)] px-4 py-2 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none mb-2"
+                        style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139' }}
+                        />
+                        {renderPDFUpload('specialPopulation', formData.specialPopulationPermitFile, (f) => setFormData({...formData, specialPopulationPermitFile: f}))}
+                    </div>
                   )}
                 </div>
 
@@ -1628,14 +1726,17 @@ export default function Step2ApplicationForm() {
                     </Tooltip>
                   </label>
                   {formData.hasOtherDocs && (
-                    <textarea
-                      placeholder="Specify other documents (e.g., The researcher is the participant because the study is a narrative inquiry)"
-                      value={formData.otherDocsDetails}
-                      onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
-                      rows={3}
-                      className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500"
-                      style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139' }}
-                    />
+                    <div className="animate-fade-in">
+                        <textarea
+                        placeholder="Specify other documents (e.g., The researcher is the participant because the study is a narrative inquiry)"
+                        value={formData.otherDocsDetails}
+                        onChange={(e) => setFormData({ ...formData, otherDocsDetails: e.target.value })}
+                        rows={3}
+                        className="w-full px-4 sm:px-5 py-3 sm:py-4 border-2 border-gray-300 rounded-xl focus:border-[#071139] focus:ring-2 focus:ring-[#071139]/20 focus:outline-none text-[#071139] placeholder:text-gray-500 mb-2"
+                        style={{ fontFamily: 'Metropolis, sans-serif', color: '#071139' }}
+                        />
+                         {renderPDFUpload('otherDocs', formData.otherDocsFile, (f) => setFormData({...formData, otherDocsFile: f}))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1656,7 +1757,6 @@ export default function Step2ApplicationForm() {
                     Previous Step
                   </span>
                 </button>
-
                 <button
                   type="button"
                   onClick={handleNext}
