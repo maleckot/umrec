@@ -6,9 +6,10 @@ import AdminSettingsTabs from '@/components/staff-secretariat-admin/admin-settin
 import DownloadableFiles from '@/components/staff-secretariat-admin/admin-settings/DownloadableFiles';
 import ReviewingDetails from '@/components/staff-secretariat-admin/admin-settings/ReviewingDetails';
 import UserManagement from '@/components/staff-secretariat-admin/admin-settings/UserManagement';
+import HomepageContent from '@/components/staff-secretariat-admin/admin-settings/HomepageContent'; 
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<'downloadable' | 'reviewing' | 'users'>('downloadable');
+  const [activeTab, setActiveTab] = useState<'downloadable' | 'reviewing' | 'users' | 'homepage'>('homepage');
 
   return (
     <DashboardLayout 
@@ -24,7 +25,7 @@ export default function AdminSettingsPage() {
           <div className="border-b border-gray-100 bg-white">
             <div className="p-6 lg:p-8 pb-0">
                <h1 className="text-2xl font-bold text-[#101C50] mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  System Settings
+                 System Settings
                </h1>
                <AdminSettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
             </div>
@@ -33,6 +34,7 @@ export default function AdminSettingsPage() {
           {/* Content Section */}
           <div className="p-6 lg:p-8 bg-gray-50/30">
             <div className="animate-in fade-in duration-300">
+              {activeTab === 'homepage' && <HomepageContent />}
               {activeTab === 'downloadable' && <DownloadableFiles />}
               {activeTab === 'reviewing' && <ReviewingDetails />}
               {activeTab === 'users' && <UserManagement />}

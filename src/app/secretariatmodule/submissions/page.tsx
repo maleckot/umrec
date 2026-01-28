@@ -111,6 +111,7 @@ export default function SecretariatSubmissionsPage() {
     if (submission.status === 'awaiting_classification') router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
     else if (submission.status === 'classified') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
     else if (submission.status === 'pending') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
+     else if (submission.status === 'conflict_of_interest') router.push(`/secretariatmodule/submissions/resolve-conflict?id=${submission.id}`);
     else if (submission.status === 'needs_revision') router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
     else if (submission.status === 'under_review') router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
     else if (submission.status === 'approved' || submission.status === 'review_complete') router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
@@ -181,6 +182,7 @@ export default function SecretariatSubmissionsPage() {
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
                       <option value="needs_revision">Needs Revision</option>
+                      <option value="conflict_of_interest">Conflict of Interest</option>
                     </select>
                     <Filter size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                   </div>

@@ -3,12 +3,13 @@
 import { ChevronDown } from 'lucide-react';
 
 interface AdminSettingsTabsProps {
-  activeTab: 'downloadable' | 'reviewing' | 'users';
-  onTabChange: (tab: 'downloadable' | 'reviewing' | 'users') => void;
+  activeTab: 'downloadable' | 'reviewing' | 'users' | 'homepage'; // Added 'homepage'
+  onTabChange: (tab: 'downloadable' | 'reviewing' | 'users' | 'homepage') => void;
 }
 
 export default function AdminSettingsTabs({ activeTab, onTabChange }: AdminSettingsTabsProps) {
   const tabs = [
+    { id: 'homepage' as const, label: 'Homepage', fullLabel: 'Homepage Content' }, // New Tab
     { id: 'downloadable' as const, label: 'Files', fullLabel: 'Downloadable Files' },
     { id: 'reviewing' as const, label: 'Review', fullLabel: 'Reviewing Details' },
     { id: 'users' as const, label: 'Users', fullLabel: 'User Management' }
@@ -21,7 +22,7 @@ export default function AdminSettingsTabs({ activeTab, onTabChange }: AdminSetti
         <div className="relative">
           <select
             value={activeTab}
-            onChange={(e) => onTabChange(e.target.value as 'downloadable' | 'reviewing' | 'users')}
+            onChange={(e) => onTabChange(e.target.value as any)}
             className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl focus:ring-[#101C50] focus:border-[#101C50] block p-3 pr-10 font-bold shadow-sm"
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
@@ -38,12 +39,12 @@ export default function AdminSettingsTabs({ activeTab, onTabChange }: AdminSetti
       </div>
 
       {/* Desktop/Tablet: Tabs */}
-      <div className="hidden sm:flex border-b border-gray-100">
+      <div className="hidden sm:flex border-b border-gray-100 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`px-6 py-4 text-sm font-bold transition-all relative ${
+            className={`px-6 py-4 text-sm font-bold transition-all relative whitespace-nowrap ${
               activeTab === tab.id
                 ? 'text-[#101C50]'
                 : 'text-gray-400 hover:text-gray-600'

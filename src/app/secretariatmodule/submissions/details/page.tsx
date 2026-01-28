@@ -1,502 +1,502 @@
-'use client';
+  'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
-import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
-import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
-import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
-import ClassificationPanel from '@/components/staff-secretariat-admin/submission-details/ClassificationPanel';
-import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
-import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
-import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
-import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
-import { saveRevisionComment } from '@/app/actions/secretariat-staff/saveRevisionComment';
-import { Suspense } from 'react';
+  import { useState, useEffect } from 'react';
+  import { useRouter, useSearchParams } from 'next/navigation';
+  import { ArrowLeft } from 'lucide-react';
+  import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
+  import SubmissionHeader from '@/components/staff-secretariat-admin/submission-details/SubmissionHeader';
+  import TabNavigation from '@/components/staff-secretariat-admin/submission-details/TabNavigation';
+  import ConsolidatedDocument from '@/components/staff-secretariat-admin/submission-details/ConsolidatedDocument';
+  import ClassificationPanel from '@/components/staff-secretariat-admin/submission-details/ClassificationPanel';
+  import SubmissionSidebar from '@/components/staff-secretariat-admin/submission-details/SubmissionSidebar';
+  import HistoryTab from '@/components/staff-secretariat-admin/submission-details/HistoryTab';
+  import { getClassificationDetails } from '@/app/actions/secretariat-staff/getClassificationDetails';
+  import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
+  import { saveRevisionComment } from '@/app/actions/secretariat-staff/saveRevisionComment';
+  import { Suspense } from 'react';
 
-function SecretariatSubmissionDetailsContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const submissionId = searchParams.get('id');
+  function SecretariatSubmissionDetailsContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const submissionId = searchParams.get('id');
 
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
-  const [revisionComments, setRevisionComments] = useState('');
-  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  
-  // Add checklist state
-  const [revisionChecklist, setRevisionChecklist] = useState({
-    researchProtocol: false,
-    consentForm: false,
-    researchInstrument: false,
-    endorsementLetter: false,
-    proposalDefense: false,
-    applicationForm: false,
-  });
+    const [loading, setLoading] = useState(true);
+    const [data, setData] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'reviews' | 'history'>('overview');
+    const [revisionComments, setRevisionComments] = useState('');
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+    
+    // Add checklist state
+    const [revisionChecklist, setRevisionChecklist] = useState({
+      researchProtocol: false,
+      consentForm: false,
+      researchInstrument: false,
+      endorsementLetter: false,
+      proposalDefense: false,
+      applicationForm: false,
+    });
 
-  // --- NEW: Helper for Turnaround Time ---
-  const calculateDueDate = (category: string, startDate: string | Date = new Date()) => {
-    const daysMap: { [key: string]: number } = {
-      'Exempted': 7,
-      'Expedited': 14,
-      'Full Review': 30
+    // --- NEW: Helper for Turnaround Time ---
+    const calculateDueDate = (category: string, startDate: string | Date = new Date()) => {
+      const daysMap: { [key: string]: number } = {
+        'Exempted': 7,
+        'Expedited': 14,
+        'Full Review': 30
+      };
+      const days = daysMap[category] || 0;
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + days);
+      return date;
     };
-    const days = daysMap[category] || 0;
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + days);
-    return date;
-  };
 
-  useEffect(() => {
-    if (submissionId) {
-      loadData();
-    }
-  }, [submissionId]);
-
-  const loadData = async () => {
-    if (!submissionId) return;
-
-    setLoading(true);
-    try {
-      const result = await getClassificationDetails(submissionId);
-
-      if (result.success) {
-        setData(result);
-      } else {
-        alert(result.error || 'Failed to load submission');
-        router.push('/secretariatmodule/submissions');
+    useEffect(() => {
+      if (submissionId) {
+        loadData();
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to load submission details');
-    } finally {
-      setLoading(false);
-    }
-  };
+    }, [submissionId]);
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
+    const loadData = async () => {
+      if (!submissionId) return;
 
-  const formatShortDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
+      setLoading(true);
+      try {
+        const result = await getClassificationDetails(submissionId);
 
-  const getFullName = () => {
-    if (!data?.submission) return '';
-    const { firstName, middleName, lastName } = data.submission.projectLeader;
-    return [firstName, middleName, lastName].filter(Boolean).join(' ');
-  };
-
-  const historyEvents = data ? [
-    {
-      id: 1,
-      title: 'Submission Received',
-      date: formatDate(data.submission.submittedAt),
-      icon: 'submission' as const,
-    },
-    {
-      id: 2,
-      title: 'Document Verification Complete',
-      date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
-      icon: 'verification' as const,
-      description: 'All documents verified and consolidated by staff',
-    },
-    {
-      id: 3,
-      title: 'Under Classification',
-      date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
-      icon: 'classification' as const,
-      isCurrent: true,
-      description: 'Waiting for secretariat to classify the submission',
-    },
-  ] : [];
-
-  // Handler for checkbox changes
-  const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
-    setRevisionChecklist(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-
-  const handleRequestRevision = async () => {
-    const selectedItems = Object.entries(revisionChecklist)
-      .filter(([_, checked]) => checked)
-      .map(([key, _]) => key);
-
-    if (selectedItems.length === 0) {
-      alert('Please select at least one document that needs revision');
-      return;
-    }
-
-    if (!revisionComments.trim()) {
-      alert('Please provide specific feedback about what needs to be revised');
-      return;
-    }
-
-    if (!submissionId) return;
-
-    setIsSubmittingComment(true);
-    try {
-      const result = await saveRevisionComment(submissionId, revisionComments, revisionChecklist);
-
-      if (result.success) {
-        alert('Revision request sent successfully! Researcher will be notified.');
-        router.push('/secretariatmodule/submissions');
-      } else {
-        alert(`Failed to request revision: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('Error requesting revision:', error);
-      alert('Failed to request revision');
-    } finally {
-      setIsSubmittingComment(false);
-    }
-  };
-
-  // --- UPDATED: Save Classification with Due Date Calculation ---
-  const handleClassificationSave = async (category: 'Exempted' | 'Expedited' | 'Full Review') => {
-    if (!submissionId) return;
-
-    // Calculate the due date based on the chosen category
-    const calculatedDueDate = calculateDueDate(category);
-
-    try {
-      // Pass the calculated due date to your backend action
-      // NOTE: You need to update `saveClassification` to accept `dueDate`
-      const result = await saveClassification(submissionId, category, revisionComments, calculatedDueDate);
-
-      console.log('Classification saved:', category, 'Due Date:', calculatedDueDate);
-
-      if (result.success) {
-        // Navigate based on category
-        if (category === 'Exempted') {
-          router.push(`/secretariatmodule/submissions/exempted?id=${submissionId}`);
+        if (result.success) {
+          setData(result);
         } else {
-          router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submissionId}&category=${category}`);
+          alert(result.error || 'Failed to load submission');
+          router.push('/secretariatmodule/submissions');
         }
-      } else {
-        alert(`Failed to save classification: ${result.error}`);
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to load submission details');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error saving classification:', error);
-      alert('Failed to save classification');
-    }
-  };
+    };
 
-  if (loading) {
-    return (
-      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading submission details...
-            </p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+    const formatDate = (dateString: string) => {
+      if (!dateString) return 'N/A';
+      return new Date(dateString).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
 
-  if (!data?.submission) {
-    return (
-      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
-        <div className="text-center py-12">
-          <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            Submission not found
-          </p>
-        </div>
-      </DashboardLayout>
-    );
-  }
+    const formatShortDate = (date: Date) => {
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+      });
+    };
 
-  return (
-    <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
-      {/* Back Button */}
-      <div className="mb-6">
-        <button
-          onClick={() => router.push('/secretariatmodule/submissions')}
-          className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
-          style={{ fontFamily: 'Metropolis, sans-serif' }}
-        >
-          <ArrowLeft size={20} />
-          Back to Submissions
-        </button>
-      </div>
+    const getFullName = () => {
+      if (!data?.submission) return '';
+      const { firstName, middleName, lastName } = data.submission.projectLeader;
+      return [firstName, middleName, lastName].filter(Boolean).join(' ');
+    };
 
-      <SubmissionHeader
-        title={data.submission.title}
-        submittedBy={getFullName()}
-        submittedDate={formatDate(data.submission.submittedAt)}
-        coAuthors={data.submission.coAuthors || 'N/A'}
-        submissionId={data.submission.submissionId}
-      />
+    const historyEvents = data ? [
+      {
+        id: 1,
+        title: 'Submission Received',
+        date: formatDate(data.submission.submittedAt),
+        icon: 'submission' as const,
+      },
+      {
+        id: 2,
+        title: 'Document Verification Complete',
+        date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
+        icon: 'verification' as const,
+        description: 'All documents verified and consolidated by staff',
+      },
+      {
+        id: 3,
+        title: 'Under Classification',
+        date: data.consolidatedDocument ? formatDate(data.consolidatedDocument.uploadedAt) : 'N/A',
+        icon: 'classification' as const,
+        isCurrent: true,
+        description: 'Waiting for secretariat to classify the submission',
+      },
+    ] : [];
 
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+    // Handler for checkbox changes
+    const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
+      setRevisionChecklist(prev => ({
+        ...prev,
+        [field]: !prev[field]
+      }));
+    };
 
-      {/* Conditional Grid */}
-      <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
-        {/* Main Content */}
-        <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
-          {activeTab === 'overview' && (
-            <>
-              {data.consolidatedDocument ? (
-                <ConsolidatedDocument
-                  title="Documents"
-                  description="Review the consolidated submission. If revision is needed, select the documents below and provide feedback."
-                  consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
-                  fileUrl={data.consolidatedDocument.url}
-                  originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}
-                />
-              ) : (
-                <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
-                  <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Consolidated document is being generated...
-                  </p>
-                </div>
-              )}
+    const handleRequestRevision = async () => {
+      const selectedItems = Object.entries(revisionChecklist)
+        .filter(([_, checked]) => checked)
+        .map(([key, _]) => key);
 
-              {/* Revision Checklist Section */}
-              <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Request Revision
-                </h3>
-                <p className="text-sm text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Select the documents that need revision and provide specific feedback below. This will send the submission back to the researcher.
-                </p>
+      if (selectedItems.length === 0) {
+        alert('Please select at least one document that needs revision');
+        return;
+      }
 
-                {/* Checklist */}
-                <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                  <p className="text-sm font-semibold text-gray-700 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Documents requiring revision:
-                  </p>
+      if (!revisionComments.trim()) {
+        alert('Please provide specific feedback about what needs to be revised');
+        return;
+      }
 
-                  <div className="space-y-3">
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.researchProtocol}
-                        onChange={() => handleChecklistChange('researchProtocol')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Research Protocol
-                      </span>
-                    </label>
+      if (!submissionId) return;
 
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.consentForm}
-                        onChange={() => handleChecklistChange('consentForm')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Informed Consent Form
-                      </span>
-                    </label>
+      setIsSubmittingComment(true);
+      try {
+        const result = await saveRevisionComment(submissionId, revisionComments, revisionChecklist);
 
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.researchInstrument}
-                        onChange={() => handleChecklistChange('researchInstrument')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Research Instrument
-                      </span>
-                    </label>
+        if (result.success) {
+          alert('Revision request sent successfully! Researcher will be notified.');
+          router.push('/secretariatmodule/submissions');
+        } else {
+          alert(`Failed to request revision: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error requesting revision:', error);
+        alert('Failed to request revision');
+      } finally {
+        setIsSubmittingComment(false);
+      }
+    };
 
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.endorsementLetter}
-                        onChange={() => handleChecklistChange('endorsementLetter')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Endorsement Letter
-                      </span>
-                    </label>
+    // --- UPDATED: Save Classification with Due Date Calculation ---
+    const handleClassificationSave = async (category: 'Exempted' | 'Expedited' | 'Full Review') => {
+      if (!submissionId) return;
 
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.proposalDefense}
-                        onChange={() => handleChecklistChange('proposalDefense')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Proposal Defense
-                      </span>
-                    </label>
+      // Calculate the due date based on the chosen category
+      const calculatedDueDate = calculateDueDate(category);
 
-                    <label className="flex items-center gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        checked={revisionChecklist.applicationForm}
-                        onChange={() => handleChecklistChange('applicationForm')}
-                        className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                      />
-                      <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Application Form
-                      </span>
-                    </label>
-                  </div>
-                </div>
+      try {
+        // Pass the calculated due date to your backend action
+        // NOTE: You need to update `saveClassification` to accept `dueDate`
+        const result = await saveClassification(submissionId, category, revisionComments, calculatedDueDate);
 
-                {/* Comments Section */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Specific Feedback: <span className="text-red-600">*</span>
-                  </label>
- 
-                  <textarea
-                    value={revisionComments}
-                    onChange={(e) => setRevisionComments(e.target.value)}
-                    placeholder="Example:&#10;&#10;Research Protocol - Section 3.2:&#10;Please clarify the sampling method and justify the sample size.&#10;&#10;Consent Form - Page 2:&#10;Add information about data storage and retention period."
-                    className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
-                    style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '200px' }}
-                    maxLength={2000}
-                    disabled={isSubmittingComment}
-                  />
-                  <div className="flex justify-between items-center mt-2">
-                    <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {revisionComments.length} / 2000 characters
-                    </p>
-                  </div>
-                </div>
+        console.log('Classification saved:', category, 'Due Date:', calculatedDueDate);
 
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setRevisionChecklist({
-                        researchProtocol: false,
-                        consentForm: false,
-                        researchInstrument: false,
-                        endorsementLetter: false,
-                        proposalDefense: false,
-                        applicationForm: false,
-                      });
-                      setRevisionComments('');
-                    }}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                    disabled={isSubmittingComment}
-                  >
-                    Clear All
-                  </button>
-                  <button
-                    onClick={handleRequestRevision}
-                    disabled={Object.values(revisionChecklist).every(v => !v) || !revisionComments.trim() || isSubmittingComment}
-                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold flex items-center gap-2"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    {isSubmittingComment ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        Request Revision
-                      </>
-                    )}
-                  </button>
-                </div>
-              </div>
+        if (result.success) {
+          // Navigate based on category
+          if (category === 'Exempted') {
+            router.push(`/secretariatmodule/submissions/exempted?id=${submissionId}`);
+          } else {
+            router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submissionId}&category=${category}`);
+          }
+        } else {
+          alert(`Failed to save classification: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error saving classification:', error);
+        alert('Failed to save classification');
+      }
+    };
 
-              {/* Divider */}
-              <div className="flex items-center gap-4 my-6">
-                <div className="flex-1 h-px bg-gray-300"></div>
-                <p className="text-sm text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  OR
-                </p>
-                <div className="flex-1 h-px bg-gray-300"></div>
-              </div>
-
-              <ClassificationPanel
-                systemSuggestedCategory={data.submission.aiSuggestedClassification || "Expedited"}
-                aiConfidence={data.submission.aiClassificationConfidence}
-                aiClassifiedAt={data.submission.aiClassifiedAt}
-                aiMethod={data.submission.aiClassificationMethod}
-                onSave={handleClassificationSave}
-              />
-            </>
-          )}
-
-          {activeTab === 'reviews' && (
-            <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
-              <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                No reviews available yet. Please classify the submission first.
+    if (loading) {
+      return (
+        <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                Loading submission details...
               </p>
             </div>
-          )}
+          </div>
+        </DashboardLayout>
+      );
+    }
 
-          {activeTab === 'history' && <HistoryTab events={historyEvents} />}
+    if (!data?.submission) {
+      return (
+        <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+          <div className="text-center py-12">
+            <p className="text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Submission not found
+            </p>
+          </div>
+        </DashboardLayout>
+      );
+    }
+
+    return (
+      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+        {/* Back Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => router.push('/secretariatmodule/submissions')}
+            className="flex items-center gap-2 text-base font-semibold text-blue-700 hover:text-blue-900 transition-colors"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
+          >
+            <ArrowLeft size={20} />
+            Back to Submissions
+          </button>
         </div>
 
-        {activeTab === 'overview' && (
-          <div>
-            <SubmissionSidebar
-              status="Under Classification"
-              details={{
-                submissionDate: formatDate(data.submission.submittedAt),
-                reviewersRequired: 0,
-                reviewersAssigned: 0,
-              }}
-              authorInfo={{
-                name: getFullName(),
-                organization: data.submission.organization || 'N/A',
-                school: 'University of Makati',
-                college: data.submission.college || 'N/A',
-                email: data.submission.projectLeader.email,
-              }}
-              timeline={{
-                submitted: formatDate(data.submission.submittedAt),
-                // --- UPDATED: Display Pending Status instead of TBD ---
-                reviewDue: 'Pending Classification',
-                decisionTarget: 'Pending Classification',
-              }}
-              statusMessage="This submission has been verified and consolidated. Awaiting classification."
-            />
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
-  );
-}
+        <SubmissionHeader
+          title={data.submission.title}
+          submittedBy={getFullName()}
+          submittedDate={formatDate(data.submission.submittedAt)}
+          coAuthors={data.submission.coAuthors || 'N/A'}
+          submissionId={data.submission.submissionId}
+        />
 
-export default function SecretariatSubmissionDetailsPage() {
-  return (
-    <Suspense fallback={
-      <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+
+        {/* Conditional Grid */}
+        <div className={activeTab === 'overview' ? 'grid grid-cols-1 lg:grid-cols-3 gap-6' : ''}>
+          {/* Main Content */}
+          <div className={activeTab === 'overview' ? 'lg:col-span-2 space-y-6' : 'w-full'}>
+            {activeTab === 'overview' && (
+              <>
+                {data.consolidatedDocument ? (
+                  <ConsolidatedDocument
+                    title="Documents"
+                    description="Review the consolidated submission. If revision is needed, select the documents below and provide feedback."
+                    consolidatedDate={formatDate(data.consolidatedDocument.uploadedAt)}
+                    fileUrl={data.consolidatedDocument.url}
+                    originalDocuments={data.originalDocuments.map((doc: any) => doc.name)}
+                  />
+                ) : (
+                  <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
+                    <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Consolidated document is being generated...
+                    </p>
+                  </div>
+                )}
+
+                {/* Revision Checklist Section */}
+                <div className="bg-white rounded-xl p-6 border-2 border-gray-200">
+                  <h3 className="text-lg font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Request Revision
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    Select the documents that need revision and provide specific feedback below. This will send the submission back to the researcher.
+                  </p>
+
+                  {/* Checklist */}
+                  <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                    <p className="text-sm font-semibold text-gray-700 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Documents requiring revision:
+                    </p>
+
+                    <div className="space-y-3">
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.researchProtocol}
+                          onChange={() => handleChecklistChange('researchProtocol')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Research Protocol
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.consentForm}
+                          onChange={() => handleChecklistChange('consentForm')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Informed Consent Form
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.researchInstrument}
+                          onChange={() => handleChecklistChange('researchInstrument')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Research Instrument
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.endorsementLetter}
+                          onChange={() => handleChecklistChange('endorsementLetter')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Endorsement Letter
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.proposalDefense}
+                          onChange={() => handleChecklistChange('proposalDefense')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Proposal Defense
+                        </span>
+                      </label>
+
+                      <label className="flex items-center gap-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={revisionChecklist.applicationForm}
+                          onChange={() => handleChecklistChange('applicationForm')}
+                          className="w-5 h-5 rounded border-2 border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-blue-600 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                          Application Form
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Comments Section */}
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      Specific Feedback: <span className="text-red-600">*</span>
+                    </label>
+  
+                    <textarea
+                      value={revisionComments}
+                      onChange={(e) => setRevisionComments(e.target.value)}
+                      placeholder="Example:&#10;&#10;Research Protocol - Section 3.2:&#10;Please clarify the sampling method and justify the sample size.&#10;&#10;Consent Form - Page 2:&#10;Add information about data storage and retention period."
+                      className="w-full p-4 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900"
+                      style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '200px' }}
+                      maxLength={2000}
+                      disabled={isSubmittingComment}
+                    />
+                    <div className="flex justify-between items-center mt-2">
+                      <p className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {revisionComments.length} / 2000 characters
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setRevisionChecklist({
+                          researchProtocol: false,
+                          consentForm: false,
+                          researchInstrument: false,
+                          endorsementLetter: false,
+                          proposalDefense: false,
+                          applicationForm: false,
+                        });
+                        setRevisionComments('');
+                      }}
+                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                      disabled={isSubmittingComment}
+                    >
+                      Clear All
+                    </button>
+                    <button
+                      onClick={handleRequestRevision}
+                      disabled={Object.values(revisionChecklist).every(v => !v) || !revisionComments.trim() || isSubmittingComment}
+                      className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-semibold flex items-center gap-2"
+                      style={{ fontFamily: 'Metropolis, sans-serif' }}
+                    >
+                      {isSubmittingComment ? (
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          Request Revision
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-4 my-6">
+                  <div className="flex-1 h-px bg-gray-300"></div>
+                  <p className="text-sm text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    OR
+                  </p>
+                  <div className="flex-1 h-px bg-gray-300"></div>
+                </div>
+
+                <ClassificationPanel
+                  systemSuggestedCategory={data.submission.aiSuggestedClassification || "Expedited"}
+                  aiConfidence={data.submission.aiClassificationConfidence}
+                  aiClassifiedAt={data.submission.aiClassifiedAt}
+                  aiMethod={data.submission.aiClassificationMethod}
+                  onSave={handleClassificationSave}
+                />
+              </>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div className="bg-white rounded-xl p-6 text-center border border-gray-200">
+                <p className="text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  No reviews available yet. Please classify the submission first.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'history' && <HistoryTab events={historyEvents} />}
+          </div>
+
+          {activeTab === 'overview' && (
+            <div>
+              <SubmissionSidebar
+                status="Under Classification"
+                details={{
+                  submissionDate: formatDate(data.submission.submittedAt),
+                  reviewersRequired: 0,
+                  reviewersAssigned: 0,
+                }}
+                authorInfo={{
+                  name: getFullName(),
+                  organization: data.submission.organization || 'N/A',
+                  school: 'University of Makati',
+                  college: data.submission.college || 'N/A',
+                  email: data.submission.projectLeader.email,
+                }}
+                timeline={{
+                  submitted: formatDate(data.submission.submittedAt),
+                  // --- UPDATED: Display Pending Status instead of TBD ---
+                  reviewDue: 'Pending Classification',
+                  decisionTarget: 'Pending Classification',
+                }}
+                statusMessage="This submission has been verified and consolidated. Awaiting classification."
+              />
+            </div>
+          )}
         </div>
       </DashboardLayout>
-    }>
-      <SecretariatSubmissionDetailsContent />
-    </Suspense>
-  );
-}
+    );
+  }
+
+  export default function SecretariatSubmissionDetailsPage() {
+    return (
+      <Suspense fallback={
+        <DashboardLayout role="secretariat" roleTitle="Secretariat" pageTitle="Submission Details" activeNav="submissions">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          </div>
+        </DashboardLayout>
+      }>
+        <SecretariatSubmissionDetailsContent />
+      </Suspense>
+    );
+  }

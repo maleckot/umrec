@@ -5,7 +5,7 @@ import NavbarRoles from '../components/researcher-reviewer/NavbarRoles';
 import Footer from '../components/researcher-reviewer/Footer';
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
-import { Megaphone, Calendar, ArrowRight } from 'lucide-react'; // Import icons
+import { Megaphone, Calendar, ArrowRight, BookOpen, Clock, Award, Users, Repeat } from 'lucide-react';
 
 export default function Home() {
   const [count1, setCount1] = useState(0);
@@ -14,14 +14,14 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('mission');
   const statsRef = useRef(null);
 
-  // --- Animation Logic for Counters ---
+  // --- Animation Logic ---
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !hasAnimated) {
           setHasAnimated(true);
 
-          // Animate Papers (Target: 628)
+          // Animate Papers
           let current1 = 0;
           const target1 = 628;
           const increment1 = target1 / 130;
@@ -35,7 +35,7 @@ export default function Home() {
             }
           }, 25);
 
-          // Animate Colleges (Target: 20)
+          // Animate Colleges
           let current2 = 0;
           const target2 = 20;
           const increment2 = target2 / 120;
@@ -59,51 +59,40 @@ export default function Home() {
 
   const formatNumber = (num: number) => num.toLocaleString();
 
-  // --- Downloadable Files Data ---
+  // --- Data Arrays ---
   const downloadableFiles = [
     {
       title: "Application Form Ethics Review",
       formNumber: "UMREC Form No. 0013-1",
       filePath: "/forms/UMREC Form No. 0013-1.pdf",
-      icon: (
-        <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      )
+      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
     },
     {
       title: "Research Protocol",
       formNumber: "UMREC Form No. 0033",
       filePath: "/forms/UMREC Form No. 0033.pdf",
-      icon: (
-        <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-        </svg>
-      )
+      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+    },
+    {
+      title: "Resubmission Form",
+      formNumber: "UMREC Form No. 0014",
+      filePath: "/forms/Resubmission Form.docx",
+      icon: <Repeat className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
     },
     {
       title: "Informed Consent Form",
       formNumber: "Sample for legal-age respondents",
       filePath: "/forms/Informed Consent Form.pdf",
-      icon: (
-        <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      )
+      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
     },
     {
       title: "Informed Consent Form",
       formNumber: "Sample for minor respondents",
       filePath: "/forms/Informed Consent Form.pdf",
-      icon: (
-        <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      )
+      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
     }
   ];
 
-  // --- Dummy Seminar Data (In real app, fetch from Supabase) ---
   const seminars = [
     {
       id: 1,
@@ -122,7 +111,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="overflow-x-hidden bg-[#050B24]">
       <NavbarRoles role="main" />
 
       {/* Hero Section */}
@@ -197,6 +186,104 @@ export default function Home() {
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
 
+      {/* History Section */}
+      <div className="py-20 sm:py-24 px-4 sm:px-8 bg-[#050B24] relative overflow-hidden">
+        {/* Decorative Background Elements */}
+        <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+            <div className="absolute top-20 left-10 w-64 h-64 bg-[#F0E847] rounded-full blur-[120px]"></div>
+            <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500 rounded-full blur-[120px]"></div>
+        </div>
+
+        <div className="max-w-6xl mx-auto relative z-10">
+           {/* Header */}
+           <div className="text-center mb-16 sm:mb-20">
+              <div className="inline-flex items-center justify-center p-3 bg-white/10 backdrop-blur-md rounded-full text-[#F0E847] mb-4 border border-white/10">
+                 <Clock size={28} />
+              </div>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 800 }}>
+                Our Legacy & History
+              </h2>
+              <div className="w-24 h-1.5 bg-gradient-to-r from-[#F0E847] to-[#D3CC50] mx-auto rounded-full shadow-[0_0_15px_rgba(240,232,71,0.6)]"></div>
+           </div>
+
+           {/* Timeline Container */}
+           <div className="relative">
+              {/* Vertical Line */}
+              <div className="absolute left-6 sm:left-1/2 top-0 bottom-0 w-1 bg-white/10 sm:-translate-x-1/2 rounded-full"></div>
+
+              <div className="space-y-12 sm:space-y-24">
+                  
+                  {/* Timeline Item 1: 2018 */}
+                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
+                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-0 sm:pr-8 text-left sm:text-right">
+                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2018</h3>
+                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>The Inception</h4>
+                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
+                             It began when the <span className="text-white font-semibold">College of Allied Health Studies (COAHS)</span> recognized the need for an internal ethics review board to support researchers in Nursing, Radiologic Technology, and Pharmacy.
+                          </p>
+                      </div>
+                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
+                          <BookOpen size={18} className="text-white" />
+                      </div>
+                      <div className="order-1 w-full sm:w-5/12"></div>
+                  </div>
+
+                  {/* Timeline Item 2: 2019 */}
+                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
+                      <div className="order-1 w-full sm:w-5/12"></div>
+                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
+                          <Users size={18} className="text-white" />
+                      </div>
+                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-8 text-left">
+                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2019</h3>
+                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>PHREB Partnership</h4>
+                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
+                             COAHS engaged the <span className="text-white font-semibold">Philippine Health Research Ethics Board (PHREB)</span> for the Basic Research Ethics Training (BRET). Faculty members critiqued manuscripts and simulated REC meetings under the guidance of Dr. Cecilia V. Tomas.
+                          </p>
+                      </div>
+                  </div>
+
+                  {/* Timeline Item 3: 2021-2022 */}
+                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
+                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-0 sm:pr-8 text-left sm:text-right">
+                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2021 - 2022</h3>
+                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>University-wide Expansion</h4>
+                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
+                             Endorsed by VP for Planning and Research, <span className="text-white font-semibold">Dr. Ederson DT Tapia</span>, the advocacy expanded university-wide. Intensive SOP workshops and training sessions were conducted, leading to the creation of the Interim Research Ethics Committee.
+                          </p>
+                      </div>
+                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
+                          <Megaphone size={18} className="text-white" />
+                      </div>
+                      <div className="order-1 w-full sm:w-5/12"></div>
+                  </div>
+
+                  {/* Timeline Item 4: 2023 */}
+                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
+                      <div className="order-1 w-full sm:w-5/12"></div>
+                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
+                          <Award size={18} className="text-white" />
+                      </div>
+                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-8 text-left">
+                          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 shadow-xl hover:shadow-[#F0E847]/10 hover:-translate-y-1">
+                              <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2023</h3>
+                              <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>Official Establishment</h4>
+                              <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
+                                 The Interim Committee successfully reviewed over 100 protocols. On <span className="text-white font-bold">September 26, 2023</span>, the appointed members and officers of UMREC took their oath of office for a three-year term.
+                              </p>
+                              <div className="inline-block px-3 py-1 bg-[#F0E847] text-[#050B24] text-xs font-bold rounded uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                 Current Era
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+              </div>
+           </div>
+        </div>
+      </div>
+      <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
+      
       {/* Mission/Vision Section */}
       <div className="py-8 sm:py-12 md:py-16 lg:py-20 px-4 sm:px-6 md:px-12 lg:px-32" style={{ backgroundColor: '#050B24' }}>
         <div className="max-w-6xl mx-auto">
@@ -278,9 +365,8 @@ export default function Home() {
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
 
-      {/* ✅✅✅ NEW SECTION: SEMINARS & ANNOUNCEMENTS ✅✅✅ */}
+      {/* Announcements & Seminars Section */}
       <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32 bg-white relative overflow-hidden">
-        {/* Background decorative blob */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50 rounded-full blur-3xl -z-10 opacity-60"></div>
         
         <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
@@ -301,7 +387,6 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {seminars.map((seminar) => (
               <div key={seminar.id} className="group bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
-                {/* Side Accent Line */}
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#101C50] group-hover:bg-[#D3CC50] transition-colors duration-300"></div>
                 
                 <div className="flex justify-between items-start mb-4">
@@ -341,8 +426,6 @@ export default function Home() {
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
-      {/* ✅✅✅ END OF NEW SECTION ✅✅✅ */}
-
 
       {/* Submission Information Section */}
       <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32" style={{ backgroundColor: '#050B24' }}>
@@ -390,9 +473,11 @@ export default function Home() {
                 Download the required forms for your research ethics application
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+            
+            {/* ✅ UPDATED LAYOUT: 3 forms in first row, 2 forms in second row for large screens */}
+            <div className="flex flex-wrap justify-center gap-4 sm:gap-5 md:gap-6">
               {downloadableFiles.map((file, index) => (
-                <div key={index} className="download-card bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border-2 border-[#101C50]/10 shadow-lg hover-lift group flex flex-col">
+                <div key={index} className="download-card w-full sm:w-[calc(50%-1.25rem)] lg:w-[calc(33.33%-1.5rem)] bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border-2 border-[#101C50]/10 shadow-lg hover-lift group flex flex-col">
                   <div className="w-16 h-16 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#101C50] to-[#050B24] flex items-center justify-center mx-auto mb-4 sm:mb-5 text-[#F0E847] shadow-lg group-hover:scale-110 transition-transform duration-300">
                     {file.icon}
                   </div>
@@ -405,6 +490,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            
             <div className="mt-8 sm:mt-10 md:mt-12 bg-[#101C50]/5 backdrop-blur-sm rounded-xl p-4 sm:p-5 md:p-6 border border-[#101C50]/10">
               <p className="text-xs sm:text-sm md:text-base text-[#101C50] text-center" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.7' }}>
                 <span className="font-bold">Note:</span> All forms must be completed and submitted along with your research protocol. For questions regarding form completion, please contact the UMREC office during office hours.
@@ -417,7 +503,6 @@ export default function Home() {
       <Footer />
 
       <style jsx>{`
-        /* Keeping all original styles plus new ones for announcement card */
         @keyframes letter-glow-white { 0%, 100% { text-shadow: 0 0 0px rgba(255, 255, 255, 0); } 50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 30px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.3); } }
         @keyframes letter-glow-yellow { 0%, 100% { text-shadow: 0 0 0px rgba(240, 232, 71, 0); } 50% { text-shadow: 0 0 20px rgba(240, 232, 71, 0.9), 0 0 30px rgba(240, 232, 71, 0.6), 0 0 40px rgba(240, 232, 71, 0.3); } }
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
