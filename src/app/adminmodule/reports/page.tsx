@@ -1,4 +1,3 @@
-// app/adminmodule/reports/page.tsx
 'use client';
 
 import { useState } from 'react';
@@ -19,23 +18,39 @@ export default function AdminReportsPage() {
       pageTitle="Reports" 
       activeNav="reports"
     >
-      <ReportHeader 
-        dateRange={dateRange}
-        onDateRangeChange={setDateRange}
-      />
+      <div className="max-w-[1600px] mx-auto w-full pb-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden min-h-[80vh]">
+          
+          {/* Header Section */}
+          <div className="p-6 lg:p-8 border-b border-gray-100">
+            <ReportHeader 
+              dateRange={dateRange}
+              onDateRangeChange={setDateRange}
+            />
+          </div>
 
-      <ReportTabs 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-      />
+          {/* Tabs Section */}
+          <div className="px-6 lg:px-8 border-b border-gray-100 bg-gray-50/30">
+            <ReportTabs 
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+          </div>
 
-      {activeTab === 'system' && (
-        <SystemUsageReport dateRange={dateRange} />
-      )}
+          {/* Content Section */}
+          <div className="p-6 lg:p-8 bg-gray-50/30">
+            <div className="animate-in fade-in duration-300">
+              {activeTab === 'system' && (
+                <SystemUsageReport dateRange={dateRange} />
+              )}
 
-      {activeTab === 'submission' && (
-        <SubmissionStatisticsReport dateRange={dateRange} />
-      )}
+              {activeTab === 'submission' && (
+                <SubmissionStatisticsReport dateRange={dateRange} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </DashboardLayout>
   );
 }

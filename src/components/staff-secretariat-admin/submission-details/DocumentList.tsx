@@ -9,7 +9,6 @@ interface Document {
   name: string;
   fileUrl?: string;
   url?: string;        // ✅ ADD THIS (from action)
-
 }
 
 interface DocumentListProps {
@@ -22,19 +21,19 @@ export default function DocumentList({ documents, title = 'Documents', descripti
   const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<{ name: string; fileUrl: string } | null>(null);
 
-const handleViewDocument = (doc: string | Document) => {
-  const docName = typeof doc === 'string' ? doc : doc.name;
-  const docUrl = typeof doc === 'string' 
-    ? '/sample-document.pdf' 
-    : (doc.url || doc.fileUrl || '/sample-document.pdf'); // ✅ CHECK URL FIRST
-  
-  setSelectedDocument({ name: docName, fileUrl: docUrl });
-  setViewerOpen(true);
-};
+  const handleViewDocument = (doc: string | Document) => {
+    const docName = typeof doc === 'string' ? doc : doc.name;
+    const docUrl = typeof doc === 'string' 
+      ? '/sample-document.pdf' 
+      : (doc.url || doc.fileUrl || '/sample-document.pdf'); // ✅ CHECK URL FIRST
+    
+    setSelectedDocument({ name: docName, fileUrl: docUrl });
+    setViewerOpen(true);
+  };
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border-2 border-[#101C50] overflow-hidden w-full max-w-full">
         <div className="bg-[#101C50] p-4 lg:p-6">
           <h3 className="text-lg font-bold text-white" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {title}
@@ -57,10 +56,24 @@ const handleViewDocument = (doc: string | Document) => {
                 <button
                   key={index}
                   onClick={() => handleViewDocument(doc)}
-                  className="w-full flex items-center gap-2 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200"
+                  className="w-full flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors border border-gray-200 text-left min-w-0"
                 >
-                  <Eye size={16} className="text-gray-500 flex-shrink-0" />
-                  <span className="text-sm font-medium text-blue-600 hover:text-blue-800 flex-1 text-left" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  {/* 
+                      Fix 1: Added 'flex-shrink-0' and 'mt-0.5' 
+                      Ensures icon stays top-aligned and doesn't squash when text wraps 
+                  */}
+                  <Eye size={16} className="text-gray-500 flex-shrink-0 mt-1" />
+                  
+                  {/* 
+                      Fix 2: Added 'break-all' and 'whitespace-normal'
+                      - 'break-all': Forces long strings (like 1_PROPOSAL_...) to break anywhere to fit.
+                      - 'whitespace-normal': Ensures text wraps to the next line.
+                      - 'min-w-0': Prevents flex child from overflowing parent.
+                  */}
+                  <span 
+                    className="text-sm font-medium text-blue-600 hover:text-blue-800 flex-1 break-all whitespace-normal min-w-0" 
+                    style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  >
                     {docName}
                   </span>
                 </button>

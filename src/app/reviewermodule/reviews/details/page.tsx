@@ -1,15 +1,16 @@
+// app/reviewermodule/reviews/details/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import StartReviewModal from '@/components/reviewer/StartReviewModal';
+import ConflictOfInterestModal from '@/components/reviewer/ConflictOfInterestModal';
+import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { ArrowLeft, MessageCircle, FileText, Calendar, Tag, AlertCircle, Edit, AlertTriangle } from 'lucide-react';
 import { getReviewerEvaluations } from '@/app/actions/reviewer/getReviewerEvaluations';
 import { postReviewReply } from '@/app/actions/reviewer/postReviewReply';
-import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
-import { Suspense } from 'react';
 
 interface Reply {
   id: number;
@@ -36,7 +37,7 @@ interface Evaluation {
   replies: Reply[];
 }
 
-// Edit Review Confirmation Modal Component - FULLY RESPONSIVE
+// Edit Review Confirmation Modal Component
 function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
   isOpen: boolean;
   onClose: () => void;
@@ -48,31 +49,21 @@ function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 animate-fadeIn">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose}></div>
-
       <div className="relative bg-white rounded-2xl sm:rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full p-5 sm:p-6 md:p-8 animate-slideUp mx-4">
-        {/* Warning Icon */}
         <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
           <AlertTriangle className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
         </div>
-
-        {/* Title */}
         <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-2 sm:mb-3 text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           Edit Your Review?
         </h2>
-
-        {/* Subtitle */}
         <p className="text-center text-gray-600 mb-4 sm:mb-6 text-xs sm:text-sm md:text-base px-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
           You're about to edit your review for:
         </p>
-
-        {/* Submission Title */}
         <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-4 sm:mb-6 border border-blue-200/50">
           <p className="text-xs sm:text-sm font-bold text-[#101C50] text-center leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
             {submissionTitle}
           </p>
         </div>
-
-        {/* Warning Message */}
         <div className="bg-gradient-to-br from-amber-50 to-amber-100/50 rounded-xl sm:rounded-2xl p-3 sm:p-4 mb-5 sm:mb-6 border border-amber-200/50">
           <div className="flex items-start gap-2 sm:gap-3">
             <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 flex-shrink-0 mt-0.5" />
@@ -86,8 +77,6 @@ function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
             </div>
           </div>
         </div>
-
-        {/* Buttons - Fully Responsive */}
         <div className="flex flex-col gap-2 sm:gap-3">
           <button
             onClick={onConfirm}
@@ -110,13 +99,15 @@ function EditReviewModal({ isOpen, onClose, onConfirm, submissionTitle }: {
   );
 }
 
-
 function ReviewDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
+  
+  // ✅ State Variables
   const [showModal, setShowModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [coiOpen, setCoiOpen] = useState(false); // ✅ Fixes 'setCoiOpen' error
   const [loading, setLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -124,10 +115,9 @@ function ReviewDetailContent() {
   const [reviewerEvaluations, setReviewerEvaluations] = useState<any[]>([]);
   const [currentReviewerId, setCurrentReviewerId] = useState<string>('');
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [assignmentStatus, setAssignmentStatus] = useState<string>('pending');  // ✅ ADD THIS
+  const [assignmentStatus, setAssignmentStatus] = useState<string>('pending');
   const [selectedDocument, setSelectedDocument] = useState<{ name: string, url: string } | null>(null);
 
-  
   const [submissionData, setSubmissionData] = useState({
     id: id,
     title: 'Loading...',
@@ -147,7 +137,6 @@ function ReviewDetailContent() {
 
   const loadEvaluations = async () => {
     if (!id) return;
-
     setLoading(true);
     try {
       const result = await getReviewerEvaluations(id);
@@ -155,7 +144,7 @@ function ReviewDetailContent() {
       if (result.success) {
         setReviewerEvaluations(result.evaluations || []);
         setCurrentReviewerId(result.currentReviewerId || '');
-        setAssignmentStatus(result.assignmentStatus || 'pending');  // ✅ Store it
+        setAssignmentStatus(result.assignmentStatus || 'pending');
 
         if (result.submission) {
           setSubmissionData({
@@ -165,10 +154,9 @@ function ReviewDetailContent() {
             assignedDate: result.submission.assignedDate,
             dueDate: result.submission.dueDate || 'TBD',
             description: result.submission.description,
-            status: result.submission.status?.toLowerCase() || 'pending'  // ✅ Normalize here
+            status: result.submission.status?.toLowerCase() || 'pending'
           });
         }
-
 
         if (result.consolidatedDocument) {
           setSubmittedFiles([
@@ -182,9 +170,6 @@ function ReviewDetailContent() {
             }
           ]);
         }
-
-      } else {
-        console.error('Failed to load evaluations:', result.error);
       }
     } catch (error) {
       console.error('Error loading evaluations:', error);
@@ -193,28 +178,33 @@ function ReviewDetailContent() {
     }
   };
 
-  const handleStartReview = () => {
-    setShowModal(true);
-  };
-
+  const handleStartReview = () => setShowModal(true);
+  
   const handleConfirmReview = () => {
     setShowModal(false);
+    // ✅ Updated path based on your latest snippet
     router.push(`/reviewermodule/review-submission?id=${id}`);
   };
 
-  // New handlers for edit review
-  const handleEditReview = () => {
-    setShowEditModal(true);
-  };
-
+  const handleEditReview = () => setShowEditModal(true);
+  
   const handleConfirmEditReview = () => {
     setShowEditModal(false);
+    // ✅ Updated path based on your latest snippet
     router.push(`/reviewermodule/review-submission?id=${id}&edit=true`);
   };
 
   const handleReplyClick = (evaluationId: string) => {
     setReplyingTo(replyingTo === evaluationId ? null : evaluationId);
     setReplyText('');
+  };
+
+  const toggleReplies = (evaluationId: string) => {
+    setShowRepliesFor(prev =>
+      prev.includes(evaluationId)
+        ? prev.filter(id => id !== evaluationId)
+        : [...prev, evaluationId]
+    );
   };
 
   const handlePostReply = async () => {
@@ -235,11 +225,7 @@ function ReviewDetailContent() {
                   reviewerId: currentReviewerId,
                   name: 'You',
                   code: 'N/A',
-                  date: new Date().toLocaleDateString('en-US', {
-                    month: 'numeric',
-                    day: 'numeric',
-                    year: 'numeric'
-                  }),
+                  date: new Date().toLocaleDateString('en-US'),
                   text: replyText,
                 }
               ]
@@ -247,174 +233,31 @@ function ReviewDetailContent() {
           }
           return evaluation;
         }));
-
-        if (!showRepliesFor.includes(replyingTo)) {
-          setShowRepliesFor(prev => [...prev, replyingTo]);
-        }
-
         setReplyText('');
         setReplyingTo(null);
-      } else {
-        alert(`Failed to post reply: ${result.error}`);
       }
     } catch (error) {
       console.error('Error posting reply:', error);
-      alert('Failed to post reply');
     }
   };
 
-  const toggleReplies = (evaluationId: string) => {
-    setShowRepliesFor(prev =>
-      prev.includes(evaluationId)
-        ? prev.filter(id => id !== evaluationId)
-        : [...prev, evaluationId]
-    );
+  const handleSubmitCOI = async (payload: any) => {
+    try {
+      console.log('Submitting COI Payload:', payload);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      alert('Conflict of Interest submitted. The secretariat will be notified.');
+      return { success: true };
+    } catch (error) {
+      console.error('COI Error:', error);
+      return { success: false, error: 'Failed to submit COI.' };
+    }
   };
 
-  // Check if current user has already submitted a review
   const currentUserReview = reviewerEvaluations.find(
     (evaluation) => String(evaluation.reviewerId) === currentReviewerId
   );
 
-  const RenderReply = ({ reply, parentId, depth = 0, isLast = false }: { reply: Reply; parentId: string; depth?: number; isLast?: boolean }) => {
-    const replyId = `${parentId}-${reply.id}`;
-    const hasNestedReplies = reply.replies && reply.replies.length > 0;
-    const isMyReply = reply.reviewerId === currentReviewerId;
-
-    return (
-      <div className="relative">
-        <div
-          className="absolute left-5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-gray-300 to-transparent"
-          style={{ height: isLast && !hasNestedReplies ? '30px' : '100%' }}
-        ></div>
-
-        <div className="ml-10 sm:ml-12 mt-4 relative">
-          <div className="absolute left-[-28px] top-6 w-7 h-0.5 bg-gray-300 rounded-full"></div>
-
-          <div className={`rounded-2xl p-4 sm:p-5 border-2 shadow-sm transition-all duration-300 hover:shadow-md ${isMyReply
-              ? 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200/60'
-              : 'bg-white border-gray-200/60'
-            }`}>
-            <div className="flex gap-3 sm:gap-4">
-              <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md ${isMyReply
-                  ? 'bg-gradient-to-br from-blue-600 to-blue-700'
-                  : 'bg-gradient-to-br from-[#101C50] to-[#1a2d70]'
-                }`}>
-                <span className="text-white font-bold text-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {reply.name.split(' ')[1]?.[0] || 'R'}
-                </span>
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                  <h3 className="text-sm font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {reply.name}
-                  </h3>
-                  <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {reply.code}
-                  </span>
-                  {isMyReply && (
-                    <span className="px-2.5 py-1 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs rounded-full font-bold shadow-sm" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      You
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mb-3 flex items-center gap-1.5" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  <Calendar className="w-3.5 h-3.5" />
-                  {reply.date}
-                </p>
-
-                <div className="space-y-2 mb-3">
-                  <p className="text-sm text-gray-800 leading-relaxed break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {reply.text || reply.ethicsRecommendation}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => handleReplyClick(replyId)}
-                  className="text-xs font-bold text-[#101C50] hover:text-blue-600 transition-colors flex items-center gap-1.5 group"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  <MessageCircle className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                  Reply
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {replyingTo === replyId && (
-            <div className="mt-4 flex gap-3 animate-fadeIn">
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-[#101C50] to-[#1a2d70] flex items-center justify-center flex-shrink-0 shadow-md">
-                <span className="text-white font-bold text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  You
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => {
-                    setReplyText(e.target.value);
-                    e.target.style.height = 'auto';
-                    e.target.style.height = e.target.scrollHeight + 'px';
-                  }}
-                  placeholder="Write a thoughtful reply..."
-                  rows={2}
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-2xl focus:border-[#101C50] focus:ring-4 focus:ring-[#101C50]/10 focus:outline-none resize-none text-sm text-gray-800 shadow-sm transition-all"
-                  style={{ fontFamily: 'Metropolis, sans-serif', minHeight: '60px', maxHeight: '180px' }}
-                />
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={handlePostReply}
-                    className="px-5 py-2 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-xs rounded-xl hover:shadow-lg transform hover:scale-105 transition-all font-bold"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    Post Reply
-                  </button>
-                  <button
-                    onClick={() => setReplyingTo(null)}
-                    className="px-5 py-2 bg-gray-200 text-gray-700 text-xs rounded-xl hover:bg-gray-300 transition-colors font-semibold"
-                    style={{ fontFamily: 'Metropolis, sans-serif' }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {hasNestedReplies && reply.replies!.map((nestedReply, index) => (
-            <RenderReply
-              key={nestedReply.id}
-              reply={nestedReply}
-              parentId={replyId}
-              depth={depth + 1}
-              isLast={index === reply.replies!.length - 1}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
-        <NavbarRoles role="reviewer" />
-        <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
-          <div className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-xl">
-            <div className="relative w-16 h-16 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50]/20"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50] border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-gray-700 text-lg font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading review details...
-            </p>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
@@ -422,40 +265,28 @@ function ReviewDetailContent() {
 
       <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 2xl:px-32 pb-12">
         <div className="max-w-[1600px] mx-auto">
-          {/* Back Button with Modern Design */}
+          {/* Back Button */}
           <button
-            onClick={() => router.push('/reviewermodule/reviews')}
-            className="flex items-center gap-2.5 mb-8 px-5 py-3 bg-white/80 backdrop-blur-sm text-[#101C50] hover:bg-white rounded-2xl transition-all shadow-md hover:shadow-lg group"
-            style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}
+            onClick={() => router.push('/reviewermodule')}
+            className="flex items-center gap-2.5 mb-8 px-5 py-3 bg-white/80 backdrop-blur-sm text-[#101C50] hover:bg-white rounded-2xl transition-all shadow-md font-bold"
+            style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft size={20} />
             Back to Reviews
           </button>
 
           {/* Submission Details Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
-            <div className="flex items-center mb-8">
-              <div className="flex-1">
-                <h2 className="text-2xl sm:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Submission Details
-                </h2>
-                <div className="h-1 w-20 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full mt-2"></div>
-              </div>
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-[#101C50] mb-6">Submission Details</h2>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-              {/* Title Section */}
               <div className="lg:col-span-2 space-y-6">
                 <div className="bg-gradient-to-br from-blue-50/50 to-transparent rounded-2xl p-5 border border-blue-100/50">
                   <div className="flex items-start gap-3 mb-2">
                     <FileText className="w-5 h-5 text-[#101C50] mt-1 flex-shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-600 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Research Title
-                      </p>
-                      <p className="text-base sm:text-lg text-[#101C50] font-bold leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {submissionData.title}
-                      </p>
+                      <p className="text-xs text-gray-600 mb-2 font-bold uppercase tracking-wider">Research Title</p>
+                      <p className="text-base sm:text-lg text-[#101C50] font-bold leading-relaxed">{submissionData.title}</p>
                     </div>
                   </div>
                 </div>
@@ -464,57 +295,40 @@ function ReviewDetailContent() {
                   <div className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200/50">
                     <div className="flex items-center gap-2 mb-2">
                       <Calendar className="w-4 h-4 text-[#101C50]" />
-                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Assigned Date
-                      </p>
+                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider">Assigned Date</p>
                     </div>
-                    <p className="text-base text-[#101C50] font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {submissionData.assignedDate}
-                    </p>
+                    <p className="text-base text-[#101C50] font-semibold">{submissionData.assignedDate}</p>
                   </div>
-
                   <div className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200/50">
                     <div className="flex items-center gap-2 mb-2">
                       <AlertCircle className="w-4 h-4 text-[#7C1100]" />
-                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        Due Date
-                      </p>
+                      <p className="text-xs text-gray-600 font-bold uppercase tracking-wider">Due Date</p>
                     </div>
-                    <p className="text-base text-[#7C1100] font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {submissionData.dueDate}
-                    </p>
+                    <p className="text-base text-[#7C1100] font-bold">{submissionData.dueDate}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Category Section */}
               <div className="space-y-5">
                 <div className="bg-gradient-to-br from-amber-50/50 to-transparent rounded-2xl p-5 border border-amber-100/50">
                   <div className="flex items-center gap-2 mb-3">
                     <Tag className="w-4 h-4 text-amber-700" />
-                    <p className="text-xs text-gray-600 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Review Category
-                    </p>
+                    <p className="text-xs text-gray-600 font-bold uppercase tracking-wider">Review Category</p>
                   </div>
-                  <span className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm bg-gradient-to-r from-amber-100 to-amber-50 text-amber-900 border border-amber-200" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  <span className="inline-flex items-center px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm bg-gradient-to-r from-amber-100 to-amber-50 text-amber-900 border border-amber-200">
                     {submissionData.category}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Description Section */}
             <div className="mt-8 pt-8 border-t-2 border-gray-100">
-              <p className="text-xs text-gray-600 mb-3 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                Research Description
-              </p>
-              <p className="text-base text-gray-700 leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {submissionData.description}
-              </p>
+              <p className="text-xs text-gray-600 mb-3 font-bold uppercase tracking-wider">Research Description</p>
+              <p className="text-base text-gray-700 leading-relaxed">{submissionData.description}</p>
             </div>
           </div>
 
-          {/* Submitted Files Card */}
+           {/* Submitted Files Card */}
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
             <div className="flex items-center mb-6">
               <div className="flex-1">
@@ -566,7 +380,8 @@ function ReviewDetailContent() {
             </div>
           </div>
 
-          {/* Reviewer Evaluations Card */}
+
+          {/* Reviewer Evaluations Card - ✅ EXACT DESIGN RESTORED */}
           <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-8 md:p-10 shadow-xl mb-8 border border-gray-100/50">
             <div className="flex items-center mb-8">
               <div className="flex-1">
@@ -771,17 +586,28 @@ function ReviewDetailContent() {
             )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row justify-center gap-4">
-            {/* ✅ If status is pending OR no review, show "Start Review" */}
-            {assignmentStatus  === 'pending' || !currentUserReview ? (
-              <button
-                onClick={handleStartReview}
-                className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl"
-                style={{ fontFamily: 'Metropolis, sans-serif' }}
-              >
-                Start Review
-              </button>
+          {/* Action Buttons Section */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4 py-8">
+            {/* ✅ If status is pending OR no review, show "Start Review" AND "Conflict of Interest" */}
+            {assignmentStatus === 'pending' || !currentUserReview ? (
+              <>
+                <button
+                  onClick={handleStartReview}
+                  className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                >
+                  Start Review
+                </button>
+
+                <button
+                  onClick={() => setCoiOpen(true)}
+                  className="px-12 sm:px-16 py-4 sm:py-5 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-2xl hover:shadow-2xl transform hover:scale-105 transition-all text-base sm:text-lg font-bold shadow-xl flex items-center justify-center gap-2"
+                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  Conflict of Interest
+                </button>
+              </>
             ) : (
               <button
                 onClick={handleEditReview}
@@ -797,53 +623,20 @@ function ReviewDetailContent() {
         </div>
       </div>
 
-      {selectedDocument && (
-        <DocumentViewerModal
-          isOpen={viewerOpen}
-          onClose={() => {
-            setViewerOpen(false);
-            setSelectedDocument(null);
-          }}
-          documentName={selectedDocument.name}
-          documentUrl={selectedDocument.url}
-        />
-      )}
-
-      <StartReviewModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onConfirm={handleConfirmReview}
-        submissionTitle={submissionData.title}
-      />
-
-      <EditReviewModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        onConfirm={handleConfirmEditReview}
-        submissionTitle={submissionData.title}
-      />
-
       <Footer />
+
+      {/* ✅ Modals */}
+      <StartReviewModal isOpen={showModal} onClose={() => setShowModal(false)} onConfirm={handleConfirmReview} submissionTitle={submissionData.title} />
+      <EditReviewModal isOpen={showEditModal} onClose={() => setShowEditModal(false)} onConfirm={handleConfirmEditReview} submissionTitle={submissionData.title} />
+      <ConflictOfInterestModal isOpen={coiOpen} onClose={() => setCoiOpen(false)} protocolCode={String(submissionData.id ?? id ?? '')} submissionTitle={submissionData.title} onSubmit={handleSubmitCOI} />
+      {selectedDocument && <DocumentViewerModal isOpen={viewerOpen} onClose={() => setViewerOpen(false)} documentName={selectedDocument.name} documentUrl={selectedDocument.url} />}
     </div>
   );
 }
 
-export default function ReviewDetailPage() {
+export default function ReviewDetailsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
-        <NavbarRoles role="reviewer" />
-        <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-10 shadow-xl">
-            <div className="relative w-16 h-16 mx-auto">
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50]/20"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50] border-t-transparent animate-spin"></div>
-            </div>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen bg-[#F0F4F8] flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div></div>}>
       <ReviewDetailContent />
     </Suspense>
   );

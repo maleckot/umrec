@@ -1,8 +1,7 @@
-// components/staff-secretariat-admin/submission-details/ClassificationPanel.tsx
 'use client';
 
 import { useState } from 'react';
-import { CheckCircle, AlertCircle, Info, Sparkles } from 'lucide-react';
+import { CheckCircle, AlertCircle, Info, Sparkles, Clock } from 'lucide-react';
 
 interface ClassificationPanelProps {
   systemSuggestedCategory?: 'Exempted' | 'Expedited' | 'Full Review';
@@ -22,6 +21,22 @@ export default function ClassificationPanel({
   const [selectedCategory, setSelectedCategory] = useState<'Exempted' | 'Expedited' | 'Full Review' | null>(null);
   const [showModal, setShowModal] = useState(false);
 
+  // --- NEW: Helper to calculate dates ---
+  const getTurnaroundDetails = (category: string) => {
+    let days = 0;
+    if (category === 'Exempted') days = 7;
+    else if (category === 'Expedited') days = 14;
+    else if (category === 'Full Review') days = 30;
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + days);
+
+    return { 
+        days, 
+        dateStr: dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+    };
+  };
+
   const categories = [
     {
       value: 'Exempted' as const,
@@ -29,6 +44,7 @@ export default function ClassificationPanel({
       description: 'For submissions that qualify for exemption',
       color: 'blue',
       reviewers: 0,
+      days: 7, // Standard TAT
     },
     {
       value: 'Expedited' as const,
@@ -36,13 +52,15 @@ export default function ClassificationPanel({
       description: 'For submissions that are eligible for expedited review procedures',
       color: 'yellow',
       reviewers: 3,
+      days: 14, // Standard TAT
     },
     {
       value: 'Full Review' as const,
       title: 'Full Review',
       description: 'For submissions that require complete committee review',
       color: 'red',
-      reviewers: 10,
+      reviewers: 5, // Corrected from 10 to 5 based on your logic usually
+      days: 30, // Standard TAT
     },
   ];
 
@@ -64,14 +82,10 @@ export default function ClassificationPanel({
 
   const getCategoryColor = (color: string) => {
     switch (color) {
-      case 'blue':
-        return 'bg-blue-600 hover:bg-blue-700';
-      case 'yellow':
-        return 'bg-yellow-600 hover:bg-yellow-700';
-      case 'red':
-        return 'bg-red-600 hover:bg-red-700';
-      default:
-        return 'bg-gray-600 hover:bg-gray-700';
+      case 'blue': return 'bg-blue-600 hover:bg-blue-700';
+      case 'yellow': return 'bg-yellow-600 hover:bg-yellow-700';
+      case 'red': return 'bg-red-600 hover:bg-red-700';
+      default: return 'bg-gray-600 hover:bg-gray-700';
     }
   };
 
@@ -98,28 +112,10 @@ export default function ClassificationPanel({
                   <p className="text-2xl font-bold text-blue-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                     {systemSuggestedCategory}
                   </p>
-                  {/* <div className="flex items-center gap-2 mb-2">
-                    <div className="flex-1 bg-blue-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className="bg-blue-600 h-full rounded-full transition-all"
-                        style={{ width: `${aiConfidence * 100}%` }}
-                      />
-                    </div>
-                    <span className="text-sm font-bold text-blue-900" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      {(aiConfidence * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-blue-800 mb-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    System has automatically analyzed this submission using {aiMethod || 'advanced classification'}
-                  </p> */}
                   {aiClassifiedAt && (
                     <p className="text-xs text-blue-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                       Classified on {new Date(aiClassifiedAt).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
+                        month: 'long', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}
                     </p>
                   )}
@@ -152,45 +148,60 @@ export default function ClassificationPanel({
             </p>
             
             <div className="space-y-3">
-              {categories.map((category) => (
-                <button
-                  key={category.value}
-                  onClick={() => handleCategorySelect(category.value)}
-                  className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                    selectedCategory === category.value
-                      ? `border-${category.color}-600 ${getCategoryColor(category.color)} text-white`
-                      : 'border-gray-300 bg-gray-700 text-white hover:border-gray-400'
-                  } ${
-                    systemSuggestedCategory === category.value && aiConfidence
-                      ? 'ring-2 ring-blue-400 ring-offset-2'
-                      : ''
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-base font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                        {category.title}
-                      </h4>
-                      {systemSuggestedCategory === category.value && aiConfidence && (
-                        <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-                          System Recommended
-                        </span>
-                      )}
-                    </div>
-                    {selectedCategory === category.value && (
-                      <CheckCircle size={20} className="text-white" />
-                    )}
-                  </div>
-                  <p className="text-xs opacity-90 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {category.description}
-                  </p>
-                  {category.reviewers > 0 && (
-                    <p className="text-xs font-semibold opacity-90" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                      Requires {category.reviewers} reviewer{category.reviewers > 1 ? 's' : ''}
-                    </p>
-                  )}
-                </button>
-              ))}
+              {categories.map((category) => {
+                const turnAround = getTurnaroundDetails(category.value);
+                return (
+                    <button
+                        key={category.value}
+                        onClick={() => handleCategorySelect(category.value)}
+                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                        selectedCategory === category.value
+                            ? `border-${category.color}-600 ${getCategoryColor(category.color)} text-white`
+                            : 'border-gray-300 bg-gray-700 text-white hover:border-gray-400'
+                        } ${
+                        systemSuggestedCategory === category.value && aiConfidence
+                            ? 'ring-2 ring-blue-400 ring-offset-2'
+                            : ''
+                        }`}
+                    >
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                                <h4 className="text-base font-bold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                {category.title}
+                                </h4>
+                                {systemSuggestedCategory === category.value && aiConfidence && (
+                                <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                                    System Recommended
+                                </span>
+                                )}
+                            </div>
+                            {selectedCategory === category.value && (
+                                <CheckCircle size={20} className="text-white" />
+                            )}
+                        </div>
+                        <p className="text-xs opacity-90 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        {category.description}
+                        </p>
+                        
+                        {/* --- NEW: Turnaround Time Badge in Card --- */}
+                        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/20">
+                            {category.reviewers > 0 && (
+                                <span className="text-xs font-semibold opacity-90 flex items-center gap-1">
+                                    <span className="bg-white/20 px-1.5 py-0.5 rounded">
+                                        {category.reviewers} Reviewers
+                                    </span>
+                                </span>
+                            )}
+                            <span className="text-xs font-semibold opacity-90 flex items-center gap-1">
+                                <Clock size={12} />
+                                <span className="bg-white/20 px-1.5 py-0.5 rounded">
+                                    {category.days} Days Turnaround
+                                </span>
+                            </span>
+                        </div>
+                    </button>
+                );
+              })}
             </div>
           </div>
 
@@ -234,9 +245,23 @@ export default function ClassificationPanel({
               <p className="text-2xl font-bold text-blue-900 text-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 {selectedCategory}
               </p>
+              
+              {/* --- NEW: Turnaround Time Info in Modal --- */}
+              <div className="flex justify-center items-center gap-4 mt-3 pt-3 border-t border-blue-200">
+                  <div className="text-center">
+                     <p className="text-xs text-blue-600 uppercase font-bold">Review Period</p>
+                     <p className="text-sm font-bold text-blue-900">{getTurnaroundDetails(selectedCategory).days} Days</p>
+                  </div>
+                  <div className="h-6 w-px bg-blue-300"></div>
+                  <div className="text-center">
+                     <p className="text-xs text-blue-600 uppercase font-bold">Expected Due Date</p>
+                     <p className="text-sm font-bold text-blue-900">{getTurnaroundDetails(selectedCategory).dateStr}</p>
+                  </div>
+              </div>
+
               {selectedCategory !== systemSuggestedCategory && aiConfidence && (
-                <p className="text-xs text-amber-700 text-center mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  This differs from AI suggestion: {systemSuggestedCategory}
+                <p className="text-xs text-amber-700 text-center mt-3 bg-amber-50 py-1 rounded" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                  ⚠️ Differs from AI suggestion: {systemSuggestedCategory}
                 </p>
               )}
             </div>

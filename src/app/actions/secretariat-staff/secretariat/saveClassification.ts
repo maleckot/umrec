@@ -130,10 +130,13 @@ async function generateAndUploadConsolidatedReview(
 }
 
 
+// --- MAIN FUNCTION UPDATE STARTS HERE ---
+
 export async function saveClassification(
   submissionId: string,
   category: 'Exempted' | 'Expedited' | 'Full Review',
-  revisionComments?: string
+  revisionComments?: string,
+  dueDate?: Date // <--- 1. ADDED THIS ARGUMENT
 ) {
   try {
     const supabase = await createClient();
@@ -257,6 +260,7 @@ export async function saveClassification(
           classified_at: new Date().toISOString(),
           classified_by: user.id,
           updated_at: new Date().toISOString(),
+          due_date: dueDate ? dueDate.toISOString() : null, // <--- 2. SAVING DUE DATE (optional for exempted, but good for records)
         })
         .eq('id', submissionId);
 
@@ -333,6 +337,7 @@ export async function saveClassification(
           classified_at: new Date().toISOString(),
           classified_by: user.id,
           updated_at: new Date().toISOString(),
+          due_date: dueDate ? dueDate.toISOString() : null, // <--- 2. SAVING DUE DATE HERE (Crucial for dashboard)
         })
         .eq('id', submissionId);
 

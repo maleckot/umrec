@@ -3,9 +3,24 @@
 
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
+import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getReviewerDashboardData } from '@/app/actions/reviewer/getReviewerDashboardData';
+import { 
+  BookOpen, 
+  FileText, 
+  Download, 
+  Eye, 
+  Clock, 
+  CheckCircle, 
+  Briefcase,
+  AlertCircle,
+  FileCheck,
+  Shield,
+  Scale,
+  Book
+} from 'lucide-react';
 
 type TabType = 'all' | 'expedited' | 'full';
 
@@ -15,6 +30,9 @@ export default function ReviewerDashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [overdueActiveTab, setOverdueActiveTab] = useState<TabType>('all');
+
+  // --- MODAL STATE ---
+  const [viewingDocument, setViewingDocument] = useState<{ name: string; url: string } | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -45,545 +63,500 @@ export default function ReviewerDashboard() {
   const allNewAssignments = dashboardData?.newAssignments || [];
   const allOverdueReviews = dashboardData?.overdueReviews || [];
 
-  const getFilteredAssignments = () => {
-    if (activeTab === 'all') {
-      return allNewAssignments;
-    } else if (activeTab === 'expedited') {
-      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited');
-    } else if (activeTab === 'full') {
-      return allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review');
-    }
-    return allNewAssignments;
+  // Filter Logic
+  const filterData = (data: any[], tab: TabType) => {
+    if (tab === 'all') return data;
+    const filterTerm = tab === 'expedited' ? 'expedited' : 'full review';
+    return data.filter((a: any) => a.category?.toLowerCase().includes(filterTerm));
   };
 
-  const getFilteredOverdueReviews = () => {
-    if (overdueActiveTab === 'all') {
-      return allOverdueReviews;
-    } else if (overdueActiveTab === 'expedited') {
-      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited');
-    } else if (overdueActiveTab === 'full') {
-      return allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review');
-    }
-    return allOverdueReviews;
-  };
-
-  const filteredAssignments = getFilteredAssignments();
-  const filteredOverdueReviews = getFilteredOverdueReviews();
-
-  const expeditedCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'expedited').length;
-  const fullReviewCount = allNewAssignments.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
-
-  const overdueExpeditedCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'expedited').length;
-  const overdueFullReviewCount = allOverdueReviews.filter((a: any) => a.category?.toLowerCase() === 'full review').length;
+  const filteredAssignments = filterData(allNewAssignments, activeTab);
+  const filteredOverdueReviews = filterData(allOverdueReviews, overdueActiveTab);
 
   const handleViewSubmission = (assignment: any) => {
     router.push(`/reviewermodule/reviews/details?id=${assignment.submissionId}`);
   };
 
-  const getTabLabel = (tab: TabType, count: number) => {
-    if (tab === 'all') return `All Submissions (${count})`;
-    if (tab === 'expedited') return `Expedited (${count})`;
-    return `Full Review (${count})`;
+  // --- PDF HANDLERS ---
+  
+  const handleDownloadSOP = () => {
+    const link = document.createElement('a');
+    link.href = '/resources/sop.pdf'; 
+    link.download = 'Standard_Operating_Procedures_2025.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleViewSOP = () => {
+    setViewingDocument({
+      name: 'Standard Operating Procedures 2025',
+      url: '/resources/sop.pdf'
+    });
+  };
+
+  // PHREB File 1
+  const handleDownloadPHREB_Guidelines = () => {
+    const link = document.createElement('a');
+    link.href = '/resources/NEGRIHP.pdf'; 
+    link.download = 'NEGRIHP_2022.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleViewPHREB_Guidelines = () => {
+    setViewingDocument({
+      name: 'National Ethical Guidelines (2022)',
+      url: '/resources/NEGRIHP.pdf'
+    });
+  };
+
+  // PHREB File 2
+  const handleDownloadPHREB_Workbook = () => {
+    const link = document.createElement('a');
+    link.href = '/resources/phreb.pdf';
+    link.download = 'PHREB_2020.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleViewPHREB_Workbook = () => {
+    setViewingDocument({
+      name: 'PHREB Standard Operating Procedures (2020)',
+      url: '/resources/phreb.pdf'
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
+      <div className="min-h-screen bg-[#F0F4F8]">
         <NavbarRoles role="reviewer" />
-        <div className="flex items-center justify-center pt-24 md:pt-28 lg:pt-32 pb-8">
-          <div className="text-center bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl">
-            <div className="relative w-16 h-16 mx-auto mb-6">
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50]/20"></div>
-              <div className="absolute inset-0 rounded-full border-4 border-[#101C50] border-t-transparent animate-spin"></div>
-            </div>
-            <p className="text-gray-700 text-lg font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-              Loading dashboard...
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center">
+            <div className="w-12 h-12 border-4 border-[#101C50] border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-[#101C50] font-medium animate-pulse" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+              Loading Dashboard...
             </p>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E8EEF3] via-[#F0F4F8] to-[#E8EEF3]">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <NavbarRoles role="reviewer" />
 
-      <div className="pt-24 md:pt-28 lg:pt-32 px-4 sm:px-6 md:px-10 lg:px-16 xl:px-24 2xl:px-32 pb-12">
-        <div className="max-w-[1600px] mx-auto">
-          {/* Page Title with Elegant Animation */}
-          <div className="mb-8 sm:mb-10 animate-fadeIn">
-            <h1 
-              className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#101C50] via-[#1a2d70] to-[#101C50] bg-clip-text text-transparent mb-2"
-              style={{ fontFamily: 'Metropolis, sans-serif' }}
-            >
+      {/* Main Content Wrapper */}
+      <div className="flex-grow pt-32 pb-16 px-4 sm:px-8 lg:px-12 max-w-[1600px] mx-auto w-full">
+        
+        {/* --- HEADER --- */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold text-[#101C50] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Reviewer Dashboard
             </h1>
-            <div className="h-1.5 w-24 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full"></div>
+            <p className="text-gray-500 text-base">
+              Manage your review assignments and access ethics resources.
+            </p>
           </div>
-
-          {/* Stats Cards with Modern Shadow and Hover Effects */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 lg:gap-8 mb-10 sm:mb-12">
-            {/* New Assignments Card */}
-            <div className="group bg-white rounded-3xl p-6 sm:p-7 md:p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-gray-100/50">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-xs sm:text-sm md:text-base text-gray-500 mb-2 sm:mb-3 font-medium uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    New Assignments
-                  </p>
-                  <p className="text-4xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-br from-[#101C50] to-[#288cfa] bg-clip-text text-transparent" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {stats.newAssignments}
-                  </p>
-                </div>
-                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-[#101C50] to-[#1a2d70] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Overdue Reviews Card */}
-            <div className="group bg-white rounded-3xl p-6 sm:p-7 md:p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-gray-100/50">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-xs sm:text-sm md:text-base text-gray-500 mb-2 sm:mb-3 font-medium uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Overdue Reviews
-                  </p>
-                  <p className="text-4xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-br from-[#7C1100] to-[#b91900] bg-clip-text text-transparent" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {stats.overdueReviews}
-                  </p>
-                </div>
-                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-[#7C1100] to-[#5a0c00] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Completed Reviews Card */}
-            <div className="group bg-white rounded-3xl p-6 sm:p-7 md:p-8 shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 border border-gray-100/50 sm:col-span-2 lg:col-span-1">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-xs sm:text-sm md:text-base text-gray-500 mb-2 sm:mb-3 font-medium uppercase tracking-wide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    Completed Reviews
-                  </p>
-                  <p className="text-4xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-br from-[#2d7a3e] to-[#1e5c2e] bg-clip-text text-transparent" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    {stats.completedReviews}
-                  </p>
-                </div>
-                <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-gradient-to-br from-[#2d7a3e] to-[#1e5c2e] rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* New Assignments Section */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-7 md:p-10 shadow-xl mb-10 sm:mb-12 border border-gray-100/50">
-            <div className="flex items-center mb-6 sm:mb-8">
-              <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  New Assignments
-                </h2>
-                <div className="h-1 w-16 bg-gradient-to-r from-[#101C50] to-[#288cfa] rounded-full mt-2"></div>
-              </div>
-            </div>
-
-            {/* Desktop Tabs with Modern Design */}
-            <div className="hidden md:block mb-8">
-              <div className="flex gap-3 p-2 bg-gray-50/80 rounded-2xl">
-                <button
-                  onClick={() => setActiveTab('all')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    activeTab === 'all'
-                      ? 'bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-[#101C50] hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  All Submissions ({allNewAssignments.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('expedited')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    activeTab === 'expedited'
-                      ? 'bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-blue-800 hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Expedited ({expeditedCount})
-                </button>
-                <button
-                  onClick={() => setActiveTab('full')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    activeTab === 'full'
-                      ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-amber-800 hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Full Review ({fullReviewCount})
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile Dropdown with Enhanced Style */}
-            <div className="md:hidden mb-6 sm:mb-8">
-              <select
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value as TabType)}
-                className="w-full px-5 py-4 border-2 border-gray-200 rounded-2xl focus:border-[#101C50] focus:ring-4 focus:ring-[#101C50]/10 focus:outline-none text-sm font-bold bg-white shadow-md transition-all"
-                style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50' }}
-              >
-                <option value="all">{getTabLabel('all', allNewAssignments.length)}</option>
-                <option value="expedited">{getTabLabel('expedited', expeditedCount)}</option>
-                <option value="full">{getTabLabel('full', fullReviewCount)}</option>
-              </select>
-            </div>
-
-            {/* Content Area */}
-            {filteredAssignments.length === 0 ? (
-              <div className="text-center py-16 sm:py-20">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-                  <svg className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                </div>
-                <p className="text-gray-500 text-base sm:text-lg font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  No assignments found in this category
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop Table with Enhanced Design */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200">
-                        <th className="text-left pb-5 pr-4 w-[40%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          TITLE
-                        </th>
-                        <th className="text-left pb-5 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          CATEGORY
-                        </th>
-                        <th className="text-left pb-5 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          ASSIGNED DATE
-                        </th>
-                        <th className="text-left pb-5 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          DUE DATE
-                        </th>
-                        <th className="text-center pb-5 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          ACTION
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredAssignments.map((assignment: any, index: number) => (
-                        <tr 
-                          key={assignment.id} 
-                          className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-blue-50/30 hover:to-transparent transition-all duration-200"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          <td className="py-5 pr-4">
-                            <p className="text-sm lg:text-base text-gray-800 font-medium leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {assignment.title}
-                            </p>
-                          </td>
-                          <td className="py-5 pr-4">
-                            <span 
-                              className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-bold shadow-sm ${
-                                assignment.category?.toLowerCase() === 'expedited review'
-                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border border-blue-200'
-                                  : 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 border border-amber-200'
-                              }`}
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              {assignment.category}
-                            </span>
-                          </td>
-                          <td className="py-5 pr-4">
-                            <p className="text-sm lg:text-base text-gray-700 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {assignment.assignedDate}
-                            </p>
-                          </td>
-                          <td className="py-5 pr-4">
-                            <p className="text-sm lg:text-base text-gray-700 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {assignment.dueDate}
-                            </p>
-                          </td>
-                          <td className="py-5 text-center">
-                            <button
-                              onClick={() => handleViewSubmission(assignment)}
-                              className="px-7 py-3 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-sm font-bold rounded-full hover:shadow-xl hover:scale-105 transform transition-all duration-300"
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Card View with Enhanced Design */}
-                <div className="md:hidden space-y-4 sm:space-y-5">
-                  {filteredAssignments.map((assignment: any, index: number) => (
-                    <div 
-                      key={assignment.id} 
-                      className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-5 sm:p-6 shadow-md hover:shadow-xl border border-gray-100 transition-all duration-300"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="space-y-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Title</p>
-                          <p className="text-sm sm:text-base text-gray-900 font-bold leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {assignment.title}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Category</p>
-                            <span 
-                              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
-                                assignment.category?.toLowerCase() === 'expedited review'
-                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800'
-                                  : 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800'
-                              }`}
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              {assignment.category}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Assigned</p>
-                            <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {assignment.assignedDate}
-                            </p>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Due Date</p>
-                          <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {assignment.dueDate}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleViewSubmission(assignment)}
-                          className="w-full px-6 py-3.5 bg-gradient-to-r from-[#101C50] to-[#1a2d70] text-white text-sm font-bold rounded-full hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Overdue Reviews Section */}
-          <div className="bg-white/95 backdrop-blur-sm rounded-3xl p-6 sm:p-7 md:p-10 shadow-xl border border-red-100/50">
-            <div className="flex items-center mb-6 sm:mb-8">
-              <div className="flex-1">
-                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#7C1100]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  Overdue Reviews
-                </h2>
-                <div className="h-1 w-16 bg-gradient-to-r from-[#7C1100] to-[#b91900] rounded-full mt-2"></div>
-              </div>
-            </div>
-
-            {/* Desktop Tabs */}
-            <div className="hidden md:block mb-8">
-              <div className="flex gap-3 p-2 bg-red-50/50 rounded-2xl">
-                <button
-                  onClick={() => setOverdueActiveTab('all')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    overdueActiveTab === 'all'
-                      ? 'bg-gradient-to-r from-[#7C1100] to-[#5a0c00] text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-[#7C1100] hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  All Submissions ({allOverdueReviews.length})
-                </button>
-                <button
-                  onClick={() => setOverdueActiveTab('expedited')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    overdueActiveTab === 'expedited'
-                      ? 'bg-gradient-to-r from-blue-700 to-blue-900 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-blue-800 hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Expedited ({overdueExpeditedCount})
-                </button>
-                <button
-                  onClick={() => setOverdueActiveTab('full')}
-                  className={`flex-1 px-6 py-4 text-sm lg:text-base font-bold rounded-xl transition-all duration-300 ${
-                    overdueActiveTab === 'full'
-                      ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-lg transform scale-105'
-                      : 'text-gray-600 hover:text-amber-800 hover:bg-white/50'
-                  }`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Full Review ({overdueFullReviewCount})
-                </button>
-              </div>
-            </div>
-
-            {/* Mobile Dropdown */}
-            <div className="md:hidden mb-6 sm:mb-8">
-              <select
-                value={overdueActiveTab}
-                onChange={(e) => setOverdueActiveTab(e.target.value as TabType)}
-                className="w-full px-5 py-4 border-2 border-red-200 rounded-2xl focus:border-[#7C1100] focus:ring-4 focus:ring-[#7C1100]/10 focus:outline-none text-sm font-bold bg-white shadow-md transition-all"
-                style={{ fontFamily: 'Metropolis, sans-serif', color: '#7C1100' }}
-              >
-                <option value="all">{getTabLabel('all', allOverdueReviews.length)}</option>
-                <option value="expedited">{getTabLabel('expedited', overdueExpeditedCount)}</option>
-                <option value="full">{getTabLabel('full', overdueFullReviewCount)}</option>
-              </select>
-            </div>
-
-            {/* Content Area */}
-            {filteredOverdueReviews.length === 0 ? (
-              <div className="text-center py-16 sm:py-20">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-                  <svg className="w-10 h-10 sm:w-12 sm:h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-gray-500 text-base sm:text-lg font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  No overdue reviews in this category
-                </p>
-              </div>
-            ) : (
-              <>
-                {/* Desktop Table */}
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200">
-                        <th className="text-left pb-5 pr-4 w-[55%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          TITLE
-                        </th>
-                        <th className="text-left pb-5 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          CATEGORY
-                        </th>
-                        <th className="text-left pb-5 pr-4 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          DUE DATE
-                        </th>
-                        <th className="text-center pb-5 w-[15%]" style={{ fontFamily: 'Metropolis, sans-serif', color: '#101C50', fontWeight: 800, fontSize: '13px', letterSpacing: '0.5px' }}>
-                          ACTION
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredOverdueReviews.map((review: any, index: number) => (
-                        <tr 
-                          key={review.id} 
-                          className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-red-50/30 hover:to-transparent transition-all duration-200"
-                          style={{ animationDelay: `${index * 50}ms` }}
-                        >
-                          <td className="py-5 pr-4">
-                            <p className="text-sm lg:text-base text-gray-800 font-medium leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {review.title}
-                            </p>
-                          </td>
-                          <td className="py-5 pr-4">
-                            <span 
-                              className={`inline-flex items-center px-4 py-2 rounded-full text-xs font-bold shadow-sm ${
-                                review.category?.toLowerCase() === 'expedited review'
-                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800 border border-blue-200'
-                                  : 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800 border border-amber-200'
-                              }`}
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              {review.category}
-                            </span>
-                          </td>
-                          <td className="py-5 pr-4">
-                            <p className="text-sm lg:text-base text-gray-700 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {review.dueDate}
-                            </p>
-                          </td>
-                          <td className="py-5 text-center">
-                            <button
-                              onClick={() => handleViewSubmission(review)}
-                              className="px-7 py-3 bg-gradient-to-r from-[#7C1100] to-[#5a0c00] text-white text-sm font-bold rounded-full hover:shadow-xl hover:scale-105 transform transition-all duration-300"
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              View
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile Card View */}
-                <div className="md:hidden space-y-4 sm:space-y-5">
-                  {filteredOverdueReviews.map((review: any, index: number) => (
-                    <div 
-                      key={review.id} 
-                      className="bg-gradient-to-br from-red-50/30 to-white rounded-2xl p-5 sm:p-6 shadow-md hover:shadow-xl border border-red-100 transition-all duration-300"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="space-y-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Title</p>
-                          <p className="text-sm sm:text-base text-gray-900 font-bold leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                            {review.title}
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Category</p>
-                            <span 
-                              className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold ${
-                                review.category?.toLowerCase() === 'expedited review'
-                                  ? 'bg-gradient-to-r from-blue-50 to-blue-100 text-blue-800'
-                                  : 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-800'
-                              }`}
-                              style={{ fontFamily: 'Metropolis, sans-serif' }}
-                            >
-                              {review.category}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Due Date</p>
-                            <p className="text-sm text-gray-800 font-semibold" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                              {review.dueDate}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => handleViewSubmission(review)}
-                          className="w-full px-6 py-3.5 bg-gradient-to-r from-[#7C1100] to-[#5a0c00] text-white text-sm font-bold rounded-full hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300"
-                          style={{ fontFamily: 'Metropolis, sans-serif' }}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+          <div className="text-right hidden md:block bg-white px-5 py-3 rounded-xl border border-gray-100 shadow-sm">
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Today's Date</p>
+            <p className="text-base font-bold text-[#101C50]">
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
           </div>
         </div>
-      </div>
 
+        {/* --- STATS GRID --- */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-10">
+          <StatCard 
+            title="New Assignments" 
+            count={stats.newAssignments} 
+            icon={<Briefcase size={24} />} 
+            color="blue" 
+          />
+          <StatCard 
+            title="Overdue Reviews" 
+            count={stats.overdueReviews} 
+            icon={<Clock size={24} />} 
+            color="red" 
+          />
+          <StatCard 
+            title="Completed" 
+            count={stats.completedReviews} 
+            icon={<CheckCircle size={24} />} 
+            color="green" 
+          />
+        </div>
+
+        {/* --- MAIN DASHBOARD GRID --- */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+          
+          {/* --- LEFT COLUMN: ASSIGNMENTS (2/3 width) --- */}
+          <div className="lg:col-span-2 flex flex-col gap-8 lg:h-full">
+            
+            {/* New Assignments Table */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden w-full flex flex-col min-h-[500px] lg:min-h-0 lg:flex-[3]">
+              <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-8 bg-[#101C50] rounded-full"></div>
+                  <h2 className="text-xl font-bold text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    New Assignments
+                  </h2>
+                </div>
+                
+                <div className="flex bg-gray-100 p-1.5 rounded-xl self-start sm:self-auto">
+                   {['all', 'expedited', 'full'].map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab as TabType)}
+                        className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                          activeTab === tab 
+                            ? 'bg-white text-[#101C50] shadow-sm' 
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      </button>
+                   ))}
+                </div>
+              </div>
+
+              <div className="flex-grow flex flex-col">
+                {filteredAssignments.length === 0 ? (
+                   <EmptyState message="No pending assignments." type="assignment" />
+                ) : (
+                  <div className="overflow-x-auto h-full">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50/50 text-xs text-gray-500 uppercase border-b border-gray-100 tracking-wider">
+                          <th className="px-6 py-4 font-bold w-[45%]">Title</th>
+                          <th className="px-6 py-4 font-bold">Category</th>
+                          <th className="px-6 py-4 font-bold">Due Date</th>
+                          <th className="px-6 py-4 font-bold text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {filteredAssignments.map((item: any) => (
+                          <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                            <td className="px-6 py-4">
+                              <p className="text-base font-bold text-[#101C50] line-clamp-2 leading-snug">{item.title}</p>
+                              <p className="text-xs text-gray-400 mt-1 font-medium">Assigned: {item.assignedDate}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                               <Badge type={item.category} />
+                            </td>
+                            <td className="px-6 py-4">
+                               <p className="text-sm font-semibold text-gray-700">{item.dueDate}</p>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <button 
+                                onClick={() => handleViewSubmission(item)}
+                                className="text-sm font-bold text-white bg-[#101C50] px-5 py-2.5 rounded-xl hover:bg-blue-900 transition-colors shadow-sm whitespace-nowrap"
+                              >
+                                Review
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Overdue Section */}
+            <div className="bg-white rounded-2xl shadow-sm border border-red-100 overflow-hidden w-full flex flex-col min-h-[350px] lg:min-h-0 lg:flex-[2]">
+                <div className="p-6 border-b border-red-50 bg-red-50/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
+                   <div className="flex items-center gap-3">
+                      <AlertCircle size={22} className="text-red-600" />
+                      <h2 className="text-xl font-bold text-red-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                        Overdue Reviews
+                      </h2>
+                   </div>
+                   <div className="hidden sm:flex bg-white/60 p-1 rounded-xl border border-red-100">
+                      {['all', 'expedited', 'full'].map((tab) => (
+                          <button
+                            key={tab}
+                            onClick={() => setOverdueActiveTab(tab as TabType)}
+                            className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${
+                              overdueActiveTab === tab 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'text-gray-500 hover:text-red-600'
+                            }`}
+                          >
+                            {tab === 'all' ? 'All' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                          </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="flex-grow flex flex-col">
+                    {filteredOverdueReviews.length === 0 ? (
+                       <EmptyState message="Great job! No overdue reviews." icon="check" type="overdue" />
+                    ) : (
+                      <div className="overflow-x-auto h-full">
+                        <table className="w-full text-left border-collapse">
+                          <thead className="bg-red-50/10 text-xs text-red-800 uppercase border-b border-red-50 tracking-wider">
+                            <tr>
+                              <th className="px-6 py-4 font-bold w-[45%]">Title</th>
+                              <th className="px-6 py-4 font-bold">Category</th>
+                              <th className="px-6 py-4 font-bold">Due Date</th>
+                              <th className="px-6 py-4 font-bold text-center">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-red-50">
+                            {filteredOverdueReviews.map((item: any) => (
+                              <tr key={item.id} className="hover:bg-red-50/30 transition-colors">
+                                <td className="px-6 py-4">
+                                  <p className="text-base font-bold text-gray-800 line-clamp-2 leading-snug">{item.title}</p>
+                                </td>
+                                <td className="px-6 py-4"><Badge type={item.category} /></td>
+                                <td className="px-6 py-4">
+                                   <span className="text-sm font-bold text-red-600 bg-red-100 px-3 py-1.5 rounded-lg">
+                                      {item.dueDate}
+                                   </span>
+                                </td>
+                                <td className="px-6 py-4 text-center">
+                                  <button 
+                                    onClick={() => handleViewSubmission(item)}
+                                    className="text-sm font-bold text-red-700 border border-red-200 bg-white px-4 py-2 rounded-xl hover:bg-red-50 transition-colors whitespace-nowrap"
+                                  >
+                                    Open
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                </div>
+            </div>
+
+          </div>
+
+          {/* --- RIGHT COLUMN: RESOURCES (1/3 width) --- */}
+          <div className="space-y-8 w-full flex flex-col lg:h-full">
+            
+            {/* Resources Header */}
+            <div>
+               <h3 className="text-xl font-bold text-[#101C50] mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                 Reference Materials
+               </h3>
+               <p className="text-sm text-gray-500">
+                 Access standard guidelines and procedures.
+               </p>
+            </div>
+
+            {/* SOP Card */}
+            <div className="group bg-white rounded-2xl p-7 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300 relative overflow-hidden flex-1 flex flex-col">
+               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <BookOpen size={120} className="text-[#101C50]" />
+               </div>
+               
+               <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 shadow-inner flex-shrink-0">
+                     <FileText size={24} />
+                  </div>
+                  <div>
+                     <h4 className="text-lg font-bold text-[#101C50] leading-tight">Standard Operating Procedures</h4>
+                     <p className="text-xs text-gray-500 mt-1 font-medium">Version 2025 • 33 Chapters</p>
+                  </div>
+               </div>
+               
+               <div className="space-y-4 mb-6 flex-grow">
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                     Complete guide on review classifications, ethical standards, and committee protocols.
+                  </p>
+                  <ul className="space-y-3 mt-4">
+                     <li className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><FileCheck size={12} /></div>
+                        Review Classifications & Criteria
+                     </li>
+                     <li className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Scale size={12} /></div>
+                        Ethical Review Standards
+                     </li>
+                     <li className="flex items-center gap-3 text-xs text-gray-500">
+                        <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><Clock size={12} /></div>
+                        Turnaround Time & Deadlines
+                     </li>
+                  </ul>
+               </div>
+
+               <div className="flex gap-3 mt-auto pt-4 border-t border-gray-100">
+                  <button 
+                    onClick={handleDownloadSOP}
+                    className="flex-1 flex items-center justify-center gap-2 text-sm font-bold bg-[#101C50] text-white py-3 rounded-xl hover:bg-blue-900 transition-colors shadow-sm"
+                  >
+                     <Download size={16} /> Download
+                  </button>
+                  <button 
+                    onClick={handleViewSOP}
+                    className="flex items-center justify-center w-14 bg-white text-gray-600 rounded-xl hover:bg-gray-50 border border-gray-200 transition-colors"
+                    title="View SOP"
+                  >
+                     <Eye size={20} />
+                  </button>
+               </div>
+            </div>
+
+            {/* PHREB Card */}
+            <div className="group bg-gradient-to-br from-[#101C50] to-[#1a2d70] rounded-2xl p-7 shadow-md hover:shadow-lg transition-all duration-300 relative overflow-hidden text-white flex-1 flex flex-col">
+               <div className="absolute -bottom-6 -right-6 p-4 opacity-10">
+                  <Briefcase size={160} className="text-white" />
+               </div>
+
+               <div className="flex items-start gap-4 mb-6">
+                  <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center text-white border border-white/20 shadow-inner flex-shrink-0">
+                     <Shield size={24} />
+                  </div>
+                  <div>
+                     <h4 className="text-lg font-bold leading-tight">PHREB Guidelines</h4>
+                     <p className="text-xs text-blue-200 mt-1 font-medium">National Ethical Standards</p>
+                  </div>
+               </div>
+
+               <div className="space-y-4 mb-6 relative z-10 flex-grow">
+                  <p className="text-sm text-blue-100 leading-relaxed">
+                     The official national guidelines and workbook for health research ethics.
+                  </p>
+                  
+                  {/* Two Files List */}
+                  <div className="space-y-3 mt-4">
+                     
+                     {/* File 1: Guidelines */}
+                     <div className="bg-white/10 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-white/10 hover:bg-white/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-white/20 p-2 rounded-lg flex-shrink-0">
+                              <Book size={16} className="text-white" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-bold text-white leading-tight">National Guidelines (2022)</p>
+                              <p className="text-[10px] text-blue-200">Ethical Standards</p>
+                           </div>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                           <button 
+                              onClick={handleViewPHREB_Guidelines}
+                              className="p-2 bg-white/10 hover:bg-white/30 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center"
+                              title="View"
+                           >
+                              <Eye size={16} />
+                           </button>
+                           <button 
+                              onClick={handleDownloadPHREB_Guidelines}
+                              className="p-2 bg-white text-[#101C50] hover:bg-blue-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center"
+                              title="Download"
+                           >
+                              <Download size={16} />
+                           </button>
+                        </div>
+                     </div>
+
+                     {/* File 2: Workbook */}
+                     <div className="bg-white/10 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-white/10 hover:bg-white/20 transition-colors">
+                        <div className="flex items-center gap-3">
+                           <div className="bg-white/20 p-2 rounded-lg flex-shrink-0">
+                              <FileCheck size={16} className="text-white" />
+                           </div>
+                           <div>
+                              <p className="text-sm font-bold text-white leading-tight">PHREB Standard Operating Procedures (2020)</p>
+                              <p className="text-[10px] text-blue-200">Practical Guide</p>
+                           </div>
+                        </div>
+                        <div className="flex gap-2 w-full sm:w-auto">
+                           <button 
+                              onClick={handleViewPHREB_Workbook}
+                              className="p-2 bg-white/10 hover:bg-white/30 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center"
+                              title="View"
+                           >
+                              <Eye size={16} />
+                           </button>
+                           <button 
+                              onClick={handleDownloadPHREB_Workbook}
+                              className="p-2 bg-white text-[#101C50] hover:bg-blue-50 rounded-lg transition-colors flex-1 sm:flex-none flex justify-center"
+                              title="Download"
+                           >
+                              <Download size={16} />
+                           </button>
+                        </div>
+                     </div>
+
+                  </div>
+               </div>
+            </div>
+
+          </div>
+
+        </div>
+      </div>
       <Footer />
+
+      {/* --- DOCUMENT VIEWER MODAL --- */}
+      {viewingDocument && (
+        <DocumentViewerModal
+          isOpen={!!viewingDocument}
+          onClose={() => setViewingDocument(null)}
+          documentName={viewingDocument.name}
+          documentUrl={viewingDocument.url}
+        />
+      )}
+    </div>
+  );
+}
+
+// --- SUB-COMPONENTS ---
+
+function StatCard({ title, count, icon, color }: { title: string, count: number, icon: React.ReactNode, color: 'blue' | 'red' | 'green' }) {
+  const colorStyles = {
+    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    red: 'bg-red-50 text-red-700 border-red-100',
+    green: 'bg-green-50 text-green-700 border-green-100'
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-all duration-300">
+      <div>
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">{title}</p>
+        <p className="text-3xl font-bold text-[#101C50]">{count}</p>
+      </div>
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm ${colorStyles[color]}`}>
+        {icon}
+      </div>
+    </div>
+  );
+}
+
+function Badge({ type }: { type: string }) {
+  const isExpedited = type?.toLowerCase().includes('expedited');
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide border ${
+      isExpedited 
+        ? 'bg-blue-50 text-blue-700 border-blue-200' 
+        : 'bg-amber-50 text-amber-700 border-amber-200'
+    }`}>
+      {type}
+    </span>
+  );
+}
+
+function EmptyState({ message, icon, type }: { message: string, icon?: string, type?: 'assignment' | 'overdue' }) {
+  return (
+    <div className="flex-grow flex flex-col items-center justify-center text-center p-8 h-full">
+      <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+        icon === 'check' 
+          ? 'bg-green-50 text-green-500' 
+          : 'bg-gray-50 text-gray-300'
+      }`}>
+        {icon === 'check' ? <CheckCircle size={32} /> : <Briefcase size={32} />}
+      </div>
+      <p className="text-base font-medium text-gray-500">{message}</p>
     </div>
   );
 }

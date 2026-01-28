@@ -1,18 +1,17 @@
-// app/adminmodule/reviewers/details/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, User, Phone, Mail, Award, Building2, FileText, Edit2, ExternalLink, Download } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Award, Building2, FileText, Edit2, ExternalLink, Download, ChevronDown, Trash2 } from 'lucide-react';
 import DashboardLayout from '@/components/staff-secretariat-admin/DashboardLayout';
 import ReviewerStatsCards from '@/components/admin/reviewers/ReviewerStatsCards';
 import ReviewerReviewsTable from '@/components/admin/reviewers/ReviewerReviewsTable';
 import DocumentViewerModal from '@/components/staff-secretariat-admin/submission-details/DocumentViewerModal';
 import { getReviewerDetails } from '@/app/actions/admin/reviewer/getAdminReviewerDetails';
 import { deleteReviewer } from '@/app/actions/admin/reviewer/deleteReviewer';
-import { Suspense } from 'react';
 
 type TabType = 'current' | 'history' | 'expertise' | 'certificates';
+
 function ReviewerDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,7 +44,6 @@ function ReviewerDetailsContent() {
     if (result.success && result.reviewer) {
       setReviewerData(result);
 
-      // ✅ Safe type checking
       const areasString = result.reviewer.areasOfExpertise || '';
       const areasArray = typeof areasString === 'string' && areasString
         ? areasString.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
@@ -59,7 +57,6 @@ function ReviewerDetailsContent() {
     }
     setLoading(false);
   };
-
 
   const handleReviewClick = (submissionId: string) => {
     router.push(`/adminmodule/submissions/details?id=${submissionId}`);
@@ -152,7 +149,6 @@ function ReviewerDetailsContent() {
 
   const { reviewer, currentReviews, reviewHistory } = reviewerData;
 
-  // Mock certificates data - replace with actual data from API
   const certificates = [
     {
       id: '1',
@@ -181,7 +177,7 @@ function ReviewerDetailsContent() {
             style={{ fontFamily: 'Metropolis, sans-serif' }}
           >
             <ArrowLeft size={18} className="sm:w-5 sm:h-5" />
-            <span>Reviewers</span>
+            <span>Back to Reviewers</span>
           </button>
         </div>
 
@@ -192,53 +188,97 @@ function ReviewerDetailsContent() {
               <User size={32} className="text-white sm:w-10 sm:h-10" />
             </div>
             <div className="flex-1 min-w-0 w-full">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                {reviewer.name}
-              </h1>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
-                {/* Phone */}
-                <div className="flex items-center gap-2">
-                  <Phone size={16} className="flex-shrink-0" />
-                  <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.phone}</span>
-                </div>
-
-                {/* Email */}
-                <div className="flex items-center gap-2">
-                  <Mail size={16} className="flex-shrink-0" />
-                  <span className="break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.email}</span>
-                </div>
-
-                {/* College */}
-                <div className="flex items-start gap-2 sm:col-span-2">
-                  <Building2 size={16} className="flex-shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>College: </span>
-                    <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.college}</span>
-                  </div>
-                </div>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                 <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                      {reviewer.name}
+                    </h1>
+                    <div className="flex flex-col sm:flex-row gap-3 text-sm text-gray-600">
+                      <div className="flex items-center gap-2">
+                        <Phone size={14} className="flex-shrink-0" />
+                        <span style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.phone}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail size={14} className="flex-shrink-0" />
+                        <span className="break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>{reviewer.email}</span>
+                      </div>
+                    </div>
+                 </div>
+                 
+                 {/* Delete Button (Desktop) */}
+                 <button
+                    onClick={handleDeleteClick}
+                    className="hidden sm:flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-semibold border border-red-100"
+                  >
+                    <Trash2 size={16} />
+                    Delete Reviewer
+                  </button>
               </div>
             </div>
           </div>
+          
+           {/* College Info */}
+           <div className="mt-6 pt-4 border-t border-gray-50 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-500">
+                 <Building2 size={16} />
+              </div>
+              <div>
+                 <span className="text-xs font-bold text-gray-400 uppercase block mb-0.5">College/Department</span>
+                 <span className="text-sm font-semibold text-gray-900">{reviewer.college}</span>
+              </div>
+           </div>
+           
+           {/* Delete Button (Mobile) */}
+           <button
+              onClick={handleDeleteClick}
+              className="mt-6 w-full sm:hidden flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-bold border border-red-100"
+            >
+              <Trash2 size={16} />
+              Delete Reviewer
+            </button>
         </div>
 
         {/* Stats Cards */}
         <ReviewerStatsCards
           availability={reviewer.availability}
-          status={reviewer.reviewStatus}
+          status={reviewer.reviewStatus} // Note: Prop name might vary in Admin vs Staff component
           activeReviews={reviewer.activeReviews}
         />
 
-        {/* Reviews Section with Tabs */}
+        {/* Reviews Section with Responsive Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-6">
-          {/* Tabs */}
-          <div className="border-b border-gray-200 overflow-x-auto">
+          
+          {/* Mobile Dropdown for Tabs */}
+          <div className="md:hidden p-4 border-b border-gray-100">
+            <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 block">
+              View Section
+            </label>
+            <div className="relative">
+              <select
+                value={activeTab}
+                onChange={(e) => setActiveTab(e.target.value as TabType)}
+                className="w-full appearance-none bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-3 pr-10 font-bold"
+              >
+                <option value="current">Current Reviews ({currentReviews.length})</option>
+                <option value="history">Review History ({reviewHistory.length})</option>
+                <option value="expertise">Expertise</option>
+                <option value="certificates">Certificates ({certificates.length})</option>
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <ChevronDown size={16} />
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop Tabs */}
+          <div className="hidden md:block border-b border-gray-200 overflow-x-auto">
             <div className="flex min-w-max">
               <button
                 onClick={() => setActiveTab('current')}
                 className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'current'
-                    ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
+                  ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 Current Reviews ({currentReviews.length})
@@ -246,9 +286,9 @@ function ReviewerDetailsContent() {
               <button
                 onClick={() => setActiveTab('history')}
                 className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'history'
-                    ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
+                  ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 Review History ({reviewHistory.length})
@@ -256,9 +296,9 @@ function ReviewerDetailsContent() {
               <button
                 onClick={() => setActiveTab('expertise')}
                 className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'expertise'
-                    ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
+                  ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 <span className="flex items-center gap-2 justify-center">
@@ -269,9 +309,9 @@ function ReviewerDetailsContent() {
               <button
                 onClick={() => setActiveTab('certificates')}
                 className={`flex-1 min-w-[140px] px-4 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${activeTab === 'certificates'
-                    ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
+                  ? 'text-[#101C50] border-b-2 border-[#101C50] bg-blue-50'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`}
                 style={{ fontFamily: 'Metropolis, sans-serif' }}
               >
                 <span className="flex items-center gap-2 justify-center">
@@ -389,7 +429,6 @@ function ReviewerDetailsContent() {
                       >
                         Cancel
                       </button>
-
                     </div>
                   </div>
                 ) : (
@@ -485,20 +524,6 @@ function ReviewerDetailsContent() {
             )}
           </div>
         </div>
-
-        {/* Delete Button */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleDeleteClick}
-            className="px-6 py-3 bg-red-700 text-white rounded-lg hover:bg-red-800 transition-colors font-semibold flex items-center gap-2"
-            style={{ fontFamily: 'Metropolis, sans-serif' }}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            Delete Reviewer
-          </button>
-        </div>
       </DashboardLayout>
 
       {/* Delete Confirmation Modal */}
@@ -507,9 +532,7 @@ function ReviewerDetailsContent() {
           <div className="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full shadow-2xl">
             <div className="mb-6">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <Trash2 className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 text-center mb-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                 Delete Reviewer
@@ -554,6 +577,7 @@ function ReviewerDetailsContent() {
     </>
   );
 }
+
 export default function ReviewerDetailsPage() {
   return (
     <Suspense fallback={
