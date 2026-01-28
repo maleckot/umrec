@@ -6,7 +6,7 @@ import StatCard from '@/components/staff-secretariat-admin/StatCard';
 import AttentionCard from '@/components/staff-secretariat-admin/AttentionCard';
 import { useRouter } from 'next/navigation';
 import { getSecretariatDashboardData } from '@/app/actions/secretariat-staff/secretariat/getSecretariatDashboardData';
-import { Megaphone, Calendar, Plus, Trash2, MapPin, X, Video, AlertTriangle } from 'lucide-react';
+import { Megaphone, Calendar, Plus, Trash2, MapPin, X, Video, AlertTriangle, Clock, Timer, AlertCircle } from 'lucide-react';
 
 // --- Types ---
 interface Announcement {
@@ -48,6 +48,45 @@ export default function SecretariatDashboard() {
     loadAnnouncements(); 
   }, []);
 
+  // --- Helpers for Due Dates ---
+  const DEFAULT_DUE_DAYS = 7;
+  const DUE_SOON_DAYS = 2;
+
+  const toDateSafe = (value: any) => {
+    if (!value) return null;
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  const addDays = (d: Date, days: number) => new Date(d.getTime() + days * 24 * 60 * 60 * 1000);
+
+  const formatShortDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+  const getDueMeta = (submission: any) => {
+    // Priority: dueDate -> submittedAt -> date -> null
+    const baseDate = toDateSafe(submission.dueDate) 
+      ?? toDateSafe(submission.submittedAt) 
+      ?? toDateSafe(submission.date);
+
+    if (!baseDate) return { due: null as Date | null, overdue: false, dueSoon: false };
+
+    // If dueDate is not explicit, assume default SLA from submission date
+    const due = submission.dueDate ? baseDate : addDays(baseDate, DEFAULT_DUE_DAYS);
+
+    const now = new Date();
+    // Normalize time to compare dates only
+    now.setHours(0,0,0,0);
+    const dueTime = new Date(due);
+    dueTime.setHours(0,0,0,0);
+
+    const msLeft = dueTime.getTime() - now.getTime();
+    const overdue = msLeft < 0;
+    const dueSoon = !overdue && msLeft <= DUE_SOON_DAYS * 24 * 60 * 60 * 1000;
+
+    return { due, overdue, dueSoon };
+  };
+
   // --- 1. Load Announcements ---
   const loadAnnouncements = () => {
     const stored = localStorage.getItem('secretariat_announcements');
@@ -73,7 +112,6 @@ export default function SecretariatDashboard() {
   };
 
   const handleSubmissionClick = (submission: any) => {
-      // (Routing logic same as before...)
       if (submission.status === 'Under Classification') router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
       else if (submission.status === 'Resubmit') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
       else if (submission.status === 'Classified') router.push(`/secretariatmodule/submissions/assign-reviewers?id=${submission.id}`);
@@ -122,7 +160,6 @@ export default function SecretariatDashboard() {
   // Helper to trigger date picker on container click
   const openDatePicker = () => {
     if (dateInputRef.current) {
-        // This triggers the native picker
         if (typeof dateInputRef.current.showPicker === 'function') {
             dateInputRef.current.showPicker();
         } else {
@@ -144,6 +181,23 @@ export default function SecretariatDashboard() {
     { id: 1, count: dashboardData?.attention.needsClassification || 0, message: 'new submissions need document classification', subtext: 'These submissions need to be classified before assigning reviewers', action: 'Classify Submissions', route: '/secretariatmodule/submissions' },
     { id: 2, count: dashboardData?.attention.overdueReviews || 0, message: 'reviewers have overdue reviews', subtext: 'Some reviewers are late by more than 7 days', action: 'View Reviewers', route: '/secretariatmodule/reviewers' },
   ];
+
+  // Calculate detailed Due Stats
+  const dueStats = (() => {
+    const all = [...pendingClassification, ...recentSubmissions];
+    const overdueItems: any[] = [];
+    const dueSoonItems: any[] = [];
+    
+    for (const s of all) {
+      const meta = getDueMeta(s);
+      if (meta.overdue) {
+        overdueItems.push({ ...s, due: meta.due });
+      } else if (meta.dueSoon) {
+        dueSoonItems.push({ ...s, due: meta.due });
+      }
+    }
+    return { overdueItems, dueSoonItems };
+  })();
 
   if (loading) {
     return (
@@ -168,6 +222,81 @@ export default function SecretariatDashboard() {
         ))}
       </div>
 
+      {/* --- LARGE DEADLINE CARDS --- */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 lg:mb-8">
+        
+        {/* OVERDUE CARD */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-orange-500 w-full h-full flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-3">
+               <div className="p-3 bg-orange-100 rounded-full">
+                  <AlertCircle className="w-6 h-6 text-orange-600" />
+               </div>
+               <div>
+                  <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>Overdue</h3>
+                  <p className="text-sm text-gray-500">Action needed immediately</p>
+               </div>
+             </div>
+             <span className="text-3xl font-bold text-orange-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+               {dueStats.overdueItems.length}
+             </span>
+          </div>
+          
+          <div className="flex-1 bg-orange-50/50 rounded-lg p-3 overflow-y-auto max-h-[150px]">
+             {dueStats.overdueItems.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-2">No overdue items.</p>
+             ) : (
+                <ul className="space-y-2">
+                   {dueStats.overdueItems.map((item: any) => (
+                      <li key={item.id} className="flex justify-between items-start text-sm border-b border-orange-100 pb-2 last:border-0 last:pb-0" onClick={() => handleSubmissionClick(item)}>
+                         <span className="font-medium text-gray-700 truncate flex-1 pr-2 cursor-pointer hover:text-orange-700 hover:underline">{item.title}</span>
+                         <span className="font-bold text-orange-700 whitespace-nowrap text-xs bg-orange-100 px-2 py-1 rounded">
+                            Due: {formatShortDate(item.due)}
+                         </span>
+                      </li>
+                   ))}
+                </ul>
+             )}
+          </div>
+        </div>
+
+        {/* DUE SOON CARD */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border-l-4 border-yellow-400 w-full h-full flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+             <div className="flex items-center gap-3">
+               <div className="p-3 bg-yellow-100 rounded-full">
+                  <Clock className="w-6 h-6 text-yellow-600" />
+               </div>
+               <div>
+                  <h3 className="text-lg font-bold text-gray-800" style={{ fontFamily: 'Metropolis, sans-serif' }}>Due Soon</h3>
+                  <p className="text-sm text-gray-500">Upcoming within 48 hours</p>
+               </div>
+             </div>
+             <span className="text-3xl font-bold text-yellow-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+               {dueStats.dueSoonItems.length}
+             </span>
+          </div>
+
+          <div className="flex-1 bg-yellow-50/50 rounded-lg p-3 overflow-y-auto max-h-[150px]">
+             {dueStats.dueSoonItems.length === 0 ? (
+                <p className="text-sm text-gray-500 italic text-center py-2">No items due soon.</p>
+             ) : (
+                <ul className="space-y-2">
+                   {dueStats.dueSoonItems.map((item: any) => (
+                      <li key={item.id} className="flex justify-between items-start text-sm border-b border-yellow-100 pb-2 last:border-0 last:pb-0" onClick={() => handleSubmissionClick(item)}>
+                         <span className="font-medium text-gray-700 truncate flex-1 pr-2 cursor-pointer hover:text-yellow-700 hover:underline">{item.title}</span>
+                         <span className="font-bold text-yellow-700 whitespace-nowrap text-xs bg-yellow-100 px-2 py-1 rounded">
+                            Due: {formatShortDate(item.due)}
+                         </span>
+                      </li>
+                   ))}
+                </ul>
+             )}
+          </div>
+        </div>
+
+      </div>
+
       {/* 2. Pending Classification Table */}
       {pendingClassification.length > 0 && (
         <div className="bg-white rounded-xl p-4 lg:p-6 shadow-sm border border-gray-100 mb-6 lg:mb-8 w-full">
@@ -184,6 +313,8 @@ export default function SecretariatDashboard() {
                   <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>SUBMITTED BY</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DATE</th>
+                  {/* Added Due Date Header */}
+                  <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</th>
                   <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>ACTION</th>
                 </tr>
               </thead>
@@ -196,6 +327,34 @@ export default function SecretariatDashboard() {
                     </td>
                     <td className="py-4 px-4 text-center"><p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.submittedBy}</p></td>
                     <td className="py-4 px-4 text-center"><p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p></td>
+                    
+                    {/* Due Date Cell */}
+                    <td className="py-4 px-4 text-center">
+                      {(() => {
+                        const meta = getDueMeta(submission);
+                        if (!meta.due) return <span className="text-xs text-gray-400">—</span>;
+
+                        const badgeClass = meta.overdue
+                          ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                          : meta.dueSoon
+                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200'
+                            : 'bg-green-100 text-green-700 border border-green-200';
+
+                        const badgeText = meta.overdue ? 'Overdue' : meta.dueSoon ? 'Due soon' : 'On track';
+
+                        return (
+                          <div className="inline-flex flex-col items-center gap-1">
+                            <span className="text-sm font-medium text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {formatShortDate(meta.due)}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${badgeClass}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                              {badgeText}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </td>
+
                     <td className="py-4 px-4 text-center">
                       <button onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" style={{ fontFamily: 'Metropolis, sans-serif' }}>Classify</button>
                     </td>
@@ -206,14 +365,35 @@ export default function SecretariatDashboard() {
           </div>
           <div className="md:hidden space-y-4">
             {pendingClassification.map((submission: any) => (
-              <div key={submission.id} className="bg-gray-50 rounded-lg p-4 w-full">
+              <div key={submission.id} className="bg-gray-50 rounded-lg p-4 w-full border border-gray-100 shadow-sm">
                 <p className="text-sm font-semibold text-gray-800 mb-2 break-words whitespace-normal leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.title}</p>
                 <p className="text-xs text-gray-500 mb-3 break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>ID: {submission.submissionId}</p>
+                
                 <div className="flex flex-col gap-2 mb-3">
-                  <p className="text-xs text-gray-600 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>By: {submission.submittedBy}</p>
-                  <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p>
+                  <div className="flex justify-between">
+                     <p className="text-xs text-gray-600 break-words" style={{ fontFamily: 'Metropolis, sans-serif' }}>By: {submission.submittedBy}</p>
+                     <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p>
+                  </div>
+                  
+                  {/* Mobile Due Date Indicator */}
+                  {(() => {
+                    const meta = getDueMeta(submission);
+                    if (!meta.due) return null;
+                    const pillClass = meta.overdue ? 'bg-orange-100 text-orange-800' : meta.dueSoon ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-700';
+                    const pillText = meta.overdue ? 'Overdue' : meta.dueSoon ? 'Due soon' : 'On track';
+                    return (
+                        <div className="flex items-center justify-between mt-1 pt-2 border-t border-gray-200">
+                           <span className="text-xs font-bold text-gray-500 uppercase">Deadline:</span>
+                           <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium">{formatShortDate(meta.due)}</span>
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${pillClass}`}>{pillText}</span>
+                           </div>
+                        </div>
+                    );
+                  })()}
                 </div>
-                <button onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)} className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors" style={{ fontFamily: 'Metropolis, sans-serif' }}>Classify</button>
+                
+                <button onClick={() => router.push(`/secretariatmodule/submissions/details?id=${submission.id}`)} className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors mt-2" style={{ fontFamily: 'Metropolis, sans-serif' }}>Classify</button>
               </div>
             ))}
           </div>
@@ -236,6 +416,8 @@ export default function SecretariatDashboard() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>TITLE</th>
                     <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DATE</th>
+                    {/* Added Due Date Header */}
+                    <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>DUE DATE</th>
                     <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700" style={{ fontFamily: 'Metropolis, sans-serif' }}>STATUS</th>
                   </tr>
                 </thead>
@@ -247,6 +429,17 @@ export default function SecretariatDashboard() {
                         <p className="text-xs text-gray-500 mt-1" style={{ fontFamily: 'Metropolis, sans-serif' }}>ID: {submission.submissionId}</p>
                       </td>
                       <td className="py-4 px-4 text-center"><p className="text-sm text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p></td>
+                      
+                      {/* Due Date Cell */}
+                      <td className="py-4 px-4 text-center">
+                        {(() => {
+                            const meta = getDueMeta(submission);
+                            if (!meta.due) return <span className="text-xs text-gray-400">—</span>;
+                            const colorClass = meta.overdue ? 'text-orange-700 font-bold' : meta.dueSoon ? 'text-yellow-700 font-bold' : 'text-gray-600';
+                            return <p className={`text-sm ${colorClass}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>{formatShortDate(meta.due)}</p>;
+                        })()}
+                      </td>
+
                       <td className="py-4 px-4 text-center"><span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.status}</span></td>
                     </tr>
                   ))}
@@ -255,12 +448,29 @@ export default function SecretariatDashboard() {
             </div>
             <div className="md:hidden space-y-4">
               {recentSubmissions.map((submission: any) => (
-                <div key={submission.id} className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors w-full" onClick={() => handleSubmissionClick(submission)}>
+                <div key={submission.id} className="bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors w-full border border-gray-100" onClick={() => handleSubmissionClick(submission)}>
                   <p className="text-sm font-semibold text-gray-800 mb-2 break-words whitespace-normal" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.title}</p>
                   <p className="text-xs text-gray-500 mb-3 break-all" style={{ fontFamily: 'Metropolis, sans-serif' }}>ID: {submission.submissionId}</p>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-gray-600" style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.date}</p>
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${submission.statusColor}`} style={{ fontFamily: 'Metropolis, sans-serif' }}>{submission.status}</span>
+                  
+                  {/* Mobile Date/Due/Status Row */}
+                  <div className="flex flex-col gap-2">
+                     <div className="flex justify-between items-center text-xs text-gray-600">
+                        <span>{submission.date}</span>
+                        <span className={`px-2 py-0.5 rounded-full font-medium ${submission.statusColor}`}>{submission.status}</span>
+                     </div>
+                     
+                     {/* Mobile Due Date Row */}
+                     {(() => {
+                        const meta = getDueMeta(submission);
+                        if (!meta.due) return null;
+                        const cls = meta.overdue ? 'text-orange-700 bg-orange-50' : meta.dueSoon ? 'text-yellow-700 bg-yellow-50' : 'text-gray-600 bg-gray-100';
+                        return (
+                            <div className={`flex items-center justify-between px-2 py-1 rounded text-xs ${cls}`}>
+                                <span className="font-semibold">Due: {formatShortDate(meta.due)}</span>
+                                {meta.overdue && <span className="font-bold uppercase text-[10px]">Overdue</span>}
+                            </div>
+                        );
+                     })()}
                   </div>
                 </div>
               ))}
@@ -279,7 +489,7 @@ export default function SecretariatDashboard() {
         </div>
       </div>
 
-      {/* 5. NEW SECTION: Public Announcements Manager */}
+      {/* 5. Manage Public Announcements */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
         <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#F8FAFC]">
           <div>
@@ -290,7 +500,7 @@ export default function SecretariatDashboard() {
           </div>
           <button 
             onClick={() => setShowAnnouncementModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-[#101C50] text-white rounded-lg font-bold text-sm hover:bg-blue-900 transition-colors shadow-sm"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#101C50] text-white rounded-lg font-bold text-sm hover:bg-blue-900 transition-colors shadow-sm"
           >
              <Plus size={16} /> Post New
           </button>
@@ -334,8 +544,8 @@ export default function SecretariatDashboard() {
                    )}
                 </div>
                 <button 
-                  onClick={() => setShowDeleteModal(ann.id)} // Open Delete Modal
-                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  onClick={() => setShowDeleteModal(ann.id)} 
+                  className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                   title="Delete Post"
                 >
                    <Trash2 size={18} />
@@ -360,7 +570,7 @@ export default function SecretariatDashboard() {
                 {/* 1. Type */}
                 <div>
                    <label className="block text-sm font-bold text-gray-700 mb-2">Post Type</label>
-                   <div className="flex gap-4">
+                   <div className="flex flex-wrap gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                          <input type="radio" checked={newAnnouncement.type === 'Announcement'} onChange={() => setNewAnnouncement({...newAnnouncement, type: 'Announcement'})} className="w-4 h-4 text-[#101C50]" />
                          <span className="text-sm font-medium text-gray-800">General Announcement</span>
@@ -375,7 +585,7 @@ export default function SecretariatDashboard() {
                 {/* 2. Mode (Onsite vs Virtual) */}
                 <div>
                    <label className="block text-sm font-bold text-gray-700 mb-2">Mode</label>
-                   <div className="flex gap-4">
+                   <div className="flex flex-wrap gap-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                          <input type="radio" checked={newAnnouncement.mode === 'Onsite'} onChange={() => setNewAnnouncement({...newAnnouncement, mode: 'Onsite'})} className="w-4 h-4 text-[#101C50]" />
                          <span className="text-sm font-medium text-gray-800">Onsite</span>
@@ -405,7 +615,6 @@ export default function SecretariatDashboard() {
                    <div onClick={openDatePicker} className="cursor-pointer relative">
                       <label className="block text-sm font-bold text-gray-700 mb-1 pointer-events-none">Date</label>
                       <div className="relative">
-                         {/* Icon acts as a trigger via the parent onClick */}
                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={18} />
                          <input 
                            ref={dateInputRef}
@@ -413,12 +622,11 @@ export default function SecretariatDashboard() {
                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 font-medium cursor-pointer"
                            value={newAnnouncement.date}
                            onChange={(e) => setNewAnnouncement({...newAnnouncement, date: e.target.value})}
-                           onClick={(e) => e.stopPropagation()} // Stop propagation so parent div click doesn't double trigger
+                           onClick={(e) => e.stopPropagation()} 
                          />
                       </div>
                    </div>
                    
-                   {/* Conditional Input: Location OR Link */}
                    <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">
                         {newAnnouncement.mode === 'Onsite' ? 'Venue / Location' : 'Meeting Link'}

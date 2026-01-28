@@ -1,4 +1,3 @@
-// app/secretariatmodule/submissions/details/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -15,8 +14,9 @@ import { getClassificationDetails } from '@/app/actions/secretariat-staff/getCla
 import { saveClassification } from '@/app/actions/secretariat-staff/secretariat/saveClassification';
 import { saveRevisionComment } from '@/app/actions/secretariat-staff/saveRevisionComment';
 import { Suspense } from 'react';
+
 function SecretariatSubmissionDetailsContent() {
- const router = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const submissionId = searchParams.get('id');
 
@@ -35,6 +35,19 @@ function SecretariatSubmissionDetailsContent() {
     proposalDefense: false,
     applicationForm: false,
   });
+
+  // --- NEW: Helper for Turnaround Time ---
+  const calculateDueDate = (category: string, startDate: string | Date = new Date()) => {
+    const daysMap: { [key: string]: number } = {
+      'Exempted': 7,
+      'Expedited': 14,
+      'Full Review': 30
+    };
+    const days = daysMap[category] || 0;
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + days);
+    return date;
+  };
 
   useEffect(() => {
     if (submissionId) {
@@ -74,6 +87,14 @@ function SecretariatSubmissionDetailsContent() {
     });
   };
 
+  const formatShortDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
   const getFullName = () => {
     if (!data?.submission) return '';
     const { firstName, middleName, lastName } = data.submission.projectLeader;
@@ -105,14 +126,12 @@ function SecretariatSubmissionDetailsContent() {
   ] : [];
 
   // Handler for checkbox changes
-// Handler for checkbox changes - with proper typing
-const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
-  setRevisionChecklist(prev => ({
-    ...prev,
-    [field]: !prev[field]
-  }));
-};
-
+  const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
+    setRevisionChecklist(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
 
   const handleRequestRevision = async () => {
     const selectedItems = Object.entries(revisionChecklist)
@@ -149,13 +168,19 @@ const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
     }
   };
 
+  // --- UPDATED: Save Classification with Due Date Calculation ---
   const handleClassificationSave = async (category: 'Exempted' | 'Expedited' | 'Full Review') => {
     if (!submissionId) return;
 
-    try {
-      const result = await saveClassification(submissionId, category, revisionComments);
+    // Calculate the due date based on the chosen category
+    const calculatedDueDate = calculateDueDate(category);
 
-      console.log('Classification saved:', category);
+    try {
+      // Pass the calculated due date to your backend action
+      // NOTE: You need to update `saveClassification` to accept `dueDate`
+      const result = await saveClassification(submissionId, category, revisionComments, calculatedDueDate);
+
+      console.log('Classification saved:', category, 'Due Date:', calculatedDueDate);
 
       if (result.success) {
         // Navigate based on category
@@ -254,7 +279,6 @@ const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
                 <p className="text-sm text-gray-600 mb-6" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                   Select the documents that need revision and provide specific feedback below. This will send the submission back to the researcher.
                 </p>
-
 
                 {/* Checklist */}
                 <div className="bg-gray-50 rounded-lg p-4 mb-6">
@@ -450,8 +474,9 @@ const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
               }}
               timeline={{
                 submitted: formatDate(data.submission.submittedAt),
-                reviewDue: 'TBD',
-                decisionTarget: 'TBD',
+                // --- UPDATED: Display Pending Status instead of TBD ---
+                reviewDue: 'Pending Classification',
+                decisionTarget: 'Pending Classification',
               }}
               statusMessage="This submission has been verified and consolidated. Awaiting classification."
             />
@@ -459,8 +484,9 @@ const handleChecklistChange = (field: keyof typeof revisionChecklist) => {
         )}
       </div>
     </DashboardLayout>
-);
+  );
 }
+
 export default function SecretariatSubmissionDetailsPage() {
   return (
     <Suspense fallback={

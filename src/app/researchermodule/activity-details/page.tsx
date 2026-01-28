@@ -1,4 +1,3 @@
-// app/researchermodule/activity-details/page.tsx
 'use client';
 
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
@@ -23,7 +22,7 @@ interface Document {
   isApproved?: boolean | null;
   needsRevision?: boolean;
   revisionComment?: string | null;
-  revisionCount?: number; // ✅ ADD THIS LINE
+  revisionCount?: number;
 }
 
 interface Comment {
@@ -37,7 +36,7 @@ function ActivityDetailsContent() {
   const searchParams = useSearchParams();
   const activityId = searchParams.get('id');
   const docId = searchParams.get('docId');
-  const [submissionComments, setSubmissionComments] = useState<Comment[]>([]); // ✅ ADD THIS
+  const [submissionComments, setSubmissionComments] = useState<Comment[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -78,9 +77,8 @@ function ActivityDetailsContent() {
         const selected = filteredDocs[0] || null;
         setSelectedDocument(selected);
 
-        // ✅ Extract both comments
         setComments(result.comments || []);
-        setSubmissionComments(result.submissionComments || []); // ✅ ADD THIS
+        setSubmissionComments(result.submissionComments || []);
 
         setSubmissionData({
           title: result.submission.title,
@@ -103,7 +101,6 @@ function ActivityDetailsContent() {
       setLoading(false);
     }
   };
-
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -161,49 +158,13 @@ function ActivityDetailsContent() {
     return typeMap[type] || type;
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
+  // ✅ UPDATED: Simplified Resubmit Handler
   const handleResubmit = () => {
-    const documentTypeToStep: { [key: string]: string } = {
-      consolidated_application: 'step1',
-      application_form: 'step2',
-      research_protocol: 'step3',
-      consent_form: 'step4',
-      research_instrument: 'step5',
-      proposal_defense: 'step6',
-      endorsement_letter: 'step7',
-    };
-
-    if (selectedDocument && selectedDocument.needsRevision) {
-      const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
-
-      if (selectedDocument.fileType === 'consolidated_application') {
-        router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
-      } else {
-        router.push(
-          `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${selectedDocument.id}&docType=${selectedDocument.fileType}`
-        );
-      }
-    } else {
-      const firstRejectedDoc = documents.find(doc => doc.needsRevision);
-      if (firstRejectedDoc) {
-        const step = documentTypeToStep[firstRejectedDoc.fileType] || 'step1';
-
-        if (firstRejectedDoc.fileType === 'consolidated_application') {
-          router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
-        } else {
-          router.push(
-            `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${firstRejectedDoc.id}&docType=${firstRejectedDoc.fileType}`
-          );
-        }
-      } else {
-        router.push(`/researchermodule/submissions/revision/step1?mode=revision&id=${activityId}`);
-      }
-    }
+    // Since we are moving to a single revision form, we remove the switch/case 
+    // for steps and route directly to the new revision page.
+    
+    // This assumes your new form is located at: app/researchermodule/submissions/revision/page.tsx
+    router.push(`/researchermodule/submissions/revision?id=${activityId}`);
   };
 
   const breadcrumbItems = [
@@ -257,7 +218,7 @@ function ActivityDetailsContent() {
                 dateSubmitted={submissionData.dateSubmitted}
                 status={submissionData.status}
                 receivedForReview="UMREC Review Committee"
-                revisionCount={selectedDocument?.revisionCount || 0} // ✅ USE SELECTED DOC's COUNT
+                revisionCount={selectedDocument?.revisionCount || 0}
               />
             </div>
 
@@ -344,7 +305,7 @@ function ActivityDetailsContent() {
                         Please review the feedback below and update the documents mentioned
                       </p>
 
-                      {/* ✅ SHOW SUBMISSION COMMENTS */}
+                      {/* SHOW SUBMISSION COMMENTS */}
                       {submissionComments && submissionComments.length > 0 ? (
                         <div className="space-y-3 mb-4">
                           {submissionComments.map((comment: Comment, idx: number) => (
@@ -414,7 +375,6 @@ function ActivityDetailsContent() {
                         Please review the feedback below and update the documents mentioned
                       </p>
 
-                      {/* ✅ SHOW SUBMISSION COMMENTS */}
                       {submissionComments && submissionComments.length > 0 ? (
                         <div className="space-y-3 mb-4">
                           {submissionComments.map((comment: Comment, idx: number) => (
@@ -455,7 +415,6 @@ function ActivityDetailsContent() {
                   )
                 )
               }
-
 
               {/* Show resubmit button */}
               {selectedDocument &&
