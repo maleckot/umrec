@@ -750,35 +750,33 @@ export default function ResearcherDashboard() {
 
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4">
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <h3 className="font-bold text-sm sm:text-base text-gray-900 truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                     {doc.fileType === 'consolidated_application' ? submission.title : (doc.displayTitle || getDocumentTypeLabel(doc.fileType))}
                                   </h3>
                                   <div className="flex items-center gap-2 mt-0.5">
-                                    <span className="text-xs text-gray-500 font-medium" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    <span className="text-xs text-gray-500 font-medium truncate" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                       {submission.title.substring(0, 40)}{submission.title.length > 40 ? '...' : ''}
                                     </span>
-                                    <span className="text-gray-300">•</span>
-                                    <span className="text-xs text-gray-500" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                                    <span className="text-gray-300 flex-shrink-0">•</span>
+                                    <span className="text-xs text-gray-500 flex-shrink-0" style={{ fontFamily: 'Metropolis, sans-serif' }}>
                                       {formatFileSize(doc.fileSize)}
                                     </span>
                                   </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-2 mt-1 sm:mt-0">
+                                <div className="flex-shrink-0 flex items-center gap-2 mt-1 sm:mt-0">
                                   {docNeedsRevision && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800">
                                       Action Required
                                     </span>
                                   )}
-                                  <span className="text-xs text-gray-400 hidden sm:inline-block">
-                                    {formatDate(submission.submitted_at)}
-                                  </span>
+                                  {/* Date removed here as requested */}
                                 </div>
                               </div>
                             </div>
 
-                             <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2 flex-shrink-0">
                                 <button 
                                   onClick={() => handleViewDocument(doc.fileName, doc.fileUrl)}
                                   className="p-2 rounded-lg text-gray-400 hover:text-[#101C50] hover:bg-gray-100 transition-colors"
@@ -790,9 +788,10 @@ export default function ResearcherDashboard() {
                                 <button 
                                   onClick={() => {
                                     if (docNeedsRevision && doc.fileType === 'consolidated_application') {
-                                      router.push(`/researcher/module/edit-submission/${submission.id}`);
-                                    } else if (doc.fileUrl) {
-                                      handleDownload(doc.fileUrl, doc.fileName);
+                                      router.push(`/researchermodule/edit-submission/${submission.id}`);
+                                    } else {
+                                      // Corrected navigation to activity details page
+                                      router.push(`/researchermodule/activity-details?id=${submission.id}`);
                                     }
                                   }}
                                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-sm transition-all duration-300 ${docStatusInfo.buttonColor} min-w-[70px] sm:min-w-[80px] text-center`}
