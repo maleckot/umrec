@@ -1,4 +1,3 @@
-// app/actions/getSecretariatDashboardData.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -12,13 +11,13 @@ export async function getSecretariatDashboardData() {
       throw new Error('User not authenticated');
     }
 
-    // 1. Total submissions (exclude new_submission)
+    // 1. Total submissions
     const { count: totalSubmissions } = await supabase
       .from('research_submissions')
       .select('*', { count: 'exact', head: true })
-      .neq('status', 'new_submission');  // ✅ Exclude new submissions
+      .neq('status', 'new_submission');
 
-    // 2. Pending classification (awaiting_classification status)
+    // 2. Pending classification
     const { count: pendingClassification } = await supabase
       .from('research_submissions')
       .select('*', { count: 'exact', head: true })
@@ -32,22 +31,22 @@ export async function getSecretariatDashboardData() {
     
     const activeReviewers = new Set(activeReviewersData?.map(r => r.reviewer_id)).size;
 
-    // 4. Completed classifications (all classified submissions)
+    // 4. Completed classifications
     const { count: completedClassifications } = await supabase
       .from('research_submissions')
       .select('*', { count: 'exact', head: true })
       .not('classification_type', 'in', '("", null)');
 
-    // 5. Recent submissions (exclude new_submission, show only classified ones)
+    // 5. Recent submissions
     const { data: recentSubmissions } = await supabase
       .from('research_submissions')
-      .select('id, submission_id, title, submitted_at, status')
-      .neq('status', 'new_submission')  // ✅ Exclude new submissions
-      .neq('status', 'pending')  // ✅ Exclude new submissions
+      .select('id, submission_id, title, submitted_at, status, due_date')
+      .neq('status', 'new_submission')
+      .neq('status', 'pending')
       .order('submitted_at', { ascending: false })
       .limit(5);
 
-    // 6. Pending classification list with submitter info
+    // 6. Pending classification list
     const { data: pendingClassificationList } = await supabase
       .from('research_submissions')
       .select(`
@@ -55,13 +54,14 @@ export async function getSecretariatDashboardData() {
         submission_id,
         title,
         submitted_at,
+        due_date,
         profiles:user_id (full_name)
       `)
       .eq('status', 'awaiting_classification') 
       .order('submitted_at', { ascending: true })
       .limit(5);
 
-    // 7. Overdue reviews (7+ days past due date)
+    // 7. Overdue reviews
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -69,18 +69,25 @@ export async function getSecretariatDashboardData() {
       .from('reviewer_assignments')
       .select('*', { count: 'exact', head: true })
       .lte('due_date', sevenDaysAgo.toISOString())
-      .eq('status', 'under_review');  // ✅ Only count pending reviews
+      .eq('status', 'under_review');
 
-    // Format data
+    // 8. FETCH ANNOUNCEMENTS (New)
+    const { data: announcementsData } = await supabase
+      .from('announcements')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    // --- Formatting Data ---
+
     const formattedRecentSubmissions = recentSubmissions?.map(sub => ({
       id: sub.id,
       submissionId: sub.submission_id,
       title: sub.title,
       date: new Date(sub.submitted_at).toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
+        month: '2-digit', day: '2-digit', year: 'numeric',
       }),
+      dueDate: sub.due_date,
       status: formatStatus(sub.status),
       statusColor: getStatusColor(sub.status),
     })) || [];
@@ -91,10 +98,21 @@ export async function getSecretariatDashboardData() {
       title: sub.title,
       submittedBy: (sub.profiles as any)?.full_name || 'Unknown',
       date: new Date(sub.submitted_at).toLocaleDateString('en-US', {
-        month: '2-digit',
-        day: '2-digit',
-        year: 'numeric',
+        month: '2-digit', day: '2-digit', year: 'numeric',
       }),
+      dueDate: sub.due_date,
+    })) || [];
+
+    // Map DB columns to Frontend Interface
+    const formattedAnnouncements = announcementsData?.map(ann => ({
+      id: ann.id,
+      title: ann.title,
+      type: ann.type,
+      date: ann.event_date, // Mapping DB 'event_date' -> 'date'
+      excerpt: ann.content, // Mapping DB 'content' -> 'excerpt'
+      mode: ann.mode,
+      location: ann.location,
+      link: ann.link
     })) || [];
 
     return {
@@ -107,6 +125,7 @@ export async function getSecretariatDashboardData() {
       },
       recentSubmissions: formattedRecentSubmissions,
       pendingClassification: formattedPendingClassification,
+      announcements: formattedAnnouncements, // <--- Sending this to frontend
       attention: {
         needsClassification: pendingClassification || 0,
         overdueReviews: overdueReviews || 0,
@@ -121,36 +140,39 @@ export async function getSecretariatDashboardData() {
   }
 }
 
+// ... Keep your formatStatus and getStatusColor functions below ...
 function formatStatus(status: string): string {
-  const statusMap: { [key: string]: string } = {
-    'new_submission': 'New Submission',
-    'pending': 'Resubmission',
-    'awaiting_classification': 'Under Classification',
-    'under_review': 'Under Review',
-    'classified': 'Classified',
-    'review_complete': 'Review Complete',
-    'approved': 'Approved',
-    'rejected': 'Rejected',
-    'resubmit': 'Resubmit',
-    'needs_revision': 'Needs Revision',
-    'revision_requested': 'Revision Requested',
-  };
-  return statusMap[status] || status;
+    const statusMap: { [key: string]: string } = {
+      'new_submission': 'New Submission',
+      'pending': 'Resubmission',
+      'awaiting_classification': 'Under Classification',
+      'under_review': 'Under Review',
+      'classified': 'Classified',
+      'review_complete': 'Review Complete',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'resubmit': 'Resubmit',
+      'needs_revision': 'Needs Revision',
+      'revision_requested': 'Revision Requested',
+      'COI': 'Conflict of Interest',
+    };
+    return statusMap[status] || status;
 }
-
+  
 function getStatusColor(status: string): string {
-  const colorMap: { [key: string]: string } = {
-    'new_submission': 'bg-blue-50 text-blue-600',
-    'pending': 'bg-amber-50 text-amber-600',
-    'awaiting_classification': 'bg-amber-50 text-amber-600',
-    'under_review': 'bg-purple-50 text-purple-600',
-    'classified': 'bg-amber-50 text-amber-600',
-    'resubmit': 'bg-amber-50 text-amber-600',
-    'review_complete': 'bg-green-50 text-green-600',
-    'approved': 'bg-green-50 text-green-600',
-    'rejected': 'bg-red-50 text-red-600',
-    'needs_revision': 'bg-red-50 text-red-600',
-    'revision_requested': 'bg-orange-50 text-orange-600',
-  };
-  return colorMap[status] || 'bg-gray-100 text-gray-600';
+    const colorMap: { [key: string]: string } = {
+      'new_submission': 'bg-blue-50 text-blue-600',
+      'pending': 'bg-amber-50 text-amber-600',
+      'awaiting_classification': 'bg-amber-50 text-amber-600',
+      'under_review': 'bg-purple-50 text-purple-600',
+      'classified': 'bg-amber-50 text-amber-600',
+      'resubmit': 'bg-amber-50 text-amber-600',
+      'review_complete': 'bg-green-50 text-green-600',
+      'approved': 'bg-green-50 text-green-600',
+      'rejected': 'bg-red-50 text-red-600',
+      'needs_revision': 'bg-red-50 text-red-600',
+      'revision_requested': 'bg-orange-50 text-orange-600',
+      'COI': 'bg-red-50 text-red-600',
+    };
+    return colorMap[status] || 'bg-gray-100 text-gray-600';
 }

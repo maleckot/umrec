@@ -30,6 +30,8 @@ export async function getReviewerAssignments() {
         )
       `)
       .eq('reviewer_id', user.id)
+      .neq('status', 'conflict_of_interest') // 👈 ADDED: Hides COI assignments
+      .neq('status', 'declined')             // Optional: Also hide declined ones if you wish
       .order('assigned_at', { ascending: false });
 
     if (assignmentsError) {
@@ -39,14 +41,20 @@ export async function getReviewerAssignments() {
 
     // Get review status for each assignment
     const submissionIds = assignments?.map(a => a.submission_id) || [];
-    const { data: reviews } = await supabase
-      .from('reviews')
-      .select('submission_id, status, submitted_at')
-      .eq('reviewer_id', user.id)
-      .in('submission_id', submissionIds);
+    
+    // Only fetch reviews if we have submissions
+    let reviews: any[] = [];
+    if (submissionIds.length > 0) {
+        const { data: fetchedReviews } = await supabase
+        .from('reviews')
+        .select('submission_id, status, submitted_at')
+        .eq('reviewer_id', user.id)
+        .in('submission_id', submissionIds);
+        reviews = fetchedReviews || [];
+    }
 
     // Create a map of review status by submission_id
-    const reviewStatusMap = new Map(reviews?.map(r => [r.submission_id, r]) || []);
+    const reviewStatusMap = new Map(reviews.map(r => [r.submission_id, r]));
 
     // Format assignments
     const formattedAssignments = assignments?.map(assignment => {
@@ -70,7 +78,8 @@ export async function getReviewerAssignments() {
       let status: 'Completed' | 'Overdue' | 'Pending' = 'Pending';
       const now = new Date();
       
-      if (review?.status === 'submitted' || review?.submitted_at) {
+      // Check database status first
+      if (assignment.status === 'completed' || review?.status === 'submitted' || review?.submitted_at) {
         status = 'Completed';
       } else if (now > dueDate) {
         status = 'Overdue';

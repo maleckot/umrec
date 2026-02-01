@@ -21,7 +21,9 @@ import {
   FileText,
   Users
 } from 'lucide-react';
-
+// Add these imports
+import { getResubmissionData } from '@/app/actions/researcher/getResubmissionData';
+import { submitResubmission } from '@/app/actions/researcher/submitResubmission';
 // --- Interfaces ---
 interface ResubmissionFormData {
   titleOfStudy: string;
@@ -94,27 +96,25 @@ function ResubmissionFormContent() {
     }
   }, [formData.titleOfStudy]);
 
-  const loadActivityData = async () => {
+const loadActivityData = async () => {
     if (!activityId) return;
     setLoading(true);
     try {
-      const result = await getSubmissionActivity(activityId);
-      if (result.success && result.submission) {
-        setFormData(prev => ({
-          ...prev,
-          titleOfStudy: result.submission.title,
-          umrecCode: result.submission.submissionId,
-        }));
-
-        if (result.submissionComments && result.submissionComments.length > 0) {
-           const commentRows = result.submissionComments.map((c: any, index: number) => ({
-             id: index + 1,
-             recommendation: c.commentText,
-             response: '',
-             pageNumber: ''
-           }));
-           setRevisionRows(commentRows);
+      // 👇 Call the new server action
+      const result = await getResubmissionData(activityId);
+      
+      if (result.success) {
+        // 👇 Directly set the pre-formatted form data
+        if (result.formData) {
+          setFormData(result.formData);
         }
+        
+        // 👇 Directly set the pre-formatted revision rows
+        if (result.revisionRows && result.revisionRows.length > 0) {
+          setRevisionRows(result.revisionRows);
+        }
+      } else {
+        console.error('Failed to load data:', result.error);
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -122,7 +122,6 @@ function ResubmissionFormContent() {
       setLoading(false);
     }
   };
-
   // --- Input Handlers ---
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -206,23 +205,39 @@ function ResubmissionFormContent() {
     }
   };
 
-  const handleSubmit = async () => {
+const handleSubmit = async () => {
+    // Validations
     if (emailError || !formData.email) {
       alert('Please enter a valid email address.');
       return;
     }
+    // Note: In a real app, you need to upload the signature image to storage 
+    // and get a URL before sending it here.
     if (!signatureImage) {
       alert('Please upload your signature before submitting.');
       return;
     }
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log('Submitted', { formData, revisionRows, signatureImage });
-    alert('Resubmission Submitted Successfully!');
-    router.push('/researchermodule');
-  };
+    try {
+      if (!activityId) return;
 
+      // Call Server Action
+      const result = await submitResubmission(activityId, formData, revisionRows);
+
+      if (result.success) {
+        alert('Resubmission Submitted Successfully!');
+        router.push('/researchermodule');
+      } else {
+        alert('Failed to submit: ' + result.error);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("An error occurred during submission.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   const handleBack = () => {
     router.back();
   };
