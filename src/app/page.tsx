@@ -5,7 +5,9 @@ import NavbarRoles from '../components/researcher-reviewer/NavbarRoles';
 import Footer from '../components/researcher-reviewer/Footer';
 import Link from 'next/link';
 import { useEffect, useState, useRef } from 'react';
-import { Megaphone, Calendar, ArrowRight, BookOpen, Clock, Award, Users, Repeat } from 'lucide-react';
+import { Megaphone, Calendar, ArrowRight, BookOpen, Clock, Award, Users, Repeat, MapPin, Video } from 'lucide-react';
+import { getPublicAnnouncements } from '@/app/actions/homepage/getPublicAnnouncements';
+import { getHomepageData } from '@/app/actions/homepage/getHomepageData';
 
 export default function Home() {
   const [count1, setCount1] = useState(0);
@@ -13,102 +15,100 @@ export default function Home() {
   const [hasAnimated, setHasAnimated] = useState(false);
   const [activeTab, setActiveTab] = useState('mission');
   const statsRef = useRef(null);
+  
+  // --- Data State ---
+  const [announcements, setAnnouncements] = useState<any[]>([]);
+  
+  const [textContent, setTextContent] = useState({
+    hero_title: 'UMREConnect',
+    about_text: 'The University of Makati Research Ethics Committee (UMREC) is an independent body that makes decisions regarding the review, approval, and implementation of research protocols.',
+    mission_text: 'The University of Makati Research Ethics Committee commits to an organized, transparent, impartial, collaborative, and quality-driven research ethics review system.',
+    vision_text: 'The University of Makati Research Ethics Committee is a PHREB Level 2 Accredited research ethics board in 2030.'
+  });
 
-  // --- Animation Logic ---
+  const [history, setHistory] = useState<any[]>([
+    { id: '1', year: '2018', title: 'The Inception', description: 'It began when the College of Allied Health Studies (COAHS) recognized the need for an internal ethics review board.' },
+    { id: '2', year: '2019', title: 'PHREB Partnership', description: 'COAHS engaged the Philippine Health Research Ethics Board (PHREB) for the Basic Research Ethics Training (BRET).' },
+    { id: '3', year: '2021 - 2022', title: 'University-wide Expansion', description: 'Endorsed by VP for Planning and Research, Dr. Ederson DT Tapia...' },
+    { id: '4', year: '2023', title: 'Official Establishment', description: 'The Interim Committee successfully reviewed over 100 protocols...' },
+  ]);
+
+  const [homeForms, setHomeForms] = useState<any[]>([
+    { id: '1', title: 'Application Form', form_number: 'UMREC Form No. 0013-1', file_url: '#' },
+    { id: '2', title: 'Research Protocol', form_number: 'UMREC Form No. 0033', file_url: '#' },
+  ]);
+
+  // --- Fetch Data ---
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
+    const fetchData = async () => {
+      const annData = await getPublicAnnouncements();
+      setAnnouncements(annData);
+
+      const cmsData = await getHomepageData();
+      if (cmsData.textContent?.hero_title) setTextContent(cmsData.textContent);
+      if (cmsData.history?.length > 0) setHistory(cmsData.history);
+      if (cmsData.forms?.length > 0) setHomeForms(cmsData.forms);
+    };
+    fetchData();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+
+  const formatNumber = (num: number) => num.toLocaleString();
+
+  const getHeroTitleParts = () => {
+    const title = textContent.hero_title || 'UMREConnect';
+    if (title === 'UMREConnect') return { first: 'UMRE', second: 'Connect' };
+    const mid = Math.ceil(title.length / 2);
+    return { first: title.slice(0, mid), second: title.slice(mid) };
+  };
+  const heroParts = getHeroTitleParts();
+
+  const historyIcons = [BookOpen, Users, Megaphone, Award];
+  const formIcons = [
+    <Repeat key="rep" className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />,
+    <BookOpen key="book" className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />,
+    <svg key="1" className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+    <svg key="2" className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+  ];
+
+  useEffect(() => {
+    const observer = new IntersectionObserver((entries) => {
         if (entries[0].isIntersecting && !hasAnimated) {
           setHasAnimated(true);
-
-          // Animate Papers
-          let current1 = 0;
-          const target1 = 628;
-          const increment1 = target1 / 130;
-          const timer1 = setInterval(() => {
-            current1 += increment1;
-            if (current1 >= target1) {
-              setCount1(target1);
-              clearInterval(timer1);
-            } else {
-              setCount1(Math.floor(current1));
-            }
-          }, 25);
-
-          // Animate Colleges
-          let current2 = 0;
-          const target2 = 20;
-          const increment2 = target2 / 120;
-          const timer2 = setInterval(() => {
-            current2 += increment2;
-            if (current2 >= target2) {
-              setCount2(target2);
-              clearInterval(timer2);
-            } else {
-              setCount2(Math.floor(current2));
-            }
-          }, 25);
+          let current1 = 0; const target1 = 628; const increment1 = target1 / 130;
+          const timer1 = setInterval(() => { current1 += increment1; if (current1 >= target1) { setCount1(target1); clearInterval(timer1); } else { setCount1(Math.floor(current1)); } }, 25);
+          let current2 = 0; const target2 = 20; const increment2 = target2 / 120;
+          const timer2 = setInterval(() => { current2 += increment2; if (current2 >= target2) { setCount2(target2); clearInterval(timer2); } else { setCount2(Math.floor(current2)); } }, 25);
         }
-      },
-      { threshold: 0.5 }
-    );
-
+      }, { threshold: 0.5 });
     if (statsRef.current) observer.observe(statsRef.current);
     return () => { if (statsRef.current) observer.unobserve(statsRef.current); };
   }, [hasAnimated]);
 
-  const formatNumber = (num: number) => num.toLocaleString();
-
-  // --- Data Arrays ---
-  const downloadableFiles = [
-    {
-      title: "Application Form Ethics Review",
-      formNumber: "UMREC Form No. 0013-1",
-      filePath: "/forms/UMREC Form No. 0013-1.pdf",
-      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-    },
-    {
-      title: "Research Protocol",
-      formNumber: "UMREC Form No. 0033",
-      filePath: "/forms/UMREC Form No. 0033.pdf",
-      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-    },
-    {
-      title: "Resubmission Form",
-      formNumber: "UMREC Form No. 0014",
-      filePath: "/forms/Resubmission Form.docx",
-      icon: <Repeat className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" />
-    },
-    {
-      title: "Informed Consent Form",
-      formNumber: "Sample for legal-age respondents",
-      filePath: "/forms/Informed Consent Form.pdf",
-      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-    },
-    {
-      title: "Informed Consent Form",
-      formNumber: "Sample for minor respondents",
-      filePath: "/forms/Informed Consent Form.pdf",
-      icon: <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+  // Helper component to display content (Normal vs Special Card)
+  const HistoryItemContent = ({ item, isSpecial }: { item: any, isSpecial: boolean }) => {
+    if (isSpecial) {
+      return (
+        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 shadow-xl hover:shadow-[#F0E847]/10 hover:-translate-y-1">
+          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>{item.year}</h3>
+          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>{item.title}</h4>
+          <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>{item.description}</p>
+          <div className="inline-block px-3 py-1 bg-[#F0E847] text-[#050B24] text-xs font-bold rounded uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>Current Era</div>
+        </div>
+      );
     }
-  ];
-
-  const seminars = [
-    {
-      id: 1,
-      title: "Research Ethics: The Basics of Protocol Review",
-      date: "February 15, 2026",
-      location: "HPSB Auditorium, 9th Floor",
-      description: "A comprehensive seminar for new researchers on the fundamentals of ethical review processing."
-    },
-    {
-      id: 2,
-      title: "Understanding Informed Consent in Medical Research",
-      date: "March 10, 2026",
-      location: "Online via Zoom",
-      description: "Deep dive into crafting clear, ethical informed consent forms for vulnerable populations."
-    }
-  ];
+    return (
+      <>
+        <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>{item.year}</h3>
+        <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>{item.title}</h4>
+        <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>{item.description}</p>
+      </>
+    );
+  };
 
   return (
     <div className="overflow-x-hidden bg-[#050B24]">
@@ -117,229 +117,125 @@ export default function Home() {
       {/* Hero Section */}
       <div className="relative h-[60vh] sm:h-[70vh] md:min-h-screen flex flex-col justify-center px-4 sm:px-6 md:px-10">
         <div className="absolute inset-0 z-0">
-          <Image
-            src="/img/landingimg.png"
-            alt="Background"
-            fill
-            style={{ objectFit: 'cover', objectPosition: 'center' }}
-            priority
-            sizes="100vw"
-            quality={90}
-          />
+          <Image src="/img/landingimg.png" alt="Background" fill style={{ objectFit: 'cover', objectPosition: 'center' }} priority quality={90} />
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/50"></div>
         </div>
-
-        <div className="relative z-10 text-center space-y-4 sm:space-y-5 md:space-y-6 max-w-5xl mx-auto w-full px-4 fade-in-up">
+        <div className="relative z-10 text-center space-y-4 max-w-5xl mx-auto w-full px-4 fade-in-up">
           <h1 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold" style={{ fontFamily: 'Marcellus, serif' }}>
             <span className="inline-flex flex-wrap justify-center bg-gradient-to-r from-[#FFFFFF] to-[#F0E847] bg-clip-text text-transparent drop-shadow-elegant">
-              {'UMRE'.split('').map((letter, index) => (
+              {heroParts.first.split('').map((letter, index) => (
                 <span key={index} className="animate-letter-glow-white" style={{ animationDelay: `${index * 0.15}s` }}>{letter}</span>
               ))}
-              {'Connect'.split('').map((letter, index) => (
-                <span key={index + 4} className="animate-letter-glow-yellow" style={{ animationDelay: `${(index + 4) * 0.15}s` }}>{letter}</span>
+              {heroParts.second.split('').map((letter, index) => (
+                <span key={index + heroParts.first.length} className="animate-letter-glow-yellow" style={{ animationDelay: `${(index + 4) * 0.15}s` }}>{letter}</span>
               ))}
             </span>
           </h1>
-
           <div className="flex flex-nowrap justify-center items-center gap-x-0.5 sm:gap-x-1.5 md:gap-x-3 px-1 py-3 overflow-x-auto scrollbar-hide" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">U</span>nbiased
-            </span>
-            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">M</span>orally Responsible
-            </span>
-            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">R</span>espect For Human Rights
-            </span>
-            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">E</span>quitable
-            </span>
-            <span className="text-white/30 text-[7px] xs:text-[8px] sm:text-xs">•</span>
-            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap">
-              <span className="font-bold text-[#F0E847] text-[8px] xs:text-[9px] sm:text-sm md:text-base lg:text-lg">C</span>redible
-            </span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap"><span className="font-bold text-[#F0E847]">U</span>nbiased</span><span className="text-white/30">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap"><span className="font-bold text-[#F0E847]">M</span>orally Responsible</span><span className="text-white/30">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap"><span className="font-bold text-[#F0E847]">R</span>espect For Human Rights</span><span className="text-white/30">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap"><span className="font-bold text-[#F0E847]">E</span>quitable</span><span className="text-white/30">•</span>
+            <span className="text-[7px] xs:text-[8px] sm:text-xs md:text-sm lg:text-base text-white/90 font-light tracking-tight whitespace-nowrap"><span className="font-bold text-[#F0E847]">C</span>redible</span>
           </div>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-          <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
-        </div>
+        <div className="absolute bottom-0 left-0 right-0 z-10"><div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div></div>
       </div>
 
       {/* About Section */}
-      <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32 transition-all duration-700" style={{ backgroundColor: '#E8EEF3' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="text-left px-4 sm:px-6 md:px-8 fade-in-section">
-            <div className="mb-6 sm:mb-8 md:mb-10">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl mb-2 relative inline-block" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700, color: '#101C50' }}>
-                ABOUT UMREC
-                <div className="absolute bottom-0 left-0 w-16 sm:w-20 h-1 bg-[#D3CC50]"></div>
-              </h2>
-            </div>
-            <p className="text-base sm:text-lg md:text-xl leading-relaxed text-justify hover-lift" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, color: '#101C50', lineHeight: '1.8' }}>
-              The <span className="font-bold">University of Makati Research Ethics Committee (UMREC)</span> is an independent body that makes decisions regarding the review, approval, and implementation of research protocols. Its purpose is to promote the integrity of research data and protect the rights, safety, and well-being of human participants.
-            </p>
-          </div>
+      <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32 bg-[#E8EEF3]">
+        <div className="max-w-6xl mx-auto text-left fade-in-section">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl mb-2 relative inline-block text-[#101C50]" style={{ fontWeight: 700 }}>ABOUT UMREC<div className="absolute bottom-0 left-0 w-16 sm:w-20 h-1 bg-[#D3CC50]"></div></h2>
+          <p className="mt-6 text-base sm:text-lg md:text-xl leading-relaxed text-justify whitespace-pre-line text-[#101C50]">{textContent.about_text}</p>
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
 
-      {/* History Section */}
+      {/* --- HISTORY SECTION (FULLY RESTORED) --- */}
       <div className="py-20 sm:py-24 px-4 sm:px-8 bg-[#050B24] relative overflow-hidden">
-        {/* Decorative Background Elements */}
         <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-20 left-10 w-64 h-64 bg-[#F0E847] rounded-full blur-[120px]"></div>
-            <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500 rounded-full blur-[120px]"></div>
+          <div className="absolute top-20 left-10 w-64 h-64 bg-[#F0E847] rounded-full blur-[120px]"></div>
+          <div className="absolute bottom-20 right-10 w-80 h-80 bg-blue-500 rounded-full blur-[120px]"></div>
         </div>
 
         <div className="max-w-6xl mx-auto relative z-10">
-           {/* Header */}
-           <div className="text-center mb-16 sm:mb-20">
-              <div className="inline-flex items-center justify-center p-3 bg-white/10 backdrop-blur-md rounded-full text-[#F0E847] mb-4 border border-white/10">
-                 <Clock size={28} />
-              </div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 800 }}>
-                Our Legacy & History
-              </h2>
-              <div className="w-24 h-1.5 bg-gradient-to-r from-[#F0E847] to-[#D3CC50] mx-auto rounded-full shadow-[0_0_15px_rgba(240,232,71,0.6)]"></div>
-           </div>
+          <div className="text-center mb-16">
+             <div className="inline-flex items-center justify-center p-3 bg-white/10 backdrop-blur-md rounded-full text-[#F0E847] mb-4 border border-white/10"><Clock size={28} /></div>
+             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4" style={{ fontWeight: 800 }}>Our Legacy & History</h2>
+             <div className="w-24 h-1.5 bg-gradient-to-r from-[#F0E847] to-[#D3CC50] mx-auto rounded-full"></div>
+          </div>
 
-           {/* Timeline Container */}
-           <div className="relative">
-              {/* Vertical Line */}
-              <div className="absolute left-6 sm:left-1/2 top-0 bottom-0 w-1 bg-white/10 sm:-translate-x-1/2 rounded-full"></div>
+          <div className="relative">
+            {/* Vertical Line */}
+            <div className="absolute left-6 sm:left-1/2 top-0 bottom-0 w-1 bg-white/10 sm:-translate-x-1/2 rounded-full"></div>
+            
+            <div className="space-y-12 sm:space-y-24">
+              
+              {/* Loop through History */}
+              {history.map((item, index) => {
+                const Icon = historyIcons[index % historyIcons.length];
+                const isEven = index % 2 === 0;
+                // ✅ Restore "Current Era" logic for the last item
+                const isSpecial = index === history.length - 1; 
 
-              <div className="space-y-12 sm:space-y-24">
-                  
-                  {/* Timeline Item 1: 2018 */}
-                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
-                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-0 sm:pr-8 text-left sm:text-right">
-                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2018</h3>
-                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>The Inception</h4>
-                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
-                             It began when the <span className="text-white font-semibold">College of Allied Health Studies (COAHS)</span> recognized the need for an internal ethics review board to support researchers in Nursing, Radiologic Technology, and Pharmacy.
-                          </p>
-                      </div>
-                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
-                          <BookOpen size={18} className="text-white" />
-                      </div>
-                      <div className="order-1 w-full sm:w-5/12"></div>
+                return (
+                  <div key={item.id} className="relative flex flex-col sm:flex-row items-center justify-between group">
+                    
+                    {/* LEFT COLUMN: Contains Item 1, 3, 5... (Even Indices) */}
+                    {isEven ? (
+                        <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-0 sm:pr-8 text-left sm:text-right">
+                           <HistoryItemContent item={item} isSpecial={isSpecial} />
+                        </div>
+                    ) : (
+                        <div className="order-1 w-full sm:w-5/12"></div> // Empty Spacer for Odd Items
+                    )}
+
+                    {/* CENTER ICON */}
+                    <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
+                      <Icon size={18} className="text-white" />
+                    </div>
+
+                    {/* RIGHT COLUMN: Contains Item 2, 4, 6... (Odd Indices) */}
+                    {!isEven ? (
+                        <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-8 text-left">
+                           <HistoryItemContent item={item} isSpecial={isSpecial} />
+                        </div>
+                    ) : (
+                        <div className="order-1 w-full sm:w-5/12"></div> // Empty Spacer for Even Items
+                    )}
+
                   </div>
+                );
+              })}
 
-                  {/* Timeline Item 2: 2019 */}
-                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
-                      <div className="order-1 w-full sm:w-5/12"></div>
-                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
-                          <Users size={18} className="text-white" />
-                      </div>
-                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-8 text-left">
-                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2019</h3>
-                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>PHREB Partnership</h4>
-                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
-                             COAHS engaged the <span className="text-white font-semibold">Philippine Health Research Ethics Board (PHREB)</span> for the Basic Research Ethics Training (BRET). Faculty members critiqued manuscripts and simulated REC meetings under the guidance of Dr. Cecilia V. Tomas.
-                          </p>
-                      </div>
-                  </div>
-
-                  {/* Timeline Item 3: 2021-2022 */}
-                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
-                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-0 sm:pr-8 text-left sm:text-right">
-                          <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2021 - 2022</h3>
-                          <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>University-wide Expansion</h4>
-                          <p className="text-gray-300 text-sm sm:text-base leading-relaxed" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
-                             Endorsed by VP for Planning and Research, <span className="text-white font-semibold">Dr. Ederson DT Tapia</span>, the advocacy expanded university-wide. Intensive SOP workshops and training sessions were conducted, leading to the creation of the Interim Research Ethics Committee.
-                          </p>
-                      </div>
-                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
-                          <Megaphone size={18} className="text-white" />
-                      </div>
-                      <div className="order-1 w-full sm:w-5/12"></div>
-                  </div>
-
-                  {/* Timeline Item 4: 2023 */}
-                  <div className="relative flex flex-col sm:flex-row items-center justify-between group">
-                      <div className="order-1 w-full sm:w-5/12"></div>
-                      <div className="z-20 flex items-center justify-center order-1 w-12 h-12 bg-[#050B24] border-4 border-[#F0E847] rounded-full shadow-[0_0_20px_rgba(240,232,71,0.4)] absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-0 sm:top-auto">
-                          <Award size={18} className="text-white" />
-                      </div>
-                      <div className="order-1 w-full sm:w-5/12 pl-16 sm:pl-8 text-left">
-                          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-6 hover:bg-white/10 transition-all duration-300 shadow-xl hover:shadow-[#F0E847]/10 hover:-translate-y-1">
-                              <h3 className="text-2xl sm:text-3xl font-bold text-[#F0E847] mb-2" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 700 }}>2023</h3>
-                              <h4 className="text-lg sm:text-xl font-bold text-white mb-3" style={{ fontFamily: 'Metropolis, sans-serif' }}>Official Establishment</h4>
-                              <p className="text-gray-300 text-sm sm:text-base leading-relaxed mb-4" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
-                                 The Interim Committee successfully reviewed over 100 protocols. On <span className="text-white font-bold">September 26, 2023</span>, the appointed members and officers of UMREC took their oath of office for a three-year term.
-                              </p>
-                              <div className="inline-block px-3 py-1 bg-[#F0E847] text-[#050B24] text-xs font-bold rounded uppercase tracking-wider" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                                 Current Era
-                              </div>
-                          </div>
-                      </div>
-                  </div>
-
-              </div>
-           </div>
+            </div>
+          </div>
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
-      
+
       {/* Mission/Vision Section */}
-      <div className="py-8 sm:py-12 md:py-16 lg:py-20 px-4 sm:px-6 md:px-12 lg:px-32" style={{ backgroundColor: '#050B24' }}>
-        <div className="max-w-6xl mx-auto">
-          <div className="px-2 sm:px-4 md:px-8">
+      <div className="py-8 sm:py-12 md:py-16 lg:py-20 px-4 sm:px-6 md:px-12 lg:px-32 bg-[#050B24]">
+        <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-8">
             <div className="flex justify-center mb-6 sm:mb-8 md:mb-10 lg:mb-12">
               <div className="inline-flex w-full sm:w-auto rounded-lg bg-white/5 p-1 backdrop-blur-sm border border-white/10">
-                <button
-                  onClick={() => setActiveTab('mission')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === 'mission' ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg shadow-yellow-500/50 scale-105' : 'text-white hover:bg-white/10'}`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Mission
-                </button>
-                <button
-                  onClick={() => setActiveTab('vision')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === 'vision' ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg shadow-yellow-500/50 scale-105' : 'text-white hover:bg-white/10'}`}
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
-                >
-                  Vision
-                </button>
+                <button onClick={() => setActiveTab('mission')} className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 ${activeTab === 'mission' ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg' : 'text-white hover:bg-white/10'}`}>Mission</button>
+                <button onClick={() => setActiveTab('vision')} className={`flex-1 sm:flex-none px-3 sm:px-6 md:px-8 lg:px-12 py-2 sm:py-3 md:py-4 rounded-lg text-xs sm:text-sm md:text-base lg:text-xl font-semibold transition-all duration-300 ${activeTab === 'vision' ? 'bg-gradient-to-r from-[#D3CC50] to-[#F0E847] text-[#050B24] shadow-lg' : 'text-white hover:bg-white/10'}`}>Vision</button>
               </div>
             </div>
-
             <div className="relative" style={{ minHeight: '280px' }}>
-              {activeTab === 'mission' && (
-                <div className="animate-in fade-in slide-in-from-right-8 duration-500 absolute inset-0">
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-10 border border-white/10 shadow-2xl hover-lift">
-                    <div className="flex items-start gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3 md:mb-4">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-[#D3CC50] to-[#F0E847] flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-[#050B24]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      </div>
-                      <h3 className="text-base sm:text-lg md:text-2xl lg:text-4xl font-bold text-[#F0E847]" style={{ fontFamily: 'Metropolis, sans-serif' }}>Our Mission</h3>
-                    </div>
-                    <p className="text-xs sm:text-sm md:text-base lg:text-xl leading-relaxed text-justify text-white/90" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.7' }}>
-                      The University of Makati Research Ethics Committee commits to an organized, transparent, impartial, collaborative, and quality-driven research ethics review system by producing ethical researches that contribute to societal progress and development.
-                    </p>
+              <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-10 border border-white/10 shadow-2xl hover-lift animate-in fade-in duration-500">
+                <div className="flex items-start gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#D3CC50] to-[#F0E847] flex items-center justify-center shadow-lg">
+                    <svg className="w-4 h-4 text-[#050B24]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                   </div>
+                  <h3 className="text-base sm:text-lg md:text-2xl lg:text-4xl font-bold text-[#F0E847]" style={{ fontFamily: 'Metropolis, sans-serif' }}>{activeTab === 'mission' ? 'Our Mission' : 'Our Vision'}</h3>
                 </div>
-              )}
-              {activeTab === 'vision' && (
-                <div className="animate-in fade-in slide-in-from-right-8 duration-500 absolute inset-0">
-                  <div className="bg-white/5 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-10 border border-white/10 shadow-2xl hover-lift">
-                    <div className="flex items-start gap-2 sm:gap-3 md:gap-4 mb-2 sm:mb-3 md:mb-4">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-[#D3CC50] to-[#F0E847] flex items-center justify-center flex-shrink-0 shadow-lg">
-                        <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 lg:w-8 lg:h-8 text-[#050B24]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      </div>
-                      <h3 className="text-base sm:text-lg md:text-2xl lg:text-4xl font-bold text-[#F0E847]" style={{ fontFamily: 'Metropolis, sans-serif' }}>Our Vision</h3>
-                    </div>
-                    <p className="text-xs sm:text-sm md:text-base lg:text-xl leading-relaxed text-justify text-white/90" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.7' }}>
-                      The University of Makati Research Ethics Committee is a PHREB Level 2 Accredited research ethics board in 2030 and the leading advocate for ethical, inclusive, and socially responsible research, fostering resilience and excellence in national and international scholarly endeavors.
-                    </p>
-                  </div>
-                </div>
-              )}
+                <p className="text-xs sm:text-sm md:text-base lg:text-xl leading-relaxed text-justify text-white/90 whitespace-pre-line">
+                  {activeTab === 'mission' ? textContent.mission_text : textContent.vision_text}
+                </p>
+              </div>
             </div>
-          </div>
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
@@ -350,159 +246,77 @@ export default function Home() {
           <Image src="/img/landingimg1.png" alt="Statistics Background" fill style={{ objectFit: 'cover', objectPosition: 'center' }} sizes="100vw" quality={90} />
           <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-black/60"></div>
         </div>
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 md:px-8 lg:px-16 py-8 sm:py-10 md:py-0">
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-16 py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 md:gap-20">
-            <div className="text-center stat-card-transparent p-6 sm:p-8 md:p-10 rounded-2xl">
-              <h3 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white mb-3 sm:mb-4 md:mb-5 font-extrabold stat-number" style={{ fontFamily: 'Metropolis, sans-serif', textShadow: '0 0 30px rgba(211, 204, 80, 0.5)' }}>{formatNumber(count1)}</h3>
-              <p className="text-sm sm:text-base md:text-xl lg:text-2xl text-white/90 font-medium" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}>papers are reviewed for<br />academic year 2024-2025</p>
+            <div className="text-center stat-card-transparent p-6 rounded-2xl">
+              <h3 className="text-5xl lg:text-8xl text-white mb-3 font-extrabold stat-number">{formatNumber(count1)}</h3>
+              <p className="text-sm lg:text-2xl text-white/90 font-medium">papers reviewed 2024-2025</p>
             </div>
-            <div className="text-center stat-card-transparent p-6 sm:p-8 md:p-10 rounded-2xl">
-              <h3 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-white mb-3 sm:mb-4 md:mb-5 font-extrabold stat-number" style={{ fontFamily: 'Metropolis, sans-serif', textShadow: '0 0 30px rgba(211, 204, 80, 0.5)' }}>{count2}</h3>
-              <p className="text-sm sm:text-base md:text-xl lg:text-2xl text-white/90 font-medium" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 500 }}>colleges/institutes<br />participated</p>
+            <div className="text-center stat-card-transparent p-6 rounded-2xl">
+              <h3 className="text-5xl lg:text-8xl text-white mb-3 font-extrabold stat-number">{count2}</h3>
+              <p className="text-sm lg:text-2xl text-white/90 font-medium">colleges/institutes participated</p>
             </div>
           </div>
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
 
-      {/* Announcements & Seminars Section */}
-      <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32 bg-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-50 rounded-full blur-3xl -z-10 opacity-60"></div>
-        
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 sm:mb-12">
-            <div>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl mb-2 relative inline-block text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 800 }}>
-                ANNOUNCEMENTS & SEMINARS
-                <div className="absolute bottom-0 left-0 w-20 sm:w-24 h-1 bg-[#D3CC50]"></div>
-              </h2>
-              <p className="text-sm sm:text-base text-gray-500 mt-4">Stay updated with the latest ethics review guidelines and training schedules.</p>
-            </div>
-            <Link href="/announcements" className="hidden md:flex items-center gap-2 text-[#101C50] font-bold hover:text-blue-700 transition-colors group">
-              View All Updates 
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
+      {/* Announcements */}
+      <div className="py-12 px-4 sm:px-8 bg-white relative overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex justify-between items-end mb-8">
+            <h2 className="text-2xl md:text-4xl text-[#101C50]" style={{ fontWeight: 800 }}>ANNOUNCEMENTS<div className="w-20 h-1 bg-[#D3CC50]"></div></h2>
+            <Link href="/announcements" className="hidden md:flex items-center gap-2 text-[#101C50] font-bold hover:text-blue-700">View All <ArrowRight size={20}/></Link>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {seminars.map((seminar) => (
-              <div key={seminar.id} className="group bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#101C50] group-hover:bg-[#D3CC50] transition-colors duration-300"></div>
-                
-                <div className="flex justify-between items-start mb-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wider">
-                    <Megaphone size={12} /> Seminar
-                  </span>
-                  <div className="flex items-center gap-1.5 text-gray-400 text-xs font-medium">
-                    <Calendar size={14} /> {seminar.date}
-                  </div>
+            {announcements.length === 0 && <div className="col-span-full text-center py-10 bg-gray-50 rounded-2xl border border-dashed text-gray-500">No active announcements.</div>}
+            {announcements.map((item) => (
+              <div key={item.id} className="group bg-white rounded-2xl p-6 border shadow-sm hover:shadow-xl transition-all relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#101C50] group-hover:bg-[#D3CC50] transition-colors"></div>
+                <div className="flex justify-between mb-4">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${item.type === 'Seminar' ? 'bg-blue-50 text-blue-700' : 'bg-yellow-50 text-yellow-700'}`}>{item.type}</span>
+                  <span className="text-gray-400 text-xs font-medium flex gap-1"><Calendar size={14} /> {formatDate(item.event_date)}</span>
                 </div>
-
-                <h3 className="text-xl sm:text-2xl font-bold text-[#101C50] mb-3 group-hover:text-blue-800 transition-colors" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {seminar.title}
-                </h3>
-                
-                <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-2">
-                  {seminar.description}
-                </p>
-
-                <div className="flex items-center justify-between mt-auto">
-                   <span className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
-                     📍 {seminar.location}
-                   </span>
-                   <Link href={`/announcements/${seminar.id}`} className="inline-flex items-center text-sm font-bold text-[#D3CC50] hover:text-[#b4ae3e] transition-colors">
-                     Read More <ArrowRight size={16} className="ml-1" />
-                   </Link>
+                <h3 className="text-xl font-bold text-[#101C50] mb-3">{item.title}</h3>
+                <p className="text-gray-600 text-sm line-clamp-2 mb-4">{item.content}</p>
+                <div className="flex justify-between items-center">
+                   <span className="text-xs font-bold text-gray-500 bg-gray-50 px-3 py-1 rounded-lg border flex gap-2">{item.mode === 'Onsite' ? <><MapPin size={12}/> {item.location}</> : <><Video size={12}/> Online</>}</span>
+                   <span className="text-sm font-bold text-[#D3CC50] flex items-center cursor-pointer">Read More <ArrowRight size={16} className="ml-1"/></span>
                 </div>
               </div>
             ))}
           </div>
-
-          <div className="mt-8 text-center md:hidden">
-             <Link href="/announcements" className="inline-flex items-center gap-2 text-[#101C50] font-bold hover:text-blue-700 transition-colors">
-               View All Updates <ArrowRight size={18} />
-             </Link>
-          </div>
         </div>
       </div>
       <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
 
-      {/* Submission Information Section */}
-      <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32" style={{ backgroundColor: '#050B24' }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 md:px-8">
-          <div className="text-left text-white space-y-6 sm:space-y-8 md:space-y-10">
-            <div className="mb-6 sm:mb-8 md:mb-10">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-2 relative inline-block" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 800 }}>
-                SUBMITTING YOUR RESEARCH ETHICS APPLICATION
-                <div className="absolute bottom-0 left-0 w-20 sm:w-24 h-1 bg-[#D3CC50]"></div>
-              </h2>
-            </div>
-            <div className="space-y-6 sm:space-y-7 md:space-y-8">
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-justify hover-lift" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.8' }}>
-                To ensure your research aligns with ethical standards, you'll need to submit a set of required documents for review. These include essential forms, your research protocol, consent forms, and other supporting materials.
-              </p>
-              <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-justify hover-lift" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.8' }}>
-                To access the specific forms, detailed requirements, and the complete submission process, please{' '}
-                <Link href="/login" className="inline-flex items-center gap-2 font-bold hover:underline transition-all duration-300 hover:gap-3 group" style={{ color: '#F0E847' }}>
-                  log in to your account
-                  <svg className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </Link>
-                . Once logged in, you'll find all the necessary instructions for both online submission and hard copy submission.
-              </p>
-              <div className="bg-white/5 backdrop-blur-sm rounded-xl p-4 sm:p-5 md:p-6 lg:p-8 border border-white/10 hover-lift">
-                <p className="text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-justify" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.8' }}>
-                  Processing of your application will commence upon receipt of your consolidated files, uploaded online and submitted in hard copy to the UMREC office. You can find us at <span className="font-bold text-[#F0E847]">Room 9020, 9th floor HPSB Bldg., University of Makati</span>. Our office hours are <span className="font-bold text-[#F0E847]">Monday to Friday, 8 AM to 5 PM</span>.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div className="w-full h-1 bg-gradient-to-r from-transparent via-[#D3CC50] to-transparent shadow-glow-yellow"></div>
-
-      {/* Downloadable Files Section */}
-      <div className="py-12 sm:py-16 md:py-20 px-4 sm:px-8 md:px-20 lg:px-32" style={{ backgroundColor: '#E8EEF3' }}>
+      {/* Downloadable Forms */}
+      <div className="py-12 px-4 sm:px-8 bg-[#E8EEF3]">
         <div className="max-w-6xl mx-auto">
-          <div className="px-4 sm:px-6 md:px-8">
-            <div className="mb-8 sm:mb-10 md:mb-12">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl mb-2 relative inline-block" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 800, color: '#101C50' }}>
-                DOWNLOADABLE FORMS
-                <div className="absolute bottom-0 left-0 w-20 sm:w-24 h-1 bg-[#D3CC50]"></div>
-              </h2>
-              <p className="text-sm sm:text-base md:text-lg mt-4 text-[#101C50]" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400 }}>
-                Download the required forms for your research ethics application
-              </p>
-            </div>
-            
-            {/* ✅ UPDATED LAYOUT: 3 forms in first row, 2 forms in second row for large screens */}
-            <div className="flex flex-wrap justify-center gap-4 sm:gap-5 md:gap-6">
-              {downloadableFiles.map((file, index) => (
-                <div key={index} className="download-card w-full sm:w-[calc(50%-1.25rem)] lg:w-[calc(33.33%-1.5rem)] bg-white rounded-xl sm:rounded-2xl p-5 sm:p-6 border-2 border-[#101C50]/10 shadow-lg hover-lift group flex flex-col">
-                  <div className="w-16 h-16 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-[#101C50] to-[#050B24] flex items-center justify-center mx-auto mb-4 sm:mb-5 text-[#F0E847] shadow-lg group-hover:scale-110 transition-transform duration-300">
-                    {file.icon}
-                  </div>
-                  <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#101C50] mb-2 text-center min-h-[2.5rem] sm:min-h-[3rem] flex items-center justify-center" style={{ fontFamily: 'Metropolis, sans-serif', lineHeight: '1.3' }}>{file.title}</h3>
-                  <p className="text-xs sm:text-sm text-[#101C50]/70 mb-4 sm:mb-5 text-center min-h-[2rem] flex items-center justify-center" style={{ fontFamily: 'Metropolis, sans-serif' }}>{file.formNumber}</p>
-                  <a href={file.filePath} download className="download-btn w-full bg-gradient-to-r from-[#101C50] to-[#050B24] text-white py-3 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 hover:shadow-xl transition-all duration-300 group-hover:from-[#D3CC50] group-hover:to-[#F0E847] group-hover:text-[#050B24] mt-auto" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    Download
-                  </a>
+          <div className="mb-10">
+            <h2 className="text-xl md:text-4xl text-[#101C50]" style={{ fontWeight: 800 }}>DOWNLOADABLE FORMS<div className="w-20 h-1 bg-[#D3CC50]"></div></h2>
+            <p className="text-sm md:text-lg mt-4 text-[#101C50]">Download the required forms for your research ethics application</p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-6">
+            {homeForms.map((file, index) => (
+              <div key={file.id || index} className="w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.33%-1.5rem)] bg-white rounded-xl p-6 border-2 border-[#101C50]/10 shadow-lg hover:-translate-y-2 transition-transform flex flex-col group">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#101C50] to-[#050B24] flex items-center justify-center mx-auto mb-4 text-[#F0E847] shadow-lg group-hover:scale-110 transition-transform">
+                  {formIcons[index % formIcons.length]}
                 </div>
-              ))}
-            </div>
-            
-            <div className="mt-8 sm:mt-10 md:mt-12 bg-[#101C50]/5 backdrop-blur-sm rounded-xl p-4 sm:p-5 md:p-6 border border-[#101C50]/10">
-              <p className="text-xs sm:text-sm md:text-base text-[#101C50] text-center" style={{ fontFamily: 'Metropolis, sans-serif', fontWeight: 400, lineHeight: '1.7' }}>
-                <span className="font-bold">Note:</span> All forms must be completed and submitted along with your research protocol. For questions regarding form completion, please contact the UMREC office during office hours.
-              </p>
-            </div>
+                <h3 className="text-sm md:text-lg font-bold text-[#101C50] mb-2 text-center">{file.title}</h3>
+                <p className="text-xs text-[#101C50]/70 mb-4 text-center">{file.form_number}</p>
+                <a href={file.file_url} download className="mt-auto w-full bg-gradient-to-r from-[#101C50] to-[#050B24] text-white py-3 rounded-lg font-semibold text-sm flex justify-center gap-2 hover:shadow-xl transition-all">
+                  Download
+                </a>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
       <Footer />
-
       <style jsx>{`
+        /* ... (Paste your existing CSS animations here) ... */
         @keyframes letter-glow-white { 0%, 100% { text-shadow: 0 0 0px rgba(255, 255, 255, 0); } 50% { text-shadow: 0 0 20px rgba(255, 255, 255, 0.9), 0 0 30px rgba(255, 255, 255, 0.6), 0 0 40px rgba(255, 255, 255, 0.3); } }
         @keyframes letter-glow-yellow { 0%, 100% { text-shadow: 0 0 0px rgba(240, 232, 71, 0); } 50% { text-shadow: 0 0 20px rgba(240, 232, 71, 0.9), 0 0 30px rgba(240, 232, 71, 0.6), 0 0 40px rgba(240, 232, 71, 0.3); } }
         @keyframes fade-in-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }

@@ -7,7 +7,8 @@ import AttentionCard from '@/components/staff-secretariat-admin/AttentionCard';
 import { useRouter } from 'next/navigation';
 import { getSecretariatDashboardData } from '@/app/actions/secretariat-staff/secretariat/getSecretariatDashboardData';
 import { Megaphone, Calendar, Plus, Trash2, MapPin, X, Video, AlertTriangle, Clock, Timer, AlertCircle } from 'lucide-react';
-
+import { createAnnouncement } from '@/app/actions/secretariat-staff/secretariat/createAnnouncement';
+import { deleteAnnouncement } from '@/app/actions/secretariat-staff/secretariat/deleteAnnouncement';
 // --- Types ---
 interface Announcement {
   id: string;
@@ -50,7 +51,7 @@ export default function SecretariatDashboard() {
 
   // --- Helpers for Due Dates ---
   const DEFAULT_DUE_DAYS = 7;
-  const DUE_SOON_DAYS = 2;
+  const DUE_SOON_DAYS = 2   ;
 
   const toDateSafe = (value: any) => {
     if (!value) return null;
@@ -101,6 +102,9 @@ export default function SecretariatDashboard() {
       const result = await getSecretariatDashboardData();
       if (result.success) {
         setDashboardData(result);
+        if (result.announcements) {
+          setAnnouncements(result.announcements);
+        }
       } else {
         console.error('Failed to load dashboard data:', result.error);
       }
@@ -118,42 +122,66 @@ export default function SecretariatDashboard() {
       else if (submission.status === 'Under Review') router.push(`/secretariatmodule/submissions/under-review?id=${submission.id}`);
       else if (submission.status === 'Approved') router.push(`/secretariatmodule/submissions/review-complete?id=${submission.id}`);
       else if (submission.status === 'Needs Revision') router.push(`/secretariatmodule/submissions/under-revision?id=${submission.id}`);
+      else if(submission.status === 'Conflict of Interest') router.push(`/secretariatmodule/submissions/resolve-conflict?id=${submission.id}`);
       else router.push(`/secretariatmodule/submissions/details?id=${submission.id}`);
   };
 
-  // --- 2. Handle Adding New Announcement ---
-  const handlePostAnnouncement = () => {
+// --- 2. Handle Adding New Announcement ---
+  const handlePostAnnouncement = async () => {
+    // Basic Validation
     if (!newAnnouncement.title || !newAnnouncement.date || !newAnnouncement.excerpt) {
       alert("Please fill in all required fields.");
       return;
     }
 
-    const post: Announcement = {
-      id: Date.now().toString(),
-      title: newAnnouncement.title!,
-      type: newAnnouncement.type as 'Seminar' | 'Announcement',
-      date: newAnnouncement.date!,
-      excerpt: newAnnouncement.excerpt!,
-      mode: newAnnouncement.mode as 'Onsite' | 'Virtual',
-      location: newAnnouncement.mode === 'Onsite' ? newAnnouncement.location : undefined,
-      link: newAnnouncement.mode === 'Virtual' ? newAnnouncement.link : undefined
-    };
+    try {
+      // Call Server Action
+      const result = await createAnnouncement(newAnnouncement);
 
-    const updatedList = [post, ...announcements];
-    setAnnouncements(updatedList);
-    localStorage.setItem('secretariat_announcements', JSON.stringify(updatedList));
-    
-    setNewAnnouncement({ type: 'Announcement', title: '', date: '', excerpt: '', mode: 'Onsite', location: '', link: '' });
-    setShowAnnouncementModal(false);
+      if (result.success) {
+        // Reset Form
+        setNewAnnouncement({ 
+            type: 'Announcement', 
+            title: '', 
+            date: '', 
+            excerpt: '', 
+            mode: 'Onsite', 
+            location: '', 
+            link: '' 
+        });
+        setShowAnnouncementModal(false);
+        
+        // Reload list to see new item (Quickest way without full page reload logic)
+        window.location.reload(); 
+      } else {
+        alert(`Failed to post: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("An unexpected error occurred.");
+    }
   };
-
   // --- 3. Handle Delete (With Custom Modal) ---
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (showDeleteModal) {
-      const updatedList = announcements.filter(a => a.id !== showDeleteModal);
-      setAnnouncements(updatedList);
-      localStorage.setItem('secretariat_announcements', JSON.stringify(updatedList));
-      setShowDeleteModal(null);
+      try {
+        // 1. Call the Server Action
+        const result = await deleteAnnouncement(showDeleteModal);
+
+        if (result.success) {
+          // 2. Optimistically update the UI (remove it from the list immediately)
+          const updatedList = announcements.filter(a => a.id !== showDeleteModal);
+          setAnnouncements(updatedList);
+          
+          // 3. Close Modal
+          setShowDeleteModal(null);
+        } else {
+          alert(`Failed to delete: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("Error deleting announcement:", error);
+        alert("An unexpected error occurred while deleting.");
+      }
     }
   };
 

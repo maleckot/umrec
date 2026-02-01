@@ -11,6 +11,8 @@ import DocumentViewerModal from '@/components/staff-secretariat-admin/submission
 import { ArrowLeft, MessageCircle, FileText, Calendar, Tag, AlertCircle, Edit, AlertTriangle } from 'lucide-react';
 import { getReviewerEvaluations } from '@/app/actions/reviewer/getReviewerEvaluations';
 import { postReviewReply } from '@/app/actions/reviewer/postReviewReply';
+// Add this import to your existing imports
+import { submitConflictOfInterest } from '@/app/actions/reviewer/submitConflictOfInterest';
 
 interface Reply {
   id: number;
@@ -241,15 +243,46 @@ function ReviewDetailContent() {
     }
   };
 
-  const handleSubmitCOI = async (payload: any) => {
+const handleSubmitCOI = async (payload: any) => {
     try {
-      console.log('Submitting COI Payload:', payload);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      alert('Conflict of Interest submitted. The secretariat will be notified.');
-      return { success: true };
+      console.log('Processing COI Payload...');
+
+      // 1. Convert Base64 Signature to File object for upload
+      const res = await fetch(payload.signatureImage);
+      const blob = await res.blob();
+      const file = new File([blob], "signature.png", { type: "image/png" });
+      
+      const signatureFormData = new FormData();
+      signatureFormData.append('file', file);
+
+      // 2. Map Modal Answers to Server Action Interface
+      const formData = {
+        submissionId: submissionData.id as string,
+        hasStockOwnership: payload.answers.stocks === 'yes',
+        hasReceivedCompensation: payload.answers.salary === 'yes',
+        hasOfficialRole: payload.answers.officer === 'yes',
+        hasPriorWorkExperience: payload.answers.research_work === 'yes',
+        hasStandingIssue: payload.answers.issue === 'yes',
+        hasSocialRelationship: payload.answers.social === 'yes',
+        hasOwnershipInterest: payload.answers.ownership_topic === 'yes',
+        protocolCode: payload.protocolCode,
+        remarks: payload.remarks,
+        printedName: payload.signatureName
+      };
+
+      // 3. Call Server Action
+      const result = await submitConflictOfInterest(formData, signatureFormData);
+
+      if (result.success) {
+        // Refresh local data to update UI (hide buttons, show status)
+        loadEvaluations();
+        return { success: true };
+      } else {
+        return { success: false, error: result.error };
+      }
     } catch (error) {
-      console.error('COI Error:', error);
-      return { success: false, error: 'Failed to submit COI.' };
+      console.error('COI Logic Error:', error);
+      return { success: false, error: 'Failed to process submission.' };
     }
   };
 

@@ -4,17 +4,17 @@ import { useState, useEffect } from 'react';
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
 import Footer from '@/components/researcher-reviewer/Footer';
 import { Megaphone, Calendar, MapPin, X, ArrowRight, Search, Filter, Video, Globe } from 'lucide-react';
-import Link from 'next/link';
+import { getPublicAnnouncements } from '@/app/actions/homepage/getPublicAnnouncements'; 
 
 // --- Types ---
-interface Announcement {
+interface Announcement {  
   id: string;
   type: 'Seminar' | 'Announcement';
-  mode?: 'Onsite' | 'Virtual'; // New Field
+  mode?: 'Onsite' | 'Virtual';
   title: string;
   date: string;
   location?: string;
-  link?: string; // New Field
+  link?: string;
   description: string;
   content: string;
 }
@@ -24,54 +24,43 @@ export default function AnnouncementsPage() {
   const [selectedItem, setSelectedItem] = useState<Announcement | null>(null);
   const [items, setItems] = useState<Announcement[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true); // 👈 Added loading state
 
-  // --- Load Data ---
+  // --- Load Data from Database ---
   useEffect(() => {
-    const stored = localStorage.getItem('secretariat_announcements');
-    let localItems: Announcement[] = [];
-    
-    if (stored) {
-      // Map the storage format to the display format
-      localItems = JSON.parse(stored).map((item: any) => ({
-        id: item.id,
-        type: item.type, // 'Seminar' or 'Announcement'
-        mode: item.mode || 'Onsite', // Default to Onsite if missing
-        title: item.title,
-        date: item.date,
-        location: item.location,
-        link: item.link,
-        description: item.excerpt,
-        content: item.excerpt // In a real app, you might have separate 'content' vs 'excerpt'
-      }));
-    }
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const data = await getPublicAnnouncements();
 
-    // Default Hardcoded Items (Updated with modes)
-    const defaultItems: Announcement[] = [
-      {
-        id: 'def-1',
-        type: 'Seminar',
-        mode: 'Onsite',
-        title: 'Research Ethics: The Basics of Protocol Review',
-        date: 'February 15, 2026',
-        location: 'HPSB Auditorium, 9th Floor',
-        description: 'A comprehensive seminar for new researchers on the fundamentals of ethical review processing.',
-        content: 'This seminar is mandatory for all new faculty researchers. It covers the 3 basic ethical principles: Respect for Persons, Beneficence, and Justice.'
-      },
-      {
-        id: 'def-2',
-        type: 'Seminar',
-        mode: 'Virtual',
-        title: 'Understanding Informed Consent in Medical Research',
-        date: 'March 10, 2026',
-        link: 'https://zoom.us/j/123456789',
-        description: 'Deep dive into crafting clear, ethical informed consent forms for vulnerable populations.',
-        content: 'Informed consent is more than just a form; it is a process. This workshop focuses on simplifying technical jargon.'
+        // Map DB Data to UI Interface
+        const mappedItems: Announcement[] = data.map((item: any) => ({
+          id: item.id,
+          type: item.type,
+          mode: item.mode,
+          title: item.title,
+          // Format the date nicely
+          date: new Date(item.event_date).toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+          }),
+          location: item.location,
+          link: item.link,
+          // Use content for description (it gets truncated in the UI via line-clamp)
+          description: item.content, 
+          content: item.content
+        }));
+
+        setItems(mappedItems);
+      } catch (error) {
+        console.error("Failed to load announcements", error);
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    // Merge: unique items only
-    const allItems = [...localItems, ...defaultItems.filter(d => !localItems.find(l => l.title === d.title))];
-    setItems(allItems);
+    fetchData();
   }, []);
 
   // --- Filter Logic ---
@@ -134,77 +123,86 @@ export default function AnnouncementsPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="flex justify-center items-center py-20">
+             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#101C50]"></div>
+          </div>
+        )}
+
         {/* Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {filteredItems.map((item) => (
-            <div 
-              key={item.id} 
-              className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1 h-full"
-            >
-              <div className={`h-1.5 w-full ${item.type === 'Seminar' ? 'bg-[#D3CC50]' : 'bg-[#101C50]'}`}></div>
-              
-              <div className="p-6 flex flex-col flex-grow">
-                {/* Badges Row */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                    item.type === 'Seminar' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'
-                  }`}>
-                    {item.type}
-                  </span>
-                  
-                  {item.mode && (
-                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        item.mode === 'Virtual' ? 'bg-purple-50 text-purple-700' : 'bg-green-50 text-green-700'
-                     }`}>
-                        {item.mode === 'Virtual' ? <Globe size={10} /> : <MapPin size={10} />}
-                        {item.mode}
-                     </span>
-                  )}
-                </div>
-
-                {/* Date */}
-                <div className="text-gray-400 text-xs font-bold flex items-center gap-1 mb-2">
-                   <Calendar size={12} /> {item.date}
-                </div>
-
-                <h3 className="text-lg font-bold text-[#101C50] mb-3 line-clamp-2 group-hover:text-blue-800 transition-colors" style={{ fontFamily: 'Metropolis, sans-serif' }}>
-                  {item.title}
-                </h3>
-
-                <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3">
-                  {item.description}
-                </p>
-
-                {/* Footer Info */}
-                <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
-                   {/* Location OR Link Logic */}
-                   <div className="flex-1 pr-2">
-                     {item.mode === 'Onsite' && item.location && (
-                       <span className="text-xs font-semibold text-gray-500 flex items-center gap-1 truncate">
-                         <MapPin size={12} /> {item.location}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            {filteredItems.map((item) => (
+              <div 
+                key={item.id} 
+                className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1 h-full"
+              >
+                <div className={`h-1.5 w-full ${item.type === 'Seminar' ? 'bg-[#D3CC50]' : 'bg-[#101C50]'}`}></div>
+                
+                <div className="p-6 flex flex-col flex-grow">
+                  {/* Badges Row */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      item.type === 'Seminar' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'
+                    }`}>
+                      {item.type}
+                    </span>
+                    
+                    {item.mode && (
+                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          item.mode === 'Virtual' ? 'bg-purple-50 text-purple-700' : 'bg-green-50 text-green-700'
+                       }`}>
+                          {item.mode === 'Virtual' ? <Globe size={10} /> : <MapPin size={10} />}
+                          {item.mode}
                        </span>
-                     )}
-                     {item.mode === 'Virtual' && item.link && (
-                       <span className="text-xs font-semibold text-blue-500 flex items-center gap-1 truncate">
-                         <Video size={12} /> Virtual Link
-                       </span>
-                     )}
-                   </div>
-                   
-                   <button 
-                     onClick={() => setSelectedItem(item)}
-                     className="text-sm font-bold text-[#101C50] hover:text-[#D3CC50] transition-colors flex items-center gap-1 whitespace-nowrap"
-                   >
-                     Read More <ArrowRight size={14} />
-                   </button>
+                    )}
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-gray-400 text-xs font-bold flex items-center gap-1 mb-2">
+                     <Calendar size={12} /> {item.date}
+                  </div>
+
+                  <h3 className="text-lg font-bold text-[#101C50] mb-3 line-clamp-2 group-hover:text-blue-800 transition-colors" style={{ fontFamily: 'Metropolis, sans-serif' }}>
+                    {item.title}
+                  </h3>
+
+                  <p className="text-gray-600 text-sm leading-relaxed mb-6 line-clamp-3">
+                    {item.description}
+                  </p>
+
+                  {/* Footer Info */}
+                  <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
+                     {/* Location OR Link Logic */}
+                     <div className="flex-1 pr-2">
+                       {item.mode === 'Onsite' && item.location && (
+                         <span className="text-xs font-semibold text-gray-500 flex items-center gap-1 truncate">
+                           <MapPin size={12} /> {item.location}
+                         </span>
+                       )}
+                       {item.mode === 'Virtual' && (
+                         <span className="text-xs font-semibold text-blue-500 flex items-center gap-1 truncate">
+                           <Video size={12} /> Online
+                         </span>
+                       )}
+                     </div>
+                     
+                     <button 
+                       onClick={() => setSelectedItem(item)}
+                       className="text-sm font-bold text-[#101C50] hover:text-[#D3CC50] transition-colors flex items-center gap-1 whitespace-nowrap"
+                     >
+                       Read More <ArrowRight size={14} />
+                     </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Empty State */}
-        {filteredItems.length === 0 && (
+        {!loading && filteredItems.length === 0 && (
            <div className="text-center py-20">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
                  <Filter size={24} />
@@ -221,9 +219,9 @@ export default function AnnouncementsPage() {
       {selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-300 relative">
-             
-             {/* Header */}
-             <div className={`h-24 sm:h-32 w-full relative ${selectedItem.type === 'Seminar' ? 'bg-[#D3CC50]' : 'bg-[#101C50]'} flex items-center justify-center overflow-hidden`}>
+              
+              {/* Header */}
+              <div className={`h-24 sm:h-32 w-full relative ${selectedItem.type === 'Seminar' ? 'bg-[#D3CC50]' : 'bg-[#101C50]'} flex items-center justify-center overflow-hidden`}>
                 <div className="absolute inset-0 bg-black/10"></div>
                 <h3 className="relative z-10 text-white text-2xl sm:text-3xl font-bold px-6 text-center drop-shadow-md">
                    {selectedItem.type}
@@ -234,10 +232,10 @@ export default function AnnouncementsPage() {
                 >
                    <X size={20} />
                 </button>
-             </div>
+              </div>
 
-             {/* Content */}
-             <div className="p-6 sm:p-8">
+              {/* Content */}
+              <div className="p-6 sm:p-8">
                 {/* Meta Row */}
                 <div className="flex flex-wrap items-center gap-4 mb-6 text-sm">
                    <span className="flex items-center gap-1.5 text-gray-500 font-medium bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
@@ -257,7 +255,7 @@ export default function AnnouncementsPage() {
                         rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-blue-600 font-bold bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 hover:bg-blue-100 transition-colors"
                       >
-                         <Video size={16} /> Join Meeting
+                          <Video size={16} /> Join Meeting
                       </a>
                    )}
                 </div>
@@ -267,7 +265,6 @@ export default function AnnouncementsPage() {
                 </h2>
 
                 <div className="prose prose-blue max-w-none text-gray-600 leading-relaxed">
-                   <p className="text-lg text-gray-900 font-medium mb-4">{selectedItem.description}</p>
                    <p className="whitespace-pre-line">{selectedItem.content}</p>
                 </div>
 

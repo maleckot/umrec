@@ -703,7 +703,7 @@ export default function ResearcherDashboard() {
                 ) : (
                   filteredSubmissions.map(submission => {
                     const docsToDisplay = (
-                      ['approved', 'under_review', 'review_complete', 'under_revision'].includes(submission.status.toLowerCase().replace(/ /g, '_')) 
+                      ['approved', 'under_review', 'review_complete', 'under_revision', 'needs_revision'].includes(submission.status.toLowerCase().replace(/ /g, '_')) 
                     ) ? submission.documents : submission.documents?.filter(doc => doc.fileType !== 'consolidated_application');
 
                     if (!docsToDisplay || docsToDisplay.length === 0) return null;
@@ -716,7 +716,7 @@ export default function ResearcherDashboard() {
 
                     return docsToShow.map(doc => {
                       const docNeedsRevision = doc.fileType === 'consolidated_application' 
-                        ? submission.status === 'Under Revision' 
+                        ? submission.status === 'under_revision'
                         : doc.needsRevision === true;
 
                       const docStatusInfo = docNeedsRevision ? {
@@ -788,7 +788,7 @@ export default function ResearcherDashboard() {
                                 <button 
                                   onClick={() => {
                                     if (docNeedsRevision && doc.fileType === 'consolidated_application') {
-                                      router.push(`/researchermodule/edit-submission/${submission.id}`);
+                                      router.push(`/researchermodule/submissions/revision/?id=${submission.id}`);
                                     } else {
                                       // Corrected navigation to activity details page
                                       router.push(`/researchermodule/activity-details?id=${submission.id}`);

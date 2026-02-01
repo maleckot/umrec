@@ -274,7 +274,7 @@ function ActivityDetailsContent() {
               {/* UNIFIED Revision Card */}
               {selectedDocument &&
                 (selectedDocument.fileType === 'consolidated_application'
-                  ? submissionData.rawStatus === 'under_revision' && (
+                  ? submissionData.rawStatus === 'under_revision' || submissionData.rawStatus === 'needs_revision' && (
                     <div className="bg-white rounded-xl p-6 border-2 border-red-200">
                       <div className="flex items-center gap-2 mb-4">
                         <svg
@@ -419,7 +419,7 @@ function ActivityDetailsContent() {
               {/* Show resubmit button */}
               {selectedDocument &&
                 (selectedDocument.fileType === 'consolidated_application'
-                  ? submissionData.rawStatus === 'under_revision' && (
+                  ? submissionData.rawStatus === 'under_revision' || submissionData.rawStatus === 'needs_revision' && (
                     <ResubmitButton onClick={handleResubmit} />
                   )
                   : selectedDocument.needsRevision && (

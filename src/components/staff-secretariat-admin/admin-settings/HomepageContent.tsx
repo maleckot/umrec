@@ -1,40 +1,56 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Save, Plus, Trash2, Edit2, Upload, X, Image as ImageIcon } from 'lucide-react';
-
-// --- Interfaces for Data ---
-interface HistoryItem { id: string; year: string; title: string; description: string; }
-interface Announcement { id: string; title: string; date: string; location: string; description: string; }
-interface HomeForm { id: string; title: string; formNumber: string; file: string; }
+import { useState, useEffect, useRef } from 'react';
+import { Save, Plus, Trash2, Edit2, Upload, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { getHomepageData } from '@/app/actions/homepage/getHomepageData';
+import { updateHomepageText } from '@/app/actions/homepage/updateContent';
+import { addHistory, deleteHistory, updateHistory } from '@/app/actions/homepage/manageHistory';
+import { uploadHomeForm, deleteHomeForm } from '@/app/actions/homepage/manageForms';
 
 export default function HomepageContent() {
   // --- STATE MANAGEMENT ---
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   // 1. Text Content State
   const [textContent, setTextContent] = useState({
-    heroTitle: 'UMREConnect',
-    aboutText: 'The University of Makati Research Ethics Committee (UMREC) is an independent body that makes decisions regarding the review, approval, and implementation of research protocols.',
-    missionText: 'The University of Makati Research Ethics Committee commits to an organized, transparent, impartial, collaborative, and quality-driven research ethics review system.',
-    visionText: 'The University of Makati Research Ethics Committee is a PHREB Level 2 Accredited research ethics board in 2030.'
+    heroTitle: '', 
+    aboutText: '', 
+    missionText: '', 
+    visionText: ''
   });
 
   // 2. History State
-  const [history, setHistory] = useState<HistoryItem[]>([
-    { id: '1', year: '2018', title: 'The Inception', description: 'College of Allied Health Studies recognized the need for an internal ethics review board.' },
-    { id: '2', year: '2019', title: 'PHREB Partnership', description: 'COAHS engaged PHREB for Basic Research Ethics Training.' },
-  ]);
+  const [history, setHistory] = useState<any[]>([]);
 
-  // 3. Announcements State
-  const [announcements, setAnnouncements] = useState<Announcement[]>([
-    { id: '1', title: 'Research Ethics Basics', date: 'February 15, 2026', location: 'HPSB Auditorium', description: 'A comprehensive seminar for new researchers.' },
-  ]);
+  // 3. Homepage Forms State
+  const [homeForms, setHomeForms] = useState<any[]>([]);
 
-  // 4. Homepage Forms State
-  const [homeForms, setHomeForms] = useState<HomeForm[]>([
-    { id: '1', title: 'Application Form', formNumber: 'Form No. 0013-1', file: 'application.pdf' },
-    { id: '2', title: 'Research Protocol', formNumber: 'Form No. 0033', file: 'protocol.pdf' },
-  ]);
+  // --- LOAD DATA ON MOUNT ---
+  const loadData = async () => {
+    try {
+      const data = await getHomepageData();
+      
+      // Map DB data to state
+      setTextContent({
+        heroTitle: data.textContent.hero_title || '',
+        aboutText: data.textContent.about_text || '',
+        missionText: data.textContent.mission_text || '',
+        visionText: data.textContent.vision_text || ''
+      });
+      
+      setHistory(data.history || []);
+      setHomeForms(data.forms || []);
+    } catch (error) {
+      console.error("Failed to load content:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   // --- HANDLERS ---
 
@@ -42,42 +58,120 @@ export default function HomepageContent() {
     setTextContent(prev => ({ ...prev, [field]: value }));
   };
 
-  // Generic Delete Handler
-  const handleDelete = <T extends { id: string }>(
-    setFunction: React.Dispatch<React.SetStateAction<T[]>>, 
-    items: T[], 
-    id: string
-  ) => {
-    if (confirm('Are you sure you want to delete this item?')) {
-      setFunction(items.filter(item => item.id !== id));
+  const handleSaveAll = async () => {
+    setSaving(true);
+    const res = await updateHomepageText(textContent);
+    setSaving(false);
+    
+    if (res.success) {
+      alert('Homepage content updated successfully!');
+    } else {
+      alert('Error updating content: ' + res.error);
     }
   };
 
-  // Generic Add Handler (Simplified for demo)
-  const handleAddHistory = () => {
-    const newItem = { id: Date.now().toString(), year: '2024', title: 'New Milestone', description: 'Description here...' };
-    setHistory([...history, newItem]);
+  // --- HISTORY HANDLERS ---
+
+  const handleAddHistory = async () => {
+    const newItem = { 
+      year: new Date().getFullYear().toString(), 
+      title: 'New Milestone', 
+      description: 'Enter description here...' 
+    };
+    
+    // Optimistic UI update not ideal here because we need the real ID from DB
+    // So we just call the action then reload
+    const res = await addHistory(newItem);
+    if (res.success) {
+      loadData(); 
+    } else {
+      alert("Failed to add item: " + res.error);
+    }
   };
 
-  // File Upload Simulation
+  const handleDeleteHistory = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    
+    // Optimistic update
+    const previous = [...history];
+    setHistory(prev => prev.filter(item => item.id !== id));
+
+    const res = await deleteHistory(id);
+    if (!res.success) {
+      alert("Failed to delete: " + res.error);
+      setHistory(previous); // Revert
+    }
+  };
+
+  const handleUpdateHistoryField = async (id: string, field: string, value: string) => {
+    // 1. Optimistic Update in UI
+    const updatedHistory = history.map(h => h.id === id ? { ...h, [field]: value } : h);
+    setHistory(updatedHistory);
+    
+    // 2. Silent Update to DB (Debouncing would be better for production, but this works)
+    const item = updatedHistory.find(h => h.id === id);
+    if (item) {
+      await updateHistory(id, item);
+    }
+  };
+
+  // --- FORM HANDLERS ---
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const handleFormUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleFormUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const newForm = {
-        id: Date.now().toString(),
-        title: file.name.replace('.pdf', ''),
-        formNumber: 'New Form',
-        file: file.name
-      };
-      setHomeForms([...homeForms, newForm]);
+      
+      // Simple prompt for metadata (can be improved with a modal later)
+      const title = prompt("Enter Form Title (e.g., Application Form):", file.name.replace(/\.[^/.]+$/, ""));
+      if (!title) return; // User cancelled
+      
+      const formNumber = prompt("Enter Form Number/ID (e.g., UMREC Form No. 1):", "New Form");
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title);
+      formData.append('formNumber', formNumber || '');
+
+      setSaving(true);
+      const res = await uploadHomeForm(formData);
+      setSaving(false);
+
+      if (res.success) {
+        loadData(); // Reload to get the new file URL and ID
+      } else {
+        alert("Upload failed: " + res.error);
+      }
+      
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleSaveAll = () => {
-    // API Call would go here
-    alert('Homepage content updated successfully!');
+  const handleDeleteForm = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this form?')) return;
+
+    const previous = [...homeForms];
+    setHomeForms(prev => prev.filter(f => f.id !== id));
+
+    const res = await deleteHomeForm(id);
+    if (!res.success) {
+      alert("Failed to delete: " + res.error);
+      setHomeForms(previous);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-8 h-8 animate-spin text-[#050B24]" />
+          <p className="text-gray-500 font-medium">Loading content...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 pb-10">
@@ -89,9 +183,11 @@ export default function HomepageContent() {
         </div>
         <button 
           onClick={handleSaveAll}
-          className="flex items-center gap-2 px-6 py-2.5 bg-[#050B24] text-white rounded-xl font-bold hover:bg-blue-900 transition-all shadow-lg shadow-blue-900/20"
+          disabled={saving}
+          className="flex items-center gap-2 px-6 py-2.5 bg-[#050B24] text-white rounded-xl font-bold hover:bg-blue-900 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          <Save size={18} /> Save Changes
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+          {saving ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
 
@@ -150,18 +246,14 @@ export default function HomepageContent() {
         </div>
         <div className="space-y-4">
           {history.map((item, index) => (
-             <div key={item.id} className="flex gap-4 items-start p-4 bg-gray-50 rounded-xl border border-gray-200 group hover:border-gray-300 transition-colors">
-                <div className="bg-[#050B24] text-white text-xs font-bold px-2.5 py-1 rounded">#{index + 1}</div>
-                <div className="flex-1 grid gap-4 md:grid-cols-12">
+             <div key={item.id} className="flex flex-col md:flex-row gap-4 items-start p-4 bg-gray-50 rounded-xl border border-gray-200 group hover:border-gray-300 transition-colors">
+                <div className="bg-[#050B24] text-white text-xs font-bold px-2.5 py-1 rounded hidden md:block">#{index + 1}</div>
+                <div className="flex-1 grid gap-4 w-full md:grid-cols-12">
                    <div className="md:col-span-2">
                       <label className="text-xs font-bold text-gray-700 block mb-1.5 uppercase tracking-wide">Year</label>
                       <input 
                         value={item.year} 
-                        onChange={(e) => {
-                          const newHistory = [...history];
-                          newHistory[index].year = e.target.value;
-                          setHistory(newHistory);
-                        }}
+                        onChange={(e) => handleUpdateHistoryField(item.id, 'year', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-bold text-[#050B24] bg-white focus:ring-1 focus:ring-[#050B24] outline-none" 
                       />
                    </div>
@@ -169,11 +261,7 @@ export default function HomepageContent() {
                       <label className="text-xs font-bold text-gray-700 block mb-1.5 uppercase tracking-wide">Title</label>
                       <input 
                         value={item.title} 
-                        onChange={(e) => {
-                          const newHistory = [...history];
-                          newHistory[index].title = e.target.value;
-                          setHistory(newHistory);
-                        }}
+                        onChange={(e) => handleUpdateHistoryField(item.id, 'title', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-bold text-black bg-white focus:ring-1 focus:ring-[#050B24] outline-none" 
                       />
                    </div>
@@ -182,18 +270,14 @@ export default function HomepageContent() {
                       <textarea 
                         rows={2}
                         value={item.description} 
-                        onChange={(e) => {
-                          const newHistory = [...history];
-                          newHistory[index].description = e.target.value;
-                          setHistory(newHistory);
-                        }}
+                        onChange={(e) => handleUpdateHistoryField(item.id, 'description', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-medium text-gray-900 bg-white focus:ring-1 focus:ring-[#050B24] outline-none resize-none leading-relaxed" 
                       />
                    </div>
                 </div>
                 <button 
-                  onClick={() => handleDelete(setHistory, history, item.id)}
-                  className="text-gray-400 hover:text-red-600 p-2 bg-white rounded-lg border border-gray-200 hover:border-red-200 transition-all"
+                  onClick={() => handleDeleteHistory(item.id)}
+                  className="text-gray-400 hover:text-red-600 p-2 bg-white rounded-lg border border-gray-200 hover:border-red-200 transition-all self-end md:self-start"
                 >
                   <Trash2 size={18} />
                 </button>
@@ -215,7 +299,7 @@ export default function HomepageContent() {
            >
              <Upload size={16} /> Upload New Form
            </button>
-           <input type="file" ref={fileInputRef} className="hidden" accept=".pdf" onChange={handleFormUpload} />
+           <input type="file" ref={fileInputRef} className="hidden" accept=".pdf,.doc,.docx" onChange={handleFormUpload} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -226,7 +310,7 @@ export default function HomepageContent() {
                       <Upload size={18} />
                    </div>
                    <button 
-                      onClick={() => handleDelete(setHomeForms, homeForms, form.id)}
+                      onClick={() => handleDeleteForm(form.id)}
                       className="text-gray-400 hover:text-red-600 p-1.5 bg-white border border-gray-200 rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-all hover:border-red-200"
                    >
                       <Trash2 size={16} />
@@ -236,33 +320,24 @@ export default function HomepageContent() {
                    <div>
                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Title</label>
                      <input 
-                        value={form.title}
-                        onChange={(e) => {
-                           const newForms = [...homeForms];
-                           const idx = newForms.findIndex(f => f.id === form.id);
-                           newForms[idx].title = e.target.value;
-                           setHomeForms(newForms);
-                        }}
-                        className="w-full bg-transparent border-b border-gray-300 hover:border-[#050B24] focus:border-[#050B24] outline-none text-sm font-bold text-[#050B24] pb-1 transition-colors"
-                        placeholder="Form Title"
+                       value={form.title}
+                       readOnly
+                       className="w-full bg-transparent border-b border-gray-300 outline-none text-sm font-bold text-[#050B24] pb-1 cursor-default"
                      />
                    </div>
                    <div>
                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1 block">Form ID / Number</label>
                      <input 
-                        value={form.formNumber}
-                        onChange={(e) => {
-                           const newForms = [...homeForms];
-                           const idx = newForms.findIndex(f => f.id === form.id);
-                           newForms[idx].formNumber = e.target.value;
-                           setHomeForms(newForms);
-                        }}
-                        className="w-full bg-transparent border-b border-gray-300 hover:border-[#050B24] focus:border-[#050B24] outline-none text-sm font-semibold text-gray-700 pb-1 transition-colors"
-                        placeholder="Form Number / ID"
+                       value={form.form_number || form.formNumber}
+                       readOnly
+                       className="w-full bg-transparent border-b border-gray-300 outline-none text-sm font-semibold text-gray-700 pb-1 cursor-default"
                      />
                    </div>
                    <div className="flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1.5 rounded-lg w-fit border border-blue-100 mt-2">
-                      <ImageIcon size={14} /> {form.file}
+                      <ImageIcon size={14} /> 
+                      <a href={form.file_url || form.fileUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                        View File
+                      </a>
                    </div>
                 </div>
              </div>
