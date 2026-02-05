@@ -1,3 +1,4 @@
+//getSubmissionActivity.ts
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -168,4 +169,5 @@ export async function getSubmissionActivity(submissionId: string, targetDocId?: 
       comments: []
     };
   }
+  
 }
