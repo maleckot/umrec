@@ -1,3 +1,26 @@
+License & Usage
+
+This repository is part of a personal / academic portfolio.
+
+The source code is provided for viewing and evaluation purposes only.
+
+Copying, modifying, redistributing, or using this project (or any part of it)
+in other works, academic submissions, or commercial products is strictly
+prohibited without explicit written permission from the copyright holders.
+
+© 2026 Josh Malecck Maniego, Christian Delos Santos, Mikhaela Patricia Cruz, Jerine Diaz. All rights reserved.
+
+---
+
+About
+
+This project was developed as part of our academic and professional portfolio.
+It demonstrates our skills in software development, system design, and implementation.
+
+Built with Next.js. Framework and third-party libraries retain their respective licenses.
+
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
