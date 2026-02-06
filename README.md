@@ -1,6 +1,6 @@
 License & Usage
 
-This repository is part of a academic portfolio.
+This repository is part of an academic portfolio.
 
 The source code is provided for viewing and evaluation purposes only.
 
