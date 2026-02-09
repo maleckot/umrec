@@ -38,8 +38,8 @@ const getTimelineStage = (status: string) => {
   const normalizedStatus = status?.toLowerCase().replace(/ /g, '_');
 
   switch (normalizedStatus) {
-    case 'pending': return 1;
-    case 'under_classification': case 'needs_revision': return 2;
+    case 'pending': case 'needs_revision': return 1;
+    case 'under_classification':  return 2;
     case 'classified': case 'reviewer_assignment': return 3;
     case 'under_review': case 'in_review': return 4;
     case 'under_revision': return 5;
@@ -791,8 +791,7 @@ export default function ResearcherDashboard() {
                                       router.push(`/researchermodule/submissions/revision/?id=${submission.id}`);
                                     } else {
                                       // Corrected navigation to activity details page
-                                      router.push(`/researchermodule/activity-details?id=${submission.id}`);
-                                    }
+                                      router.push(`/researchermodule/activity-details?id=${submission.id}&docId=${doc.id}`);                                    }
                                   }}
                                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold text-white shadow-sm transition-all duration-300 ${docStatusInfo.buttonColor} min-w-[70px] sm:min-w-[80px] text-center`}
                                   style={{ fontFamily: 'Metropolis, sans-serif' }}

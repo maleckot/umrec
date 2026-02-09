@@ -1,3 +1,4 @@
+//acitivty details
 'use client';
 
 import NavbarRoles from '@/components/researcher-reviewer/NavbarRoles';
@@ -157,15 +158,52 @@ function ActivityDetailsContent() {
     };
     return typeMap[type] || type;
   };
+const handleResubmit = () => {
+    const documentTypeToStep: { [key: string]: string } = {
+      consolidated_application: 'step1',
+      application_form: 'step2',
+      research_protocol: 'step3',
+      consent_form: 'step4',
+      research_instrument: 'step5',
+      proposal_defense: 'step6',
+      endorsement_letter: 'step7',
+    };
 
-  // ✅ UPDATED: Simplified Resubmit Handler
-  const handleResubmit = () => {
-    // Since we are moving to a single revision form, we remove the switch/case 
-    // for steps and route directly to the new revision page.
-    
-    // This assumes your new form is located at: app/researchermodule/submissions/revision/page.tsx
-    router.push(`/researchermodule/submissions/revision?id=${activityId}`);
+    if (selectedDocument && selectedDocument.needsRevision) {
+      const step = documentTypeToStep[selectedDocument.fileType] || 'step1';
+
+      if (selectedDocument.fileType === 'consolidated_application') {
+        router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
+      } else {
+        router.push(
+          `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${selectedDocument.id}&docType=${selectedDocument.fileType}`
+        );
+      }
+    } else {
+      const firstRejectedDoc = documents.find(doc => doc.needsRevision);
+      if (firstRejectedDoc) {
+        const step = documentTypeToStep[firstRejectedDoc.fileType] || 'step1';
+
+        if (firstRejectedDoc.fileType === 'consolidated_application') {
+          router.push(`/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}`);
+        } else {
+          router.push(
+            `/researchermodule/submissions/revision/${step}?mode=revision&id=${activityId}&docId=${firstRejectedDoc.id}&docType=${firstRejectedDoc.fileType}`
+          );
+        }
+      } else {
+        router.push(`/researchermodule/submissions/revision/step1?mode=revision&id=${activityId}`);
+      }
+    }
   };
+  // // ✅ UPDATED: Simplified Resubmit Handler
+  // const handleResubmit = () => {
+  //   // Since we are moving to a single revision form, we remove the switch/case 
+  //   // for steps and route directly to the new revision page.
+    
+  //   // This assumes your new form is located at: app/researchermodule/submissions/revision/page.tsx
+  //   router.push(`/researchermodule/submissions/revision?id=${activityId}`);
+  // };
 
   const breadcrumbItems = [
     { label: 'Dashboard', href: '/researchermodule' },
@@ -270,7 +308,13 @@ function ActivityDetailsContent() {
                   </p>
                 </div>
               )}
-
+            {/* DEBUG BLOCK - Remove after fixing */}
+            <div className="bg-gray-100 p-2 text-xs mb-4 border border-gray-300">
+              <p><strong>Status:</strong> {submissionData.rawStatus}</p>
+              <p><strong>File Type:</strong> {selectedDocument?.fileType}</p>
+              <p><strong>Doc ID:</strong> {selectedDocument?.id}</p>
+              <p><strong>Needs Revision (Frontend):</strong> {String(selectedDocument?.needsRevision)}</p>
+            </div>
               {/* UNIFIED Revision Card */}
               {selectedDocument &&
                 (selectedDocument.fileType === 'consolidated_application'
