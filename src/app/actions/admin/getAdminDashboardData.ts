@@ -116,7 +116,7 @@ export async function getAdminDashboardData() {
 
       return {
         id: reviewer.id,
-        reviewer: reviewer.full_name,
+        reviewer: reviewer.full_name || 'Unknown Reviewer',        
         assigned,
         completed,
         pending,
