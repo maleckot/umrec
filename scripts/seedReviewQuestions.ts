@@ -5,7 +5,6 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config({ path: '.env.local' });
 
-// ✅ FIX 1: Proper type checking for environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -17,7 +16,6 @@ if (!supabaseUrl || !supabaseServiceKey) {
 // Now TypeScript knows these are strings, not undefined
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// ✅ FIX 2: Proper typing for questions with optional depends_on
 interface Question {
   question_id: string;
   question_text: string;

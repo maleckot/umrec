@@ -1,7 +1,6 @@
-// components/submission/RichTextEditor.tsx
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Bold, Italic, Underline, List as ListIcon, ListOrdered,
   Image as ImageIcon, Table as TableIcon,
@@ -17,7 +16,7 @@ interface RichTextEditorProps {
   maxWords?: number;
   required?: boolean;
   placeholder?: string;
-  hideImageUpload?: boolean; // NEW: allow hiding image upload button
+  hideImageUpload?: boolean;
 }
 
 const RichTextEditor: React.FC<RichTextEditorProps> = ({
@@ -28,10 +27,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   maxWords = 0,
   required = false,
   placeholder = '',
-  hideImageUpload = false, // default: show image upload unless explicitly hidden
+  hideImageUpload = false,
 }) => {
   const [wordCount, setWordCount] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [showTableModal, setShowTableModal] = useState(false);
   const [tableRows, setTableRows] = useState(2);
   const [tableCols, setTableCols] = useState(2);
@@ -39,8 +37,22 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isUpdatingRef = useRef(false);
-  const savedRangeRef = useRef<Range | null>(null);
+  
+  // NEW: Instead of just saving range, save the actual table elements
+  const lastTableContext = useRef<{
+    table: HTMLTableElement;
+    row: HTMLTableRowElement;
+    cell: HTMLTableCellElement;
+  } | null>(null);
 
+  // Force P tags
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    }
+  }, []);
+
+  // Sync value
   useEffect(() => {
     if (editorRef.current && !isUpdatingRef.current) {
       if (editorRef.current.innerHTML !== value) {
@@ -50,20 +62,40 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [value]);
 
-  useEffect(() => {
-    const onSelectionChange = () => {
-      const el = editorRef.current;
-      const sel = window.getSelection();
-      if (!el || !sel || sel.rangeCount === 0) return;
-      const range = sel.getRangeAt(0);
-      const anchorNode = sel.anchorNode;
-      if (anchorNode && el.contains(anchorNode)) {
-        savedRangeRef.current = range.cloneRange();
-      }
-    };
-    document.addEventListener('selectionchange', onSelectionChange);
-    return () => document.removeEventListener('selectionchange', onSelectionChange);
+  // Track table context whenever user clicks or moves cursor
+  const updateTableContext = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    
+    let node = sel.anchorNode;
+    if (node?.nodeType === Node.TEXT_NODE) node = node.parentNode;
+    
+    const element = node as HTMLElement | null;
+    if (!element || !editorRef.current?.contains(element)) return;
+
+    // Check if we are inside a table
+    const cell = element.closest('td, th') as HTMLTableCellElement | null;
+    const row = element.closest('tr') as HTMLTableRowElement | null;
+    const table = element.closest('table') as HTMLTableElement | null;
+
+    if (table && row && cell && editorRef.current.contains(table)) {
+      lastTableContext.current = { table, row, cell };
+    } else {
+      lastTableContext.current = null;
+    }
   }, []);
+
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    
+    const events = ['mouseup', 'keyup', 'click'];
+    events.forEach(ev => el.addEventListener(ev, updateTableContext));
+    
+    return () => {
+      events.forEach(ev => el.removeEventListener(ev, updateTableContext));
+    };
+  }, [updateTableContext]);
 
   const countWords = (text: string | null | undefined) => {
     if (!text) return 0;
@@ -85,281 +117,221 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-// Add this helper above handleBlur (e.g., place it after deleteColumnFromTable)
-const normalizeLists = () => {
-  const root = editorRef.current;
-  if (!root) return;
-  // Unwrap stray DIVs inside LI and ensure LI renders as list-item
-  root.querySelectorAll('li').forEach(li => {
-    li.querySelectorAll('div').forEach(div => {
-      while (div.firstChild) li.insertBefore(div.firstChild, div);
-      div.remove();
-    });
-    (li as HTMLElement).style.display = 'list-item';
-  });
-  root.normalize();
-};
-
-
-  const handleBlur = () => {
-    normalizeLists();
-    forceListStylesInline();
-    handleTextChange();
-  };
-
-  const applyFormat = (command: string, value?: string) => {
-    document.execCommand(command, false, value);
+  const execCmd = (command: string, value?: string) => {
     editorRef.current?.focus();
-    editorRef.current?.normalize();
+    
+    // Safety check for lists/alignment
+    if (['insertUnorderedList', 'insertOrderedList', 'justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull', 'indent', 'outdent'].includes(command)) {
+        const sel = window.getSelection();
+        if (sel && sel.anchorNode) {
+            const parent = sel.anchorNode.nodeType === Node.TEXT_NODE 
+                ? sel.anchorNode.parentElement 
+                : sel.anchorNode as HTMLElement;
+            
+            if (parent === editorRef.current) {
+                document.execCommand('formatBlock', false, 'p');
+            }
+        }
+    }
+
+    document.execCommand(command, false, value);
     handleTextChange();
   };
 
-  const ensureBlock = () => {
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    let container = range.commonAncestorContainer as Node;
-    if (container.nodeType === Node.TEXT_NODE) container = (container as Text).parentElement as Node;
-    const el = container as HTMLElement | null;
-    if (!editorRef.current || !el) return;
-
-    const blockTags = ['P', 'DIV', 'LI', 'UL', 'OL', 'TABLE', 'H1','H2','H3','H4','H5','H6'];
-    const closest = el.closest?.(blockTags.map(t => t.toLowerCase()).join(','));
-    const isInsideBlock = blockTags.includes(el.tagName) || !!closest;
-
-    if (!isInsideBlock) {
-      const p = document.createElement('p');
-      p.appendChild(document.createElement('br'));
-      range.insertNode(p);
-      const newRange = document.createRange();
-      newRange.setStart(p, 0);
-      newRange.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(newRange);
-    }
+  const preventFocusLoss = (e: React.MouseEvent) => {
+    e.preventDefault();
   };
 
-  const applyList = (type: 'ul' | 'ol') => {
-    if (!editorRef.current) return;
-    editorRef.current.focus();
-    ensureBlock();
-    removeListHidingClasses();
-    const cmd = type === 'ul' ? 'insertUnorderedList' : 'insertOrderedList';
-    document.execCommand(cmd, false, undefined);
-    forceListStylesInline();
-    editorRef.current.normalize();
-    handleTextChange();
-  };
-
-  const removeListHidingClasses = () => {
-    const root = editorRef.current;
-    if (!root) return;
-    root.querySelectorAll('ul,ol').forEach(list => {
-      list.classList.remove('list-none', 'prose', 'prose-sm', 'prose-base', 'prose-lg');
-      let parent: HTMLElement | null = list.parentElement;
-      while (parent && parent !== root) {
-        parent.classList.remove('list-none', 'prose', 'prose-sm', 'prose-base', 'prose-lg');
-        parent = parent.parentElement;
-      }
-    });
-  };
-
-  const forceListStylesInline = () => {
-    const root = editorRef.current;
-    if (!root) return;
-    root.querySelectorAll('ul').forEach(ul => {
-      ul.style.listStyleType = 'disc';
-      ul.style.listStylePosition = 'inside';
-      ul.style.paddingLeft = '1.25rem';
-      ul.style.margin = '0.5rem 0';
-    });
-    root.querySelectorAll('ol').forEach(ol => {
-      ol.style.listStyleType = 'decimal';
-      ol.style.listStylePosition = 'inside';
-      ol.style.paddingLeft = '1.25rem';
-      ol.style.margin = '0.5rem 0';
-    });
-    root.querySelectorAll('li').forEach(li => {
-      li.style.display = 'list-item';
-      li.style.margin = '0.25rem 0';
-    });
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
-
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const img = `<img src="${event.target?.result}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
-          if (editorRef.current) {
-            editorRef.current.focus();
-            document.execCommand('insertHTML', false, img);
-            setTimeout(() => {
-              handleTextChange();
-            }, 100);
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  };
-
-  const openTableModal = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-    }
-    setShowTableModal(true);
-  };
+  // --- TABLE OPERATIONS ---
 
   const insertTable = () => {
+    editorRef.current?.focus();
     if (!editorRef.current) return;
 
-    const markerId = `rte-marker-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const rows = Array.from({ length: tableRows });
     const cols = Array.from({ length: tableCols });
 
     const tableHTML = `
       <table class="rte-table" style="border-collapse: collapse; width: 100%; margin: 10px 0; table-layout: fixed;">
-        ${rows.map((_, i) => `
+        <tbody>
+        ${rows.map(() => `
           <tr>
-            ${cols.map((__, j) =>
-              `<td contenteditable="true" style="padding:8px;border:1px solid #ddd;min-width:80px;word-wrap:break-word;">Cell ${i + 1}-${j + 1}</td>`
+            ${cols.map(() =>
+              `<td style="padding:8px;border:1px solid #ddd;min-width:80px;word-wrap:break-word;">&nbsp;</td>`
             ).join('')}
           </tr>
         `).join('')}
+        </tbody>
       </table>
-      <span id="${markerId}"><br></span>
+      <p><br/></p>
     `;
 
-    editorRef.current.focus();
-    const sel = window.getSelection();
-    sel?.removeAllRanges();
-    if (savedRangeRef.current) sel?.addRange(savedRangeRef.current);
-
     document.execCommand('insertHTML', false, tableHTML);
-
-    const marker = editorRef.current.querySelector(`#${markerId}`);
-    if (marker) {
-      const range = document.createRange();
-      range.setStartAfter(marker);
-      range.collapse(true);
-      sel?.removeAllRanges();
-      sel?.addRange(range);
-      marker.parentElement?.removeChild(marker);
-    }
-
-    setTimeout(() => {
-      handleTextChange();
-      editorRef.current?.focus();
-    }, 100);
-
+    handleTextChange();
     setShowTableModal(false);
     setTableRows(2);
     setTableCols(2);
   };
 
-  const findEnclosingTable = (): HTMLTableElement | null => {
-    const selection = window.getSelection();
-    if (!selection) return null;
-    let node = selection.anchorNode as Node | null;
-    if (!node) return null;
-    if (node.nodeType === Node.TEXT_NODE) node = (node as Text).parentElement;
-    let element = node as HTMLElement | null;
-    while (element && editorRef.current && element !== editorRef.current) {
-      if (element.tagName === 'TABLE') return element as HTMLTableElement;
-      element = element.parentElement;
+  const addRowToTable = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!lastTableContext.current) {
+      alert('Please click inside a table cell first, then try again.');
+      return;
     }
-    return null;
-  };
-
-  const addRowToTable = () => {
-    const table = findEnclosingTable();
-    if (!table) return alert('Please click inside a table to add a row');
-    const row = table.insertRow();
-    const colCount = table.rows[0].cells.length;
+    
+    const { table, row } = lastTableContext.current;
+    
+    // Verify table is still in DOM
+    if (!editorRef.current?.contains(table)) {
+      alert('Table reference lost. Please click inside the table again.');
+      lastTableContext.current = null;
+      return;
+    }
+    
+    const newRow = table.insertRow(row.rowIndex + 1);
+    const colCount = row.cells.length;
+    
     for (let i = 0; i < colCount; i++) {
-      const cell = row.insertCell();
-      cell.contentEditable = 'true';
-      cell.style.padding = '8px';
-      cell.style.border = '1px solid #ddd';
-      cell.style.minWidth = '100px';
-      cell.textContent = 'New Cell';
+      const c = newRow.insertCell();
+      c.style.padding = '8px';
+      c.style.border = '1px solid #ddd';
+      c.style.minWidth = '100px';
+      c.innerHTML = '&nbsp;';
     }
+    
     handleTextChange();
   };
 
-  const addColumnToTable = () => {
-    const table = findEnclosingTable();
-    if (!table) return alert('Please click inside a table to add a column');
-    for (let i = 0; i < table.rows.length; i++) {
-      const cell = table.rows[i].insertCell();
-      cell.contentEditable = 'true';
-      cell.style.padding = '8px';
-      cell.style.border = '1px solid #ddd';
-      cell.style.minWidth = '100px';
-      cell.textContent = 'New Cell';
+  const addColumnToTable = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!lastTableContext.current) {
+      alert('Please click inside a table cell first, then try again.');
+      return;
     }
-    handleTextChange();
-  };
-
-  const deleteRowFromTable = () => {
-    const selection = window.getSelection();
-    if (!selection) return alert('Please click inside a table row to delete it');
-    let node = selection.anchorNode as Node | null;
-    if (!node) return alert('Please click inside a table row to delete it');
-    if (node.nodeType === Node.TEXT_NODE) node = (node as Text).parentElement;
-    const element = node as HTMLElement | null;
-    if (!element) return alert('Please click inside a table row to delete it');
-
-    const tr = element.closest('tr');
-    if (!tr) return alert('Please click inside a table row to delete it');
-
-    const table = tr.closest('table') as HTMLTableElement | null;
-    if (!table) return alert('Please click inside a table row to delete it');
-
-    if (table.rows.length <= 1) return alert('Cannot delete the last row');
-
-    tr.remove();
-    handleTextChange();
-  };
-
-  const deleteColumnFromTable = () => {
-    const selection = window.getSelection();
-    if (!selection) return alert('Please click inside a table cell to delete the column');
-    let node = selection.anchorNode as Node | null;
-    if (!node) return alert('Please click inside a table cell to delete the column');
-    if (node.nodeType === Node.TEXT_NODE) node = (node as Text).parentElement;
-    const element = node as HTMLElement | null;
-    if (!element) return alert('Please click inside a table cell to delete the column');
-
-    const cell = element.closest('td,th') as HTMLTableCellElement | null;
-    if (!cell) return alert('Please click inside a table cell to delete the column');
-
-    const table = cell.closest('table') as HTMLTableElement | null;
-    if (!table) return alert('Please click inside a table cell to delete the column');
-
+    
+    const { table, cell } = lastTableContext.current;
+    
+    if (!editorRef.current?.contains(table)) {
+      alert('Table reference lost. Please click inside the table again.');
+      lastTableContext.current = null;
+      return;
+    }
+    
     const cellIndex = cell.cellIndex;
-    if (table.rows[0].cells.length <= 1) return alert('Cannot delete the last column');
-
+    
     for (let i = 0; i < table.rows.length; i++) {
-      table.rows[i].deleteCell(cellIndex);
+      const row = table.rows[i];
+      const newCell = row.insertCell(cellIndex + 1);
+      newCell.style.padding = '8px';
+      newCell.style.border = '1px solid #ddd';
+      newCell.style.minWidth = '100px';
+      newCell.innerHTML = '&nbsp;';
     }
+    
     handleTextChange();
+  };
+
+  const deleteRowFromTable = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!lastTableContext.current) {
+      alert('Please click inside a row to delete it.');
+      return;
+    }
+    
+    const { table, row } = lastTableContext.current;
+    
+    if (!editorRef.current?.contains(table)) {
+      alert('Table reference lost. Please click inside the table again.');
+      lastTableContext.current = null;
+      return;
+    }
+    
+    if (table.rows.length <= 1) {
+      table.remove();
+      lastTableContext.current = null;
+    } else {
+      row.remove();
+    }
+    
+    handleTextChange();
+  };
+
+  const deleteColumnFromTable = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    if (!lastTableContext.current) {
+      alert('Please click inside a column to delete it.');
+      return;
+    }
+    
+    const { table, cell } = lastTableContext.current;
+    
+    if (!editorRef.current?.contains(table)) {
+      alert('Table reference lost. Please click inside the table again.');
+      lastTableContext.current = null;
+      return;
+    }
+    
+    const cellIndex = cell.cellIndex;
+    
+    if (table.rows[0].cells.length <= 1) {
+      table.remove();
+      lastTableContext.current = null;
+    } else {
+      for (let i = 0; i < table.rows.length; i++) {
+        if (table.rows[i].cells[cellIndex]) {
+          table.rows[i].deleteCell(cellIndex);
+        }
+      }
+    }
+    
+    handleTextChange();
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    editorRef.current?.focus();
+    const files = Array.from(e.target.files || []);
+    
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = `<img src="${event.target?.result}" style="max-width: 100%; height: auto; margin: 10px 0; border-radius: 8px;" />`;
+          document.execCommand('insertHTML', false, img);
+          handleTextChange();
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   return (
     <div className="space-y-3 relative">
-      <style jsx>{`
-        .rte ul { list-style: disc !important; list-style-position: inside !important; margin: 0.5rem 0 !important; padding-left: 1.25rem !important; }
-        .rte ol { list-style: decimal !important; list-style-position: inside !important; margin: 0.5rem 0 !important; padding-left: 1.25rem !important; }
-        .rte li { display: list-item !important; margin: 0.25rem 0 !important; }
-        .rte .list-none { list-style: disc !important; }
-        .rte-table td, .rte-table th { border: 1px solid #ddd; padding: 8px; }
-        .rte-table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+      <style jsx global>{`
+        .rte ul { 
+            display: block; 
+            list-style-type: disc !important; 
+            list-style-position: inside !important; 
+            margin: 1rem 0 !important; 
+            padding-left: 1rem !important; 
+        }
+        .rte ol { 
+            display: block; 
+            list-style-type: decimal !important; 
+            list-style-position: inside !important; 
+            margin: 1rem 0 !important; 
+            padding-left: 1rem !important; 
+        }
+        .rte li { 
+            display: list-item !important; 
+        }
+        .rte-table td, .rte-table th { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+        .rte-table { border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 1em; }
         .editor-with-placeholder:empty:before {
           content: attr(data-placeholder);
           color: #94a3b8;
@@ -367,12 +339,10 @@ const normalizeLists = () => {
         }
       `}</style>
 
-      {/* Label */}
       <label className="block text-sm font-semibold text-[#1E293B]" style={{ fontFamily: 'Metropolis, sans-serif' }}>
         {label} {required && <span className="text-red-600">*</span>}
       </label>
 
-      {/* Helper Text */}
       {helperText && (
         <p className="text-xs text-[#64748B]" style={{ fontFamily: 'Metropolis, sans-serif', whiteSpace: 'pre-line' }}>
           {helperText}
@@ -380,74 +350,75 @@ const normalizeLists = () => {
       )}
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2 p-3 bg-white border-2 border-gray-300 rounded-t-lg">
-        <button type="button" onClick={() => applyFormat('bold')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Bold">
-          <Bold size={20} strokeWidth={2.5} />
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-white border-2 border-gray-300 rounded-t-lg select-none">
+        
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('bold')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Bold">
+          <Bold size={20} />
         </button>
-        <button type="button" onClick={() => applyFormat('italic')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Italic">
-          <Italic size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('italic')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Italic">
+          <Italic size={20} />
         </button>
-        <button type="button" onClick={() => applyFormat('underline')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Underline">
-          <Underline size={20} strokeWidth={2.5} />
-        </button>
-
-        <div className="w-px h-6 bg-gray-400 mx-1" />
-
-        <button type="button" onClick={() => applyList('ul')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Bullet List">
-          <ListIcon size={20} strokeWidth={2.5} />
-        </button>
-        <button type="button" onClick={() => applyList('ol')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Numbered List">
-          <ListOrdered size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('underline')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Underline">
+          <Underline size={20} />
         </button>
 
         <div className="w-px h-6 bg-gray-400 mx-1" />
 
-        <button type="button" onClick={() => applyFormat('justifyLeft')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Align Left">
-          <AlignLeft size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('insertUnorderedList')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Bullet List">
+          <ListIcon size={20} />
         </button>
-        <button type="button" onClick={() => applyFormat('justifyCenter')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Align Center">
-          <AlignCenter size={20} strokeWidth={2.5} />
-        </button>
-        <button type="button" onClick={() => applyFormat('justifyRight')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Align Right">
-          <AlignRight size={20} strokeWidth={2.5} />
-        </button>
-        <button type="button" onClick={() => applyFormat('justifyFull')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Justify">
-          <AlignJustify size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('insertOrderedList')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Numbered List">
+          <ListOrdered size={20} />
         </button>
 
         <div className="w-px h-6 bg-gray-400 mx-1" />
 
-        <button type="button" onClick={() => applyFormat('indent')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Increase Indent">
-          <Indent size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('justifyLeft')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Align Left">
+          <AlignLeft size={20} />
         </button>
-        <button type="button" onClick={() => applyFormat('outdent')} className="p-2 hover:bg-blue-100 rounded transition-colors text-[#1E293B] hover:text-[#3B82F6]" title="Decrease Indent">
-          <Outdent size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('justifyCenter')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Align Center">
+          <AlignCenter size={20} />
+        </button>
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('justifyRight')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Align Right">
+          <AlignRight size={20} />
+        </button>
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('justifyFull')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Justify">
+          <AlignJustify size={20} />
         </button>
 
         <div className="w-px h-6 bg-gray-400 mx-1" />
 
-        <button type="button" onClick={openTableModal} className="p-2 hover:bg-yellow-100 rounded transition-colors text-[#1E293B] hover:text-[#F59E0B]" title="Insert Table">
-          <TableIcon size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('indent')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Increase Indent">
+          <Indent size={20} />
         </button>
-        <button type="button" onClick={addRowToTable} className="p-2 hover:bg-green-100 rounded transition-colors text-[#1E293B] hover:text-green-600" title="Add Row">
-          <Plus size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => execCmd('outdent')} className="p-2 hover:bg-blue-100 rounded text-[#1E293B]" title="Decrease Indent">
+          <Outdent size={20} />
         </button>
-        <button type="button" onClick={addColumnToTable} className="p-2 hover:bg-green-100 rounded transition-colors text-[#1E293B] hover:text-green-600" title="Add Column">
-          <Plus size={20} strokeWidth={2.5} className="rotate-90" />
+
+        <div className="w-px h-6 bg-gray-400 mx-1" />
+
+        <button type="button" onMouseDown={preventFocusLoss} onClick={() => setShowTableModal(true)} className="p-2 hover:bg-yellow-100 rounded text-[#1E293B] hover:text-[#F59E0B]" title="Insert Table">
+          <TableIcon size={20} />
         </button>
-        <button type="button" onClick={deleteRowFromTable} className="p-2 hover:bg-red-100 rounded transition-colors text-[#1E293B] hover:text-red-600" title="Delete Row">
-          <Minus size={20} strokeWidth={2.5} />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={addRowToTable} className="p-2 hover:bg-green-100 rounded text-[#1E293B] hover:text-green-600" title="Add Row">
+          <Plus size={20} />
         </button>
-        <button type="button" onClick={deleteColumnFromTable} className="p-2 hover:bg-red-100 rounded transition-colors text-[#1E293B] hover:text-red-600" title="Delete Column">
-          <Minus size={20} strokeWidth={2.5} className="rotate-90" />
+        <button type="button" onMouseDown={preventFocusLoss} onClick={addColumnToTable} className="p-2 hover:bg-green-100 rounded text-[#1E293B] hover:text-green-600" title="Add Column">
+          <Plus size={20} className="rotate-90" />
+        </button>
+        <button type="button" onMouseDown={preventFocusLoss} onClick={deleteRowFromTable} className="p-2 hover:bg-red-100 rounded text-[#1E293B] hover:text-red-600" title="Delete Row">
+          <Minus size={20} />
+        </button>
+        <button type="button" onMouseDown={preventFocusLoss} onClick={deleteColumnFromTable} className="p-2 hover:bg-red-100 rounded text-[#1E293B] hover:text-red-600" title="Delete Column">
+          <Minus size={20} className="rotate-90" />
         </button>
 
         <div className="w-px h-6 bg-gray-400 mx-1" />
 
         {!hideImageUpload && (
           <>
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-yellow-100 rounded transition-colors text-[#1E293B] hover:text-[#F59E0B]" title="Upload Image">
-              <ImageIcon size={20} strokeWidth={2.5} />
+            <button type="button" onMouseDown={preventFocusLoss} onClick={() => fileInputRef.current?.click()} className="p-2 hover:bg-yellow-100 rounded text-[#1E293B] hover:text-[#F59E0B]" title="Upload Image">
+              <ImageIcon size={20} />
             </button>
             <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileUpload} className="hidden" />
           </>
@@ -463,31 +434,26 @@ const normalizeLists = () => {
           suppressContentEditableWarning
           data-placeholder={placeholder || ''}
           onInput={handleTextChange}
-          onBlur={handleBlur}
           style={{ fontFamily: 'Metropolis, sans-serif' }}
         />
       </div>
 
-      {/* Word count */}
       <div className="flex justify-between items-center text-xs" style={{ fontFamily: 'Metropolis, sans-serif' }}>
         <span className="text-[#64748B]">
           Word count: <span className="font-semibold text-[#1E293B]">{wordCount}</span> {wordCount === 1 ? 'word' : 'words'}
         </span>
       </div>
 
-      {/* Table Modal */}
       {showTableModal && (
         <div
           className="absolute inset-0 z-50 flex items-center justify-center"
           style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
           onClick={() => setShowTableModal(false)}
-          aria-modal="true"
-          role="dialog"
         >
           <div
             className="bg-white rounded-lg p-6 w-96 max-w-[min(24rem,90%)] shadow-xl"
             onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.preventDefault()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-[#1E293B] mb-4" style={{ fontFamily: 'Metropolis, sans-serif' }}>
               Insert Table
@@ -504,8 +470,8 @@ const normalizeLists = () => {
                   max={20}
                   value={tableRows}
                   onChange={(e) => setTableRows(parseInt(e.target.value || '2', 10))}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B] font-semibold"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-black font-semibold"
+                  style={{ fontFamily: 'Metropolis, sans-serif', color: 'black' }} 
                 />
               </div>
 
@@ -519,8 +485,8 @@ const normalizeLists = () => {
                   max={10}
                   value={tableCols}
                   onChange={(e) => setTableCols(parseInt(e.target.value || '2', 10))}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-[#1E293B] font-semibold"
-                  style={{ fontFamily: 'Metropolis, sans-serif' }}
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-[#3B82F6] focus:outline-none text-black font-semibold"
+                  style={{ fontFamily: 'Metropolis, sans-serif', color: 'black' }}
                 />
               </div>
             </div>

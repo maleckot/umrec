@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
-import { X, Eye, EyeOff } from 'lucide-react'; // ✅ Added Eye and EyeOff icons
+import { X, Eye, EyeOff } from 'lucide-react'; 
 
 function LoginContent() {
   const [email, setEmail] = useState('');
